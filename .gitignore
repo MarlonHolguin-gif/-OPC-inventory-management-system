@@ -1,0 +1,7 @@
+screenshots/
+.env
+
+# IDE (red de seguridad si se abre la raíz del repo completo en el editor;
+# OPC-back/ y OPC-front/ ya tienen su propio .gitignore para esto)
+.idea/
+.vscode/

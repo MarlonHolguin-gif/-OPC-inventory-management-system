@@ -13,6 +13,11 @@ RUN ./mvnw -B clean package -DskipTests
 # ---- Etapa de runtime ----
 FROM eclipse-temurin:21-jre
 WORKDIR /app
+
+# curl se usa únicamente para el HEALTHCHECK de docker-compose (/actuator/health)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080

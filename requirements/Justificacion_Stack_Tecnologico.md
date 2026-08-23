@@ -11,6 +11,10 @@ Antes de justificar cada pieza por separado, vale aclarar el criterio general us
 
 ## 1. Backend: Java + Spring Boot
 
+> **Motivación original (Marlon Holguín, desarrollador del proyecto):** *"Decidí utilizar Java, Spring Boot [...] porque necesitaba una arquitectura que permitiera separar correctamente el frontend, el backend y la persistencia de datos. Java me proporciona un lenguaje robusto, orientado a objetos y ampliamente utilizado en aplicaciones empresariales. Sobre Java utilicé Spring Boot porque facilita la construcción de APIs REST, permite trabajar de manera organizada mediante capas y tiene una integración muy buena con herramientas como JPA, Hibernate y Spring Security."*
+
+A partir de esa motivación, esta sección profundiza en por qué esa elección encaja específicamente con los requisitos de esta prueba técnica, y qué se descartó en el camino.
+
 ### Por qué encaja con este problema específico
 
 - **El núcleo del sistema es lógica de negocio transaccional, no solo CRUD.** Registrar un movimiento de inventario implica escribir en `INVENTARIO_MOVIMIENTOS` *y* actualizar `INVENTARIO.cantidad_actual` de forma atómica (ver `Analisis_Requerimientos.md` sección 2.2). Spring gestiona esto de forma declarativa con `@Transactional`, con rollback automático ante error, sin tener que orquestar manualmente confirmaciones/reversiones como en stacks donde las transacciones de BD son responsabilidad explícita del desarrollador en cada endpoint.
@@ -31,6 +35,8 @@ Antes de justificar cada pieza por separado, vale aclarar el criterio general us
 
 ## 2. Frontend: React
 
+> **Motivación original (Marlon Holguín, desarrollador del proyecto):** *"Para la interfaz web elegí React porque permite construir aplicaciones dinámicas mediante componentes reutilizables y facilita el consumo de las APIs desarrolladas en Spring Boot. Esto permite mantener separado el código de la interfaz del código encargado de la lógica del negocio."*
+
 ### Por qué encaja con este problema específico
 
 - **El sistema tiene muchas pantallas de tipo formulario + tabla + estado** (catálogo de productos, órdenes de compra, ventas, seguimiento de transferencias, notificaciones): exactamente el caso de uso donde un modelo de componentes reutilizables (formularios de producto, tarjetas de KPI, líneas de tiempo de estado de una transferencia) reduce duplicación de código de interfaz.
@@ -49,6 +55,8 @@ Antes de justificar cada pieza por separado, vale aclarar el criterio general us
 ---
 
 ## 3. Base de datos: MySQL
+
+> **Motivación original (Marlon Holguín, desarrollador del proyecto):** *"Elegí MySQL porque necesitaba una base de datos relacional capaz de almacenar y relacionar de manera estructurada la información del sistema. Su integración con Spring Boot mediante JPA y Hibernate permite trabajar con las entidades Java y persistirlas en la base de datos de una manera más sencilla y organizada."*
 
 ### 3.1 Por qué una base de datos relacional (y no NoSQL) para este problema
 

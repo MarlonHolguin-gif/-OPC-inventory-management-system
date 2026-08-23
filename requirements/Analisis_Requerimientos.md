@@ -16,7 +16,7 @@ Decisiones de arquitectura ya tomadas (detalladas y justificadas en la sección 
 | Decisión | Elegido | Alternativas descartadas |
 |---|---|---|
 | Sincronización de inventario entre sucursales | **Base de datos MySQL única y compartida**, consultada vía REST | Una BD por sucursal + réplica/eventos (mucho mayor complejidad, innecesaria para el alcance) |
-| Autenticación/autorización | **JWT stateless** con Spring Security | JWT + refresh token persistido; sesiones de servidor |
+| Autenticación/autorización | **JWT de acceso (corta duración) + refresh token persistido en BD** con Spring Security | JWT stateless sin refresh (más simple, pero sin forma de revocar una sesión comprometida antes de que expire); sesiones de servidor |
 | Acceso del Administrador general a todas las sucursales | Tabla intermedia **`usuario_sucursal` (N:M)** | `sucursal_id` nullable en `USUARIOS` |
 | Registro de clientes en Ventas | Tabla **`CLIENTES`** formal | Texto libre (`cliente_nombre`) |
 | Funcionalidad(es) adicional(es) a implementar (sección 4 del PDF) | **Alertas inteligentes** + **Auditoría y trazabilidad** | Predicción de demanda, control de caducidad, gestión de proveedores extendida, reportes exportables |
@@ -294,13 +294,14 @@ Se revisó `Prototipo_DB.pdf` — DER con 20 entidades: `SUCURSALES, USUARIOS, I
 | **`updated_at DATETIME`** en `PRODUCTOS`, `PROVEEDORES`, `USUARIOS`, `SUCURSALES`, `CATEGORIAS_PRODUCTO`, `LISTAS_PRECIOS` | Hoy solo tienen `created_at`. Es una columna barata que complementa a `AUDITORIA` para saber "cuándo cambió por última vez" sin tener que consultar el log completo. |
 | **`TRANSFERENCIAS.prioridad_ruta`**: cambiar de `VARCHAR(30)` a `ENUM('ALTA','MEDIA','BAJA')` | El PDF pide "clasificar rutas por prioridad" (3.5) — con texto libre, el dashboard no puede agrupar de forma confiable (riesgo de "Alta", "alta", "ALTA " como valores distintos). |
 | **Definir explícitamente los valores de los ENUM ya presentes pero vacíos en el prototipo** | `USUARIOS.rol` → `ADMIN_GENERAL, GERENTE_SUCURSAL, OPERADOR_INVENTARIO`. `ORDENES_COMPRA.estado` → `BORRADOR, ENVIADA, RECIBIDA_PARCIAL, RECIBIDA_TOTAL, CANCELADA`. `VENTAS.estado` → `CONFIRMADA, ANULADA`. `TRANSFERENCIAS.estado` → ver sección 2.5. `TRANSFERENCIAS.urgencia` → `BAJA, MEDIA, ALTA, CRITICA`. `INVENTARIO_MOVIMIENTOS.tipo_movimiento` → `COMPRA, VENTA, DEVOLUCION, AJUSTE_POSITIVO, AJUSTE_NEGATIVO, TRANSFERENCIA_ENTRADA, TRANSFERENCIA_SALIDA`. `RECEPCIONES_COMPRA.tipo_recepcion` → `TOTAL, PARCIAL`. |
+| **Tabla `REFRESH_TOKENS`** | Requerida tras revisar la estrategia de autenticación (ver tabla de decisiones, sección 1): se pasó de JWT stateless puro a **access token de corta duración + refresh token persistido**, precisamente para poder revocar una sesión comprometida sin esperar a que expire el access token. Columnas: `id, usuario_id FK, token_hash VARCHAR(255) UNIQUE, expira_en DATETIME, revocado BOOLEAN, creado_en DATETIME, user_agent VARCHAR(255) NULL`. Se guarda el *hash* del token, nunca el valor en claro (mismo criterio que `password_hash` en `USUARIOS`). |
 
 ### 9.3 Qué **no** agregar (para no sobre-diseñar)
 
 - **No** se necesita una tabla `DEVOLUCIONES` aparte: se cubre con `INVENTARIO_MOVIMIENTOS.tipo_movimiento = DEVOLUCION` + `reference_type/reference_id` apuntando a la venta o compra original. Agregar una tabla dedicada sería duplicar lo que el patrón polimórfico ya resuelve.
 - **No** se necesita tabla `TRANSPORTISTAS`: el PDF solo pide registrar el transportista como dato del envío (ya existe `TRANSFERENCIAS.transportista VARCHAR(150)`); modelarlo como entidad aparte con evaluación de desempeño no está pedido y sería alcance no solicitado (ese nivel de detalle sí aplicaría si se hubiera elegido la funcionalidad "Gestión de proveedores extendida", que no fue la elegida).
 - **No** se necesita IVA/impuestos por ítem en `ORDENES_COMPRA_ITEMS`/`VENTAS_ITEMS`: el PDF no lo menciona en ningún módulo obligatorio; añadirlo ahora sería scope creep.
-- **No** se necesita tabla de sesiones/refresh tokens: la autenticación elegida es JWT **stateless**, por lo que no hay estado de sesión que persistir en BD.
+- **No** se necesita una tabla de sesiones completa (con estado, IP, expiración por sesión, etc.): con `REFRESH_TOKENS` alcanza — el access token sigue siendo stateless (no se persiste), solo el refresh token vive en BD para poder revocarlo.
 - **No** se necesita tabla `PROVEEDOR_PRODUCTO` (catálogo producto-proveedor con condiciones comerciales): eso es específico de la funcionalidad "Gestión de proveedores extendida", que no fue una de las dos elegidas.
 - **No** se necesita tabla `LOTES` con fecha de vencimiento: eso es específico de "Control de caducidad", que tampoco fue elegida.
 
@@ -312,12 +313,13 @@ Se revisó `Prototipo_DB.pdf` — DER con 20 entidades: `SUCURSALES, USUARIOS, I
 | `AUDITORIA` | **Agregar** | Auditoría y trazabilidad |
 | `USUARIO_SUCURSAL` | **Agregar** | Reemplaza `USUARIOS.sucursal_id`; soporta admin general y accesos multi-sucursal |
 | `CLIENTES` | **Agregar** | Reemplaza `VENTAS.cliente_nombre` por relación formal |
+| `REFRESH_TOKENS` | **Agregar** | Soporta el cambio a JWT + refresh token (revocación de sesiones) |
 | `INVENTARIO` | **Modificar** | Agregar `stock_maximo` |
 | `VENTAS` | **Modificar** | Reemplazar `cliente_nombre` por `cliente_id` FK nullable |
 | `USUARIOS` | **Modificar** | Quitar `sucursal_id`, agregar `updated_at` |
 | `TRANSFERENCIAS` | **Modificar** | `prioridad_ruta` de VARCHAR a ENUM |
 | `PRODUCTOS`, `PROVEEDORES`, `SUCURSALES`, `CATEGORIAS_PRODUCTO`, `LISTAS_PRECIOS` | **Modificar** | Agregar `updated_at` |
-| Todas las demás (16 tablas) | **Mantener** | Ya cubren correctamente su requisito correspondiente, sin cambios |
+| Todas las demás (11 tablas: `INVENTARIO_MOVIMIENTOS`, `ORDENES_COMPRA`, `ORDENES_COMPRA_ITEMS`, `RECEPCIONES_COMPRA`, `RECEPCIONES_COMPRA_ITEMS`, `VENTAS_ITEMS`, `TRANSFERENCIAS_ITEMS`, `TRANSFERENCIAS_EVENTOS`, `UNIDADES_MEDIDA`, `PRODUCTO_UNIDADES`, `LISTAS_PRECIOS_ITEMS`) | **Mantener** | Ya cubren correctamente su requisito correspondiente, sin cambios |
 
 ### 9.5 Recomendaciones adicionales (no estructurales)
 

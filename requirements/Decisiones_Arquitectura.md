@@ -26,13 +26,13 @@
 
 **Contexto:** El modelo de datos (`Prototipo_DB.pdf`) ya está diseñado como 20+ entidades relacionadas por FKs explícitas (venta → ítems → producto; transferencia → ítems → eventos; orden de compra → recepciones parciales). Se necesitan transacciones ACID multi-tabla y consultas de dashboard con joins y agregaciones.
 
-**Decisión:** **MySQL** (relacional), con el modelo de datos revisado y ampliado en `Analisis_Requerimientos.md` sección 9 (tablas nuevas: `NOTIFICACIONES`, `AUDITORIA`, `USUARIO_SUCURSAL`, `CLIENTES`, `REFRESH_TOKENS`).
+**Decisión:** **MySQL** (relacional), con el modelo de datos revisado y ampliado en `Analisis_Requerimientos.md` sección 9 (tablas nuevas: `SY_NOTIFICATIONS`, `SY_AUDIT_LOG`, `MA_USER_BRANCH`, `MA_CUSTOMERS`, `SY_REFRESH_TOKENS`).
 
 **Alternativas descartadas:**
 - **MongoDB / NoSQL documental:** el modelo ya es intrínsecamente relacional; forzarlo a documentos obligaría a denormalizar datos de producto/precio en cada venta histórica o a mantener referencias manuales sin integridad garantizada por el motor. Las transacciones multi-documento en NoSQL son más costosas y menos idiomáticas que las transacciones relacionales nativas que necesita este dominio.
 - **PostgreSQL:** alternativa relacional igualmente válida (el PDF permite ambas); se prefirió MySQL por familiaridad operativa previa del equipo, sin que exista una necesidad técnica del proyecto que incline la balanza hacia PostgreSQL (sin uso previsto de tipos avanzados, `CHECK constraints` complejos o extensiones tipo `pg_vector`).
 
-**Consecuencias:** Integridad referencial (FKs) garantizada por el motor, no por disciplina de aplicación — excepto en el patrón polimórfico de `INVENTARIO_MOVIMIENTOS.reference_type/reference_id` (ver ADR-005), donde esa validación sí recae en el service layer, como trade-off consciente. Riesgo aceptado: una sola base de datos compartida es también el único punto de fallo de disponibilidad del sistema (ver ADR-004).
+**Consecuencias:** Integridad referencial (FKs) garantizada por el motor, no por disciplina de aplicación — excepto en el patrón polimórfico de `TR_INVENTORY_MOVEMENTS.reference_type/reference_id` (ver ADR-005), donde esa validación sí recae en el service layer, como trade-off consciente. Riesgo aceptado: una sola base de datos compartida es también el único punto de fallo de disponibilidad del sistema (ver ADR-004).
 
 **Referencias:** `Analisis_Requerimientos.md` sección 9 (revisión completa del DER: qué se mantiene, qué se agrega, qué se descarta) y `Justificacion_Stack_Tecnologico.md` sección 3 (por qué relacional y no NoSQL, y por qué MySQL sobre PostgreSQL).
 
@@ -40,9 +40,9 @@
 
 ## ADR-003 — Estrategia de autenticación y autorización: JWT de acceso + refresh token persistido
 
-**Contexto:** Tres roles con visibilidad distinta (`ADMIN_GENERAL`, `GERENTE_SUCURSAL`, `OPERADOR_INVENTARIO`), autorización condicionada a la(s) sucursal(es) del usuario, y un requisito no funcional de seguridad explícito en la prueba técnica.
+**Contexto:** Tres roles con visibilidad distinta (`GENERAL_ADMIN`, `BRANCH_MANAGER`, `INVENTORY_OPERATOR`), autorización condicionada a la(s) sucursal(es) del usuario, y un requisito no funcional de seguridad explícito en la prueba técnica.
 
-**Decisión:** **Access token JWT de corta duración + refresh token persistido en BD** (tabla `REFRESH_TOKENS`, guardando el *hash* del token, nunca el valor en claro — mismo criterio que `USUARIOS.password_hash`). Autorización vía Spring Security con reglas por endpoint y por rol.
+**Decisión:** **Access token JWT de corta duración + refresh token persistido en BD** (tabla `SY_REFRESH_TOKENS`, guardando el *hash* del token, nunca el valor en claro — mismo criterio que `MA_USERS.password_hash`). Autorización vía Spring Security con reglas por endpoint y por rol.
 
 **Alternativas descartadas:**
 - **JWT stateless sin refresh** (decisión original de este proyecto, revertida): más simple de implementar, pero sin forma de revocar una sesión comprometida antes de que expire el token, y obligando a elegir entre expiraciones largas (más riesgo) o cortas (usuario deslogueado constantemente, sin forma de renovar en silencio).
@@ -52,7 +52,7 @@
 
 **Historial de cambio:** decisión inicial "JWT stateless" tomada al inicio del proyecto; revisada y cambiada a "JWT + refresh token" durante la implementación del cliente HTTP del frontend, al cuestionar si stateless-sin-refresh no dejaba una superficie de riesgo innecesaria — la prueba técnica no exige ninguna de las dos variantes específicamente (solo pide justificar la que se use), así que se optó por la más defendible en seguridad.
 
-**Referencias:** tabla de decisiones en `Analisis_Requerimientos.md` sección 1, y tabla `REFRESH_TOKENS` en sección 9.2.
+**Referencias:** tabla de decisiones en `Analisis_Requerimientos.md` sección 1, y tabla `SY_REFRESH_TOKENS` en sección 9.2.
 
 ---
 
@@ -60,7 +60,7 @@
 
 **Contexto:** El PDF exige que cada sucursal opere con autonomía local pero comparta visibilidad de inventario "en tiempo real o near-real-time" con el resto de la red, y pueda consultar el stock de cualquier otra sucursal.
 
-**Decisión:** **Una única base de datos MySQL compartida por todas las sucursales**, consultada vía REST desde el frontend. No hay sincronización real que orquestar: todos los nodos leen y escriben sobre el mismo dato. La "autonomía por sucursal" se modela como aislamiento **lógico** (todo movimiento/venta/compra lleva `sucursal_id`, y los permisos de rol limitan qué puede modificar cada usuario), no como aislamiento físico de datos.
+**Decisión:** **Una única base de datos MySQL compartida por todas las sucursales**, consultada vía REST desde el frontend. No hay sincronización real que orquestar: todos los nodos leen y escriben sobre el mismo dato. La "autonomía por sucursal" se modela como aislamiento **lógico** (todo movimiento/venta/compra lleva `branch_id`, y los permisos de rol limitan qué puede modificar cada usuario), no como aislamiento físico de datos.
 
 **Alternativas descartadas:**
 - **Una base de datos (o esquema) por sucursal + replicación/eventos:** cumpliría el mismo requisito funcional pero añade complejidad de infraestructura (mensajería, resolución de conflictos, consistencia eventual) que no está justificada por el alcance de esta prueba técnica — el propio principio rector del PDF ("¿por qué se hizo así?") penalizaría una complejidad no justificada por el problema real.
@@ -82,9 +82,9 @@
 
 | Patrón | Dónde se usa | Por qué |
 |---|---|---|
-| **Snapshot + Event Log** | `INVENTARIO` (saldo actual) + `INVENTARIO_MOVIMIENTOS` (historial append-only); `TRANSFERENCIAS` (snapshot de fechas/estado) + `TRANSFERENCIAS_EVENTOS` (historial de cambios de estado) | Evita recalcular el stock sumando todo el historial en cada consulta, sin perder la trazabilidad completa que exige la sección 3.1 del PDF |
-| **Identificador polimórfico** (`reference_type` + `reference_id`) | `INVENTARIO_MOVIMIENTOS`, apuntando a una venta, compra, transferencia o ajuste | Una sola tabla de movimientos sirve para cuatro orígenes distintos, sin 4 columnas FK nullable. Trade-off: la integridad referencial de `reference_id` se valida en el service layer, no la garantiza el motor de BD |
-| **Repository** | Spring Data JPA, un `Repository` por entidad (`ProductoRepository`, `VentaRepository`, etc. — a implementarse en las épicas de cada módulo) | Separa el acceso a datos de la lógica de negocio; es el patrón estándar e idiomático de Spring Data, no uno agregado manualmente |
+| **Snapshot + Event Log** | `TR_INVENTORY` (saldo actual) + `TR_INVENTORY_MOVEMENTS` (historial append-only); `TR_TRANSFERS` (snapshot de fechas/estado) + `TR_TRANSFER_EVENTS` (historial de cambios de estado) | Evita recalcular el stock sumando todo el historial en cada consulta, sin perder la trazabilidad completa que exige la sección 3.1 del PDF |
+| **Identificador polimórfico** (`reference_type` + `reference_id`) | `TR_INVENTORY_MOVEMENTS`, apuntando a una venta, compra, transferencia o ajuste | Una sola tabla de movimientos sirve para cuatro orígenes distintos, sin 4 columnas FK nullable. Trade-off: la integridad referencial de `reference_id` se valida en el service layer, no la garantiza el motor de BD |
+| **Repository** | Spring Data JPA, un `Repository` por entidad (`ProductRepository`, `SaleRepository`, etc. — a implementarse en las épicas de cada módulo) | Separa el acceso a datos de la lógica de negocio; es el patrón estándar e idiomático de Spring Data, no uno agregado manualmente |
 | **DTO (Data Transfer Object)** | Capa API del backend (planeado) | Evita exponer las entidades JPA directamente en las respuestas HTTP, desacoplando el modelo de persistencia del contrato público de la API |
 | **Customizer / configuración aditiva** | `OPC-back/src/main/java/mh/opc_back/config/SecurityConfig.java` | Patrón específico de Spring Boot 4: un bean `Customizer<HttpSecurity>` agrega una regla puntual (`/actuator/health` público) sin reconstruir toda la configuración de seguridad por defecto de Spring Boot |
 | **Interceptor** | `OPC-front/src/api/httpClient.js` (interceptores de request/response de axios) | Inyecta el JWT en cada petición y centraliza el manejo de 401 en un solo lugar, en vez de repetirlo en cada llamada a la API |
@@ -96,3 +96,35 @@
 - **Factory** para creación de entidades: no se identificó ningún punto del dominio con suficiente variabilidad de construcción de objetos como para justificarlo; los constructores/builders de Lombok son suficientes.
 
 **Referencias:** patrones de base de datos ya documentados como parte de la revisión del DER en `Analisis_Requerimientos.md` sección 9.1.
+
+---
+
+## ADR-006 — Roles como tabla maestra (`MA_ROLES`), no como `ENUM`
+
+**Estado:** Aceptada (revierte el diseño original del prototipo)
+
+**Contexto:** El prototipo original modelaba `USUARIOS.rol` como `ENUM`. Un `ENUM` de MySQL es una lista cerrada de valores definida en el propio esquema — agregar o renombrar un rol implica una migración de esquema (`ALTER TABLE ... MODIFY COLUMN`), no una simple inserción de dato.
+
+**Decisión:** los roles se modelan como tabla maestra `MA_ROLES` (`id, code, name, description, created_at`), con `MA_USERS.role_id` como FK. Se sembra con tres filas: `GENERAL_ADMIN`, `BRANCH_MANAGER`, `INVENTORY_OPERATOR`.
+
+**Alternativas descartadas:**
+- **`ENUM` en la columna** (diseño original): más simple y con validación gratuita a nivel de motor, pero acopla la lista de roles al esquema de la base de datos — cualquier cambio de roles requiere una migración, no una operación de datos.
+- **Bitmask / permisos granulares en vez de roles fijos:** resolvería casos de autorización más finos que "3 roles fijos", pero es una complejidad no pedida por la prueba técnica (que define explícitamente 3 actores con responsabilidades fijas, sección 6.2 del PDF) — se descarta por sobre-diseño.
+
+**Consecuencias:** un `JOIN` adicional (o `EAGER`/caché de roles, dado que son pocos y cambian poco) para resolver el nombre del rol; a cambio, agregar un cuarto rol en el futuro (por ejemplo, si se integra el actor opcional "Sistema externo" de la sección 6.2 del PDF como un rol real) es una inserción de dato, no una migración de esquema. Es también coherente con la categorización de tablas por prefijo (`MA_`/`TR_`/`SY_`, ver nota de convención de nombres más abajo): un rol es dato maestro, no un valor de código.
+
+**Referencias:** `Analisis_Requerimientos.md` sección 9.2 (tabla `MA_ROLES`) y 9.4 (resumen de cambios).
+
+---
+
+## Nota sobre convención de nombres de tablas y columnas
+
+A partir de esta revisión, todas las tablas y columnas del esquema usan **identificadores en inglés** con prefijo de una categoría de 2 letras:
+
+| Prefijo | Categoría | Criterio |
+|---|---|---|
+| `MA_` | Master (maestro) | Catálogo/configuración/referencia — el "quién/qué" del negocio, incluye el detalle de un maestro (ej. `MA_PRICE_LIST_ITEMS`) |
+| `TR_` | Transactional (transaccional) | Algo que "pasó": cabecera + ítems de un evento de negocio, y el saldo que resulta de esos eventos |
+| `SY_` | System (sistema) | Infraestructura cross-cutting (auditoría, notificaciones, tokens) — no es dominio de inventario en sí |
+
+Se evaluó separar por **esquemas de MySQL** en vez de por prefijo, y se descartó: casi todas las FKs cruzan entre categorías (`TR_SALES → MA_CUSTOMERS`, `TR_INVENTORY_MOVEMENTS → MA_BRANCHES`), así que separar en esquemas físicos habría añadido complejidad (FKs cross-schema, mapeo `@Table(schema=...)` en cada entidad JPA, un script de inicialización adicional en Docker) sin aislamiento real, dado que las tablas siguen tan acopladas como antes. El prefijo logra el mismo agrupamiento visual sin ese costo. El texto descriptivo de la documentación de ingeniería se mantiene en español; solo los identificadores técnicos (nombres de tabla y columna) están en inglés.

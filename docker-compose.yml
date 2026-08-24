@@ -51,5 +51,22 @@ services:
       retries: 10
       start_period: 30s
 
+  frontend:
+    build:
+      context: ./OPC-front
+      dockerfile: Dockerfile
+      args:
+        # Debe ser una URL alcanzable desde el navegador del usuario, no el
+        # nombre del servicio Docker — el navegador corre fuera de la red
+        # interna de Compose, así que "http://backend:8080" no funcionaría.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    container_name: opc-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   mysql_data:

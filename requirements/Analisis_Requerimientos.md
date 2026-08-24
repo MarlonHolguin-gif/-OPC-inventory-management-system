@@ -333,9 +333,9 @@ Se revisó `Prototipo_DB.pdf` — DER con 20 entidades: `ma_branches, ma_users, 
 ## 10. Próximos pasos (fuera de este documento)
 
 - [x] Backlog de tareas para Trello — importado a un tablero real (ver historial del proyecto).
-- [ ] Diagrama de casos de uso (Mermaid/PlantUML).
-- [ ] Diagrama de actividades: flujo de venta y flujo de transferencia entre sucursales.
-- [ ] Diagrama de arquitectura (capas, servicios, BD, Docker).
+- [x] Diagrama de casos de uso — ver `requirements/Diagramas_Ingenieria.md`.
+- [x] Diagrama de actividades: flujo de venta y flujo de transferencia entre sucursales — ver `requirements/Diagramas_Ingenieria.md`.
+- [x] Diagrama de arquitectura (capas, servicios, BD, Docker) — ver `requirements/Diagramas_Ingenieria.md`.
 - [x] Diagrama entidad-relación actualizado con los cambios de la sección 9.4 — ver `database/docs/DER.md`.
 - [x] Archivo `IA_EVIDENCIA.md` con prompts, herramientas y evaluación crítica del uso de IA durante el desarrollo.
 - [x] Script DDL completo + migraciones versionadas con Flyway — ver `database/queries/` y ADR-007 en `Decisiones_Arquitectura.md`.

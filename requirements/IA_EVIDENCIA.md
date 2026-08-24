@@ -47,10 +47,11 @@ Para estos dos, el prompt de origen fue el criterio de aceptación de la tarjeta
 
 ### 2.5 Revisión de código — *Impacto: Medio-Alto*
 
-Dos hallazgos reales durante este proyecto, encontrados **probando la aplicación de verdad**, no solo leyendo el código:
+Tres hallazgos reales durante este proyecto, encontrados **probando la aplicación de verdad**, no solo leyendo el código:
 
 1. `SecurityConfig.java` inicial fallaba al arrancar (`Can't configure requestMatchers after anyRequest`) porque el bean `Customizer<HttpSecurity>` se reutiliza tanto en la cadena de seguridad principal como en la que Spring Boot 4 genera aparte para Actuator, y ambas intentaban cerrar el registro de autorización. Se detectó al correr `mvnw spring-boot:run` contra una base de datos real, no en una revisión estática.
 2. `AuthContext.jsx` original (componente + hook en un mismo archivo) rompía la regla de ESLint `react-refresh/only-export-components`. Se corrigió separando en `AuthContext.js` + `AuthProvider.jsx` + `useAuth.js`.
+3. **Flyway instalado pero nunca ejecutándose, sin ningún error.** Al integrar Flyway se agregó primero `flyway-core` + `flyway-mysql`; la aplicación arrancaba bien y no había ningún mensaje de error, pero revisando los logs con lupa no aparecía ninguna línea de Flyway — el esquema nunca se creaba. La causa: en Spring Boot 4 la autoconfiguración de Flyway se modularizó y requiere específicamente `spring-boot-starter-flyway`, no solo la librería base. Es el mismo patrón que el hallazgo de `spring-boot-starter-webmvc` (2.6): Spring Boot 4 cambia silenciosamente qué dependencia activa qué autoconfiguración, y un arranque "exitoso" no prueba que una pieza específica esté realmente funcionando.
 
 ### 2.6 Consulta de buenas prácticas — *Impacto: Medio*
 
@@ -74,6 +75,8 @@ El backend usa **Spring Boot 4**, una versión más nueva que el conocimiento de
 - **Uso indebido de la herramienta de planificación**: en un punto la IA entró en modo de planificación formal (exploración con subagentes, archivo de plan, aprobación) para una tarjeta del backlog que ya tenía criterios de aceptación claros — el usuario lo marcó como fricción innecesaria ("haz solo lo que te pedí, usa auto mode"). Se corrigió para las tareas siguientes.
 - **Un `ScheduleWakeup` de loop autónomo activado por error**: al esperar la respuesta de un subagente, la IA programó sin necesidad un mecanismo de reintento periódico pensado para otro tipo de flujo, generando un ciclo de ejecución en segundo plano que el propio agente tuvo que detectar y detener.
 - **Contraseñas y nombres de base de datos hardcodeados heredados de una plantilla anterior** (`parque_cafe`, `root`/`admin` en `application.properties`) se detectaron y reemplazaron por variables de entorno.
+- **El bug de Flyway descrito en 2.5** — no se dio por buena la integración solo porque la app arrancaba sin errores; hizo falta revisar los logs a propósito, encontrar que faltaba `spring-boot-starter-flyway`, corregir y volver a verificar desde un volumen vacío para confirmar que sí funcionaba.
+- **Documentación pendiente detectada por el usuario, no por la IA, dos veces en la misma sesión de trabajo de base de datos.** Después de completar la integración de Flyway y el seed de datos, la IA reportó la tarea como terminada sin haber actualizado `Decisiones_Arquitectura.md`, `DER.md` ni esta misma evidencia de IA — fue el usuario quien preguntó explícitamente "¿actualizaste la documentación?" en dos ocasiones separadas antes de que se hiciera. Es una limitación real de proceso: la IA no verifica por iniciativa propia que la documentación quede sincronizada con el código/infraestructura que acaba de cambiar, salvo que se le pida.
 
 ### Dónde no fue útil / limitaciones
 
@@ -90,6 +93,7 @@ El backend usa **Spring Boot 4**, una versión más nueva que el conocimiento de
 | Backend (`OPC-back`) | ~90% | Todo el código escrito hasta ahora (config, `SecurityConfig`) fue redactado por la IA; el andamiaje inicial del proyecto (Spring Initializr) ya existía antes de esta serie de sesiones |
 | Frontend (`OPC-front`) | ~90% | Toda la capa de enrutamiento, auth y cliente HTTP es generada por IA; el scaffold base de Vite/React también venía de antes |
 | Infraestructura (Docker Compose, Dockerfiles, `.env.example`) | ~95% | Prácticamente en su totalidad generada por IA, con verificación de arranque real en cada cambio |
+| Base de datos (DER, DDL, migraciones Flyway, datos de demo) | ~90% | El DER y el DDL los redactó la IA a partir de las tarjetas del backlog; los nombres de tabla en inglés con prefijo (`ma_`/`tr_`/`sy_`) y el paso de roles de `ENUM` a tabla los pidió el usuario explícitamente. Cada script se verificó contra MySQL 8 real antes de darlo por terminado, no solo se generó |
 | Documentación de ingeniería (`requirements/*.md`) | ~85% | Redactada por IA a partir de indicaciones y criterios de aceptación puntuales del usuario; el contenido técnico de fondo (qué justificar, qué decidir) surge de la interacción, no de un volcado unilateral |
 
 En todas las áreas, el porcentaje **no** implica ausencia de dirección humana: cada decisión de arquitectura significativa (autenticación, sincronización entre sucursales, modelado del DER, flujo de ramas de Git) fue presentada como pregunta explícita antes de implementarse, y al menos una de ellas (autenticación) se revirtió por cuestionamiento directo del usuario.

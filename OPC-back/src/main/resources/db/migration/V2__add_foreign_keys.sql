@@ -17,13 +17,6 @@
 --     (protege la trazabilidad de recepciones, es dato de auditoría).
 -- ON UPDATE CASCADE en todas (las PK son auto_increment y no cambian en la
 -- práctica, pero es la convención correcta si alguna vez cambiaran).
---
--- ATENCIÓN — ESTO ES UNA COPIA DE REFERENCIA, NO SE EJECUTA AUTOMÁTICAMENTE.
--- El esquema real de la aplicación lo maneja Flyway desde
--- OPC-back/src/main/resources/db/migration/V2__add_foreign_keys.sql.
--- Si el esquema cambia, el cambio va PRIMERO como una migración Flyway nueva
--- (V4__..., nunca editando V1/V2/V3 ya aplicadas) — y opcionalmente se
--- refleja aquí después, a mano, solo como documentación de consulta.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------

@@ -12,13 +12,6 @@
 -- Requiere MySQL 8. Se asume que el script corre contra una base de datos
 -- ya seleccionada/creada (docker-compose crea "opc_inventario" vía
 -- MYSQL_DATABASE) — este script no emite CREATE DATABASE ni USE.
---
--- ATENCIÓN — ESTO ES UNA COPIA DE REFERENCIA, NO SE EJECUTA AUTOMÁTICAMENTE.
--- El esquema real de la aplicación lo maneja Flyway desde
--- OPC-back/src/main/resources/db/migration/V1__create_schema.sql.
--- Si el esquema cambia, el cambio va PRIMERO como una migración Flyway nueva
--- (V4__..., nunca editando V1/V2/V3 ya aplicadas) — y opcionalmente se
--- refleja aquí después, a mano, solo como documentación de consulta.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------

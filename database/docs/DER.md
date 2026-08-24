@@ -1,10 +1,10 @@
 # Entity-Relationship Diagram — Sistema de Inventario Multi-Sucursal
 
 > Versión actualizada del DER de `requirements/Prototipo_DB.pdf`, incorporando los cambios acordados en `requirements/Analisis_Requerimientos.md` (sección 9.4) y el cambio de roles de `ENUM` a tabla maestra (`requirements/Decisiones_Arquitectura.md`, ADR-006).
-> Convención de nombres: identificadores de tabla/columna en **inglés**, con prefijo de categoría — `MA_` (Master/maestro), `TR_` (Transactional/transaccional), `SY_` (System/sistema). El texto descriptivo de este documento está en español, consistente con el resto de `requirements/`.
+> Convención de nombres: identificadores de tabla/columna en **inglés**, con prefijo de categoría — `ma_` (Master/maestro), `tr_` (Transactional/transaccional), `sy_` (System/sistema). El texto descriptivo de este documento está en español, consistente con el resto de `requirements/`.
 > Este documento es la referencia previa al script DDL (tarea siguiente del backlog) — el DDL debe ser coherente con lo que aquí se define, columna por columna.
 
-**26 tablas en total** — 20 del prototipo original, 6 nuevas (`SY_NOTIFICATIONS`, `SY_AUDIT_LOG`, `MA_USER_BRANCH`, `MA_CUSTOMERS`, `SY_REFRESH_TOKENS`, `MA_ROLES`).
+**26 tablas en total** — 20 del prototipo original, 6 nuevas (`sy_notifications`, `sy_audit_log`, `ma_user_branch`, `ma_customers`, `sy_refresh_tokens`, `ma_roles`).
 
 ---
 
@@ -14,115 +14,115 @@ Por legibilidad, cada entidad muestra solo su clave primaria y sus llaves forán
 
 ```mermaid
 erDiagram
-    MA_ROLES { bigint id PK }
-    MA_BRANCHES { bigint id PK }
-    MA_USERS { bigint id PK
+    ma_roles { bigint id PK }
+    ma_branches { bigint id PK }
+    ma_users { bigint id PK
         bigint role_id FK }
-    MA_USER_BRANCH { bigint id PK
+    ma_user_branch { bigint id PK
         bigint user_id FK
         bigint branch_id FK }
-    SY_REFRESH_TOKENS { bigint id PK
+    sy_refresh_tokens { bigint id PK
         bigint user_id FK }
-    MA_CATEGORIES { bigint id PK }
-    MA_UNITS { bigint id PK }
-    MA_PRODUCTS { bigint id PK
+    ma_categories { bigint id PK }
+    ma_units { bigint id PK }
+    ma_products { bigint id PK
         bigint category_id FK
         bigint base_unit_id FK }
-    MA_PRODUCT_UNITS { bigint id PK
+    ma_product_units { bigint id PK
         bigint product_id FK
         bigint unit_id FK }
-    TR_INVENTORY { bigint id PK
+    tr_inventory { bigint id PK
         bigint branch_id FK
         bigint product_id FK }
-    TR_INVENTORY_MOVEMENTS { bigint id PK
+    tr_inventory_movements { bigint id PK
         bigint branch_id FK
         bigint product_id FK
         bigint responsible_user_id FK }
-    MA_SUPPLIERS { bigint id PK }
-    TR_PURCHASE_ORDERS { bigint id PK
+    ma_suppliers { bigint id PK }
+    tr_purchase_orders { bigint id PK
         bigint supplier_id FK
         bigint branch_id FK
         bigint user_id FK }
-    TR_PURCHASE_ORDER_ITEMS { bigint id PK
+    tr_purchase_order_items { bigint id PK
         bigint purchase_order_id FK
         bigint product_id FK }
-    TR_PURCHASE_RECEIPTS { bigint id PK
+    tr_purchase_receipts { bigint id PK
         bigint purchase_order_id FK
         bigint user_id FK }
-    TR_PURCHASE_RECEIPT_ITEMS { bigint id PK
+    tr_purchase_receipt_items { bigint id PK
         bigint receipt_id FK
         bigint purchase_order_item_id FK }
-    MA_CUSTOMERS { bigint id PK }
-    MA_PRICE_LISTS { bigint id PK }
-    MA_PRICE_LIST_ITEMS { bigint id PK
+    ma_customers { bigint id PK }
+    ma_price_lists { bigint id PK }
+    ma_price_list_items { bigint id PK
         bigint price_list_id FK
         bigint product_id FK }
-    TR_SALES { bigint id PK
+    tr_sales { bigint id PK
         bigint branch_id FK
         bigint price_list_id FK
         bigint seller_id FK
         bigint customer_id FK }
-    TR_SALE_ITEMS { bigint id PK
+    tr_sale_items { bigint id PK
         bigint sale_id FK
         bigint product_id FK }
-    TR_TRANSFERS { bigint id PK
+    tr_transfers { bigint id PK
         bigint origin_branch_id FK
         bigint destination_branch_id FK
         bigint requested_by FK }
-    TR_TRANSFER_ITEMS { bigint id PK
+    tr_transfer_items { bigint id PK
         bigint transfer_id FK
         bigint product_id FK }
-    TR_TRANSFER_EVENTS { bigint id PK
+    tr_transfer_events { bigint id PK
         bigint transfer_id FK
         bigint recorded_by FK }
-    SY_NOTIFICATIONS { bigint id PK
+    sy_notifications { bigint id PK
         bigint branch_id FK
         bigint product_id FK
         bigint recipient_user_id FK }
-    SY_AUDIT_LOG { bigint id PK
+    sy_audit_log { bigint id PK
         bigint user_id FK }
 
-    MA_ROLES ||--o{ MA_USERS : ""
-    MA_BRANCHES ||--o{ MA_USER_BRANCH : ""
-    MA_USERS ||--o{ MA_USER_BRANCH : ""
-    MA_USERS ||--o{ SY_REFRESH_TOKENS : ""
-    MA_CATEGORIES ||--o{ MA_PRODUCTS : ""
-    MA_UNITS ||--o{ MA_PRODUCTS : "base unit"
-    MA_PRODUCTS ||--o{ MA_PRODUCT_UNITS : ""
-    MA_UNITS ||--o{ MA_PRODUCT_UNITS : ""
-    MA_BRANCHES ||--o{ TR_INVENTORY : ""
-    MA_PRODUCTS ||--o{ TR_INVENTORY : ""
-    MA_BRANCHES ||--o{ TR_INVENTORY_MOVEMENTS : ""
-    MA_PRODUCTS ||--o{ TR_INVENTORY_MOVEMENTS : ""
-    MA_USERS ||--o{ TR_INVENTORY_MOVEMENTS : "responsible"
-    MA_SUPPLIERS ||--o{ TR_PURCHASE_ORDERS : ""
-    MA_BRANCHES ||--o{ TR_PURCHASE_ORDERS : ""
-    MA_USERS ||--o{ TR_PURCHASE_ORDERS : ""
-    TR_PURCHASE_ORDERS ||--o{ TR_PURCHASE_ORDER_ITEMS : ""
-    MA_PRODUCTS ||--o{ TR_PURCHASE_ORDER_ITEMS : ""
-    TR_PURCHASE_ORDERS ||--o{ TR_PURCHASE_RECEIPTS : ""
-    MA_USERS ||--o{ TR_PURCHASE_RECEIPTS : ""
-    TR_PURCHASE_RECEIPTS ||--o{ TR_PURCHASE_RECEIPT_ITEMS : ""
-    TR_PURCHASE_ORDER_ITEMS ||--o{ TR_PURCHASE_RECEIPT_ITEMS : ""
-    MA_PRICE_LISTS ||--o{ MA_PRICE_LIST_ITEMS : ""
-    MA_PRODUCTS ||--o{ MA_PRICE_LIST_ITEMS : ""
-    MA_BRANCHES ||--o{ TR_SALES : ""
-    MA_PRICE_LISTS ||--o{ TR_SALES : ""
-    MA_USERS ||--o{ TR_SALES : "seller"
-    MA_CUSTOMERS ||--o{ TR_SALES : ""
-    TR_SALES ||--o{ TR_SALE_ITEMS : ""
-    MA_PRODUCTS ||--o{ TR_SALE_ITEMS : ""
-    MA_BRANCHES ||--o{ TR_TRANSFERS : "origin"
-    MA_BRANCHES ||--o{ TR_TRANSFERS : "destination"
-    MA_USERS ||--o{ TR_TRANSFERS : "requester"
-    TR_TRANSFERS ||--o{ TR_TRANSFER_ITEMS : ""
-    MA_PRODUCTS ||--o{ TR_TRANSFER_ITEMS : ""
-    TR_TRANSFERS ||--o{ TR_TRANSFER_EVENTS : ""
-    MA_USERS ||--o{ TR_TRANSFER_EVENTS : "recorded by"
-    MA_BRANCHES ||--o{ SY_NOTIFICATIONS : ""
-    MA_PRODUCTS ||--o{ SY_NOTIFICATIONS : ""
-    MA_USERS ||--o{ SY_NOTIFICATIONS : "recipient"
-    MA_USERS ||--o{ SY_AUDIT_LOG : ""
+    ma_roles ||--o{ ma_users : ""
+    ma_branches ||--o{ ma_user_branch : ""
+    ma_users ||--o{ ma_user_branch : ""
+    ma_users ||--o{ sy_refresh_tokens : ""
+    ma_categories ||--o{ ma_products : ""
+    ma_units ||--o{ ma_products : "base unit"
+    ma_products ||--o{ ma_product_units : ""
+    ma_units ||--o{ ma_product_units : ""
+    ma_branches ||--o{ tr_inventory : ""
+    ma_products ||--o{ tr_inventory : ""
+    ma_branches ||--o{ tr_inventory_movements : ""
+    ma_products ||--o{ tr_inventory_movements : ""
+    ma_users ||--o{ tr_inventory_movements : "responsible"
+    ma_suppliers ||--o{ tr_purchase_orders : ""
+    ma_branches ||--o{ tr_purchase_orders : ""
+    ma_users ||--o{ tr_purchase_orders : ""
+    tr_purchase_orders ||--o{ tr_purchase_order_items : ""
+    ma_products ||--o{ tr_purchase_order_items : ""
+    tr_purchase_orders ||--o{ tr_purchase_receipts : ""
+    ma_users ||--o{ tr_purchase_receipts : ""
+    tr_purchase_receipts ||--o{ tr_purchase_receipt_items : ""
+    tr_purchase_order_items ||--o{ tr_purchase_receipt_items : ""
+    ma_price_lists ||--o{ ma_price_list_items : ""
+    ma_products ||--o{ ma_price_list_items : ""
+    ma_branches ||--o{ tr_sales : ""
+    ma_price_lists ||--o{ tr_sales : ""
+    ma_users ||--o{ tr_sales : "seller"
+    ma_customers ||--o{ tr_sales : ""
+    tr_sales ||--o{ tr_sale_items : ""
+    ma_products ||--o{ tr_sale_items : ""
+    ma_branches ||--o{ tr_transfers : "origin"
+    ma_branches ||--o{ tr_transfers : "destination"
+    ma_users ||--o{ tr_transfers : "requester"
+    tr_transfers ||--o{ tr_transfer_items : ""
+    ma_products ||--o{ tr_transfer_items : ""
+    tr_transfers ||--o{ tr_transfer_events : ""
+    ma_users ||--o{ tr_transfer_events : "recorded by"
+    ma_branches ||--o{ sy_notifications : ""
+    ma_products ||--o{ sy_notifications : ""
+    ma_users ||--o{ sy_notifications : "recipient"
+    ma_users ||--o{ sy_audit_log : ""
 ```
 
 ---
@@ -133,40 +133,40 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 
 | Nombre original (prototipo) | Nombre actual | Estado |
 |---|---|---|
-| — | `MA_ROLES` | **Nueva** |
-| `SUCURSALES` | `MA_BRANCHES` | Renombrada, sin cambio de columnas |
-| `USUARIOS` | `MA_USERS` | Renombrada + `role` (ENUM) → `role_id` (FK) + quita `branch_id` + agrega `updated_at` |
-| `USUARIO_SUCURSAL` | `MA_USER_BRANCH` | **Nueva** (reemplaza `branch_id` único de usuarios) |
-| — | `SY_REFRESH_TOKENS` | **Nueva** |
-| `CATEGORIAS_PRODUCTO` | `MA_CATEGORIES` | Renombrada + agrega `updated_at` |
-| `UNIDADES_MEDIDA` | `MA_UNITS` | Renombrada, sin cambio de columnas |
-| `PRODUCTOS` | `MA_PRODUCTS` | Renombrada + agrega `updated_at` |
-| `PRODUCTO_UNIDADES` | `MA_PRODUCT_UNITS` | Renombrada, sin cambio de columnas |
-| `PROVEEDORES` | `MA_SUPPLIERS` | Renombrada + agrega `updated_at` |
-| `CLIENTES` | `MA_CUSTOMERS` | **Nueva** |
-| `LISTAS_PRECIOS` | `MA_PRICE_LISTS` | Renombrada + agrega `updated_at` |
-| `LISTAS_PRECIOS_ITEMS` | `MA_PRICE_LIST_ITEMS` | Renombrada, sin cambio de columnas |
-| `INVENTARIO` | `TR_INVENTORY` | Renombrada + agrega `max_stock` |
-| `INVENTARIO_MOVIMIENTOS` | `TR_INVENTORY_MOVEMENTS` | Renombrada, sin cambio de columnas |
-| `ORDENES_COMPRA` | `TR_PURCHASE_ORDERS` | Renombrada, sin cambio de columnas |
-| `ORDENES_COMPRA_ITEMS` | `TR_PURCHASE_ORDER_ITEMS` | Renombrada, sin cambio de columnas |
-| `RECEPCIONES_COMPRA` | `TR_PURCHASE_RECEIPTS` | Renombrada, sin cambio de columnas |
-| `RECEPCIONES_COMPRA_ITEMS` | `TR_PURCHASE_RECEIPT_ITEMS` | Renombrada, sin cambio de columnas |
-| `VENTAS` | `TR_SALES` | Renombrada + `customer_name` → `customer_id` (FK) |
-| `VENTAS_ITEMS` | `TR_SALE_ITEMS` | Renombrada, sin cambio de columnas |
-| `TRANSFERENCIAS` | `TR_TRANSFERS` | Renombrada + `route_priority` de VARCHAR a ENUM |
-| `TRANSFERENCIAS_ITEMS` | `TR_TRANSFER_ITEMS` | Renombrada, sin cambio de columnas |
-| `TRANSFERENCIAS_EVENTOS` | `TR_TRANSFER_EVENTS` | Renombrada, sin cambio de columnas |
-| — | `SY_NOTIFICATIONS` | **Nueva** |
-| — | `SY_AUDIT_LOG` | **Nueva** |
+| — | `ma_roles` | **Nueva** |
+| `SUCURSALES` | `ma_branches` | Renombrada, sin cambio de columnas |
+| `USUARIOS` | `ma_users` | Renombrada + `role` (ENUM) → `role_id` (FK) + quita `branch_id` + agrega `updated_at` |
+| `USUARIO_SUCURSAL` | `ma_user_branch` | **Nueva** (reemplaza `branch_id` único de usuarios) |
+| — | `sy_refresh_tokens` | **Nueva** |
+| `CATEGORIAS_PRODUCTO` | `ma_categories` | Renombrada + agrega `updated_at` |
+| `UNIDADES_MEDIDA` | `ma_units` | Renombrada, sin cambio de columnas |
+| `PRODUCTOS` | `ma_products` | Renombrada + agrega `updated_at` |
+| `PRODUCTO_UNIDADES` | `ma_product_units` | Renombrada, sin cambio de columnas |
+| `PROVEEDORES` | `ma_suppliers` | Renombrada + agrega `updated_at` |
+| `CLIENTES` | `ma_customers` | **Nueva** |
+| `LISTAS_PRECIOS` | `ma_price_lists` | Renombrada + agrega `updated_at` |
+| `LISTAS_PRECIOS_ITEMS` | `ma_price_list_items` | Renombrada, sin cambio de columnas |
+| `INVENTARIO` | `tr_inventory` | Renombrada + agrega `max_stock` |
+| `INVENTARIO_MOVIMIENTOS` | `tr_inventory_movements` | Renombrada, sin cambio de columnas |
+| `ORDENES_COMPRA` | `tr_purchase_orders` | Renombrada, sin cambio de columnas |
+| `ORDENES_COMPRA_ITEMS` | `tr_purchase_order_items` | Renombrada, sin cambio de columnas |
+| `RECEPCIONES_COMPRA` | `tr_purchase_receipts` | Renombrada, sin cambio de columnas |
+| `RECEPCIONES_COMPRA_ITEMS` | `tr_purchase_receipt_items` | Renombrada, sin cambio de columnas |
+| `VENTAS` | `tr_sales` | Renombrada + `customer_name` → `customer_id` (FK) |
+| `VENTAS_ITEMS` | `tr_sale_items` | Renombrada, sin cambio de columnas |
+| `TRANSFERENCIAS` | `tr_transfers` | Renombrada + `route_priority` de VARCHAR a ENUM |
+| `TRANSFERENCIAS_ITEMS` | `tr_transfer_items` | Renombrada, sin cambio de columnas |
+| `TRANSFERENCIAS_EVENTOS` | `tr_transfer_events` | Renombrada, sin cambio de columnas |
+| — | `sy_notifications` | **Nueva** |
+| — | `sy_audit_log` | **Nueva** |
 
 ---
 
 ## 3. Documentación completa por dominio
 
-### 3.1 Identidad y acceso (`MA_`, `SY_`)
+### 3.1 Identidad y acceso (`ma_`, `sy_`)
 
-**`MA_ROLES`** — tabla maestra de roles (reemplaza el `ENUM` original, ver ADR-006)
+**`ma_roles`** — tabla maestra de roles (reemplaza el `ENUM` original, ver ADR-006)
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -176,7 +176,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `description` | VARCHAR(255) | |
 | `created_at` | DATETIME | |
 
-**`MA_BRANCHES`**
+**`ma_branches`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -190,12 +190,12 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `created_at` | DATETIME | |
 | `updated_at` | DATETIME | |
 
-**`MA_USERS`**
+**`ma_users`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `role_id` | BIGINT FK → `MA_ROLES` | Reemplaza el `ENUM` original |
+| `role_id` | BIGINT FK → `ma_roles` | Reemplaza el `ENUM` original |
 | `name` | VARCHAR(150) | |
 | `email` | VARCHAR(150) UNIQUE | |
 | `password_hash` | VARCHAR(255) | |
@@ -203,30 +203,30 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `created_at` | DATETIME | |
 | `updated_at` | DATETIME | |
 
-**`MA_USER_BRANCH`** (N:M)
+**`ma_user_branch`** (N:M)
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `user_id` | BIGINT FK → `MA_USERS` | |
-| `branch_id` | BIGINT FK → `MA_BRANCHES` | |
+| `user_id` | BIGINT FK → `ma_users` | |
+| `branch_id` | BIGINT FK → `ma_branches` | |
 | — | UNIQUE(`user_id`, `branch_id`) | Un usuario con rol `GENERAL_ADMIN` no necesita fila aquí — su acceso a todas las sucursales es implícito por rol |
 
-**`SY_REFRESH_TOKENS`**
+**`sy_refresh_tokens`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `user_id` | BIGINT FK → `MA_USERS` | |
+| `user_id` | BIGINT FK → `ma_users` | |
 | `token_hash` | VARCHAR(255) UNIQUE | Se guarda el hash, nunca el valor en claro |
 | `expires_at` | DATETIME | |
 | `revoked` | BOOLEAN | |
 | `created_at` | DATETIME | |
 | `user_agent` | VARCHAR(255) NULL | |
 
-### 3.2 Catálogo de producto (`MA_`)
+### 3.2 Catálogo de producto (`ma_`)
 
-**`MA_CATEGORIES`**
+**`ma_categories`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -236,7 +236,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `active` | BOOLEAN | |
 | `updated_at` | DATETIME | |
 
-**`MA_UNITS`**
+**`ma_units`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -244,7 +244,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `name` | VARCHAR(50) | |
 | `abbreviation` | VARCHAR(10) | |
 
-**`MA_PRODUCTS`**
+**`ma_products`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -252,33 +252,33 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `sku` | VARCHAR(50) UNIQUE | |
 | `name` | VARCHAR(150) | |
 | `description` | TEXT | |
-| `category_id` | BIGINT FK → `MA_CATEGORIES` | |
-| `base_unit_id` | BIGINT FK → `MA_UNITS` | |
-| `reference_price` | DECIMAL(15,4) | Precio referencial, no autoritativo (ver `MA_PRICE_LISTS`) |
+| `category_id` | BIGINT FK → `ma_categories` | |
+| `base_unit_id` | BIGINT FK → `ma_units` | |
+| `reference_price` | DECIMAL(15,4) | Precio referencial, no autoritativo (ver `ma_price_lists`) |
 | `active` | BOOLEAN | |
 | `created_at` | DATETIME | |
 | `updated_at` | DATETIME | |
 
-**`MA_PRODUCT_UNITS`**
+**`ma_product_units`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
-| `unit_id` | BIGINT FK → `MA_UNITS` | |
+| `product_id` | BIGINT FK → `ma_products` | |
+| `unit_id` | BIGINT FK → `ma_units` | |
 | `conversion_factor` | DECIMAL(15,4) | |
 | `is_purchase_unit` | BOOLEAN | |
 | `is_sale_unit` | BOOLEAN | |
 
-### 3.3 Inventario (`TR_`)
+### 3.3 Inventario (`tr_`)
 
-**`TR_INVENTORY`**
+**`tr_inventory`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
+| `branch_id` | BIGINT FK → `ma_branches` | |
+| `product_id` | BIGINT FK → `ma_products` | |
 | `current_quantity` | DECIMAL(15,4) | |
 | `min_stock` | DECIMAL(15,4) | Umbral de alerta por debajo |
 | `max_stock` | DECIMAL(15,4) | Umbral de alerta por encima (nueva) |
@@ -286,26 +286,26 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `updated_at` | DATETIME | |
 | — | UNIQUE(`branch_id`, `product_id`) | |
 
-**`TR_INVENTORY_MOVEMENTS`**
+**`tr_inventory_movements`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
+| `branch_id` | BIGINT FK → `ma_branches` | |
+| `product_id` | BIGINT FK → `ma_products` | |
 | `movement_type` | ENUM(`PURCHASE`, `SALE`, `RETURN`, `POSITIVE_ADJUSTMENT`, `NEGATIVE_ADJUSTMENT`, `TRANSFER_IN`, `TRANSFER_OUT`) | |
 | `quantity` | DECIMAL(15,4) | |
 | `unit_cost` | DECIMAL(15,4) | |
 | `reason` | VARCHAR(100) | |
-| `responsible_user_id` | BIGINT FK → `MA_USERS` | |
+| `responsible_user_id` | BIGINT FK → `ma_users` | |
 | `reference_type` | VARCHAR(40) | Polimórfico: apunta a venta/compra/transferencia/ajuste |
 | `reference_id` | BIGINT | Validado en el service layer, no por FK |
 | `movement_date` | DATETIME | |
 | `created_at` | DATETIME | |
 
-### 3.4 Compras (`MA_`, `TR_`)
+### 3.4 Compras (`ma_`, `tr_`)
 
-**`MA_SUPPLIERS`**
+**`ma_suppliers`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -320,14 +320,14 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `created_at` | DATETIME | |
 | `updated_at` | DATETIME | |
 
-**`TR_PURCHASE_ORDERS`**
+**`tr_purchase_orders`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `supplier_id` | BIGINT FK → `MA_SUPPLIERS` | |
-| `branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `user_id` | BIGINT FK → `MA_USERS` | |
+| `supplier_id` | BIGINT FK → `ma_suppliers` | |
+| `branch_id` | BIGINT FK → `ma_branches` | |
+| `user_id` | BIGINT FK → `ma_users` | |
 | `order_number` | VARCHAR(50) UNIQUE | |
 | `order_date` | DATETIME | |
 | `payment_terms` | VARCHAR(100) | |
@@ -335,38 +335,38 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `subtotal`, `total_discount`, `total` | DECIMAL(15,4) | |
 | `created_at` | DATETIME | |
 
-**`TR_PURCHASE_ORDER_ITEMS`**
+**`tr_purchase_order_items`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `purchase_order_id` | BIGINT FK → `TR_PURCHASE_ORDERS` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
+| `purchase_order_id` | BIGINT FK → `tr_purchase_orders` | |
+| `product_id` | BIGINT FK → `ma_products` | |
 | `quantity`, `unit_price`, `discount`, `subtotal` | DECIMAL(15,4) | |
 
-**`TR_PURCHASE_RECEIPTS`**
+**`tr_purchase_receipts`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `purchase_order_id` | BIGINT FK → `TR_PURCHASE_ORDERS` | |
-| `user_id` | BIGINT FK → `MA_USERS` | |
+| `purchase_order_id` | BIGINT FK → `tr_purchase_orders` | |
+| `user_id` | BIGINT FK → `ma_users` | |
 | `receipt_date` | DATETIME | |
 | `receipt_type` | ENUM(`FULL`, `PARTIAL`) | |
 | `notes` | VARCHAR(500) | |
 
-**`TR_PURCHASE_RECEIPT_ITEMS`**
+**`tr_purchase_receipt_items`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `receipt_id` | BIGINT FK → `TR_PURCHASE_RECEIPTS` | |
-| `purchase_order_item_id` | BIGINT FK → `TR_PURCHASE_ORDER_ITEMS` | |
+| `receipt_id` | BIGINT FK → `tr_purchase_receipts` | |
+| `purchase_order_item_id` | BIGINT FK → `tr_purchase_order_items` | |
 | `received_quantity` | DECIMAL(15,4) | |
 
-### 3.5 Ventas (`MA_`, `TR_`)
+### 3.5 Ventas (`ma_`, `tr_`)
 
-**`MA_CUSTOMERS`**
+**`ma_customers`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -379,7 +379,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `active` | BOOLEAN | |
 | `created_at` | DATETIME | |
 
-**`MA_PRICE_LISTS`**
+**`ma_price_lists`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -390,52 +390,52 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `start_date`, `end_date` | DATE | |
 | `updated_at` | DATETIME | |
 
-**`MA_PRICE_LIST_ITEMS`**
+**`ma_price_list_items`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `price_list_id` | BIGINT FK → `MA_PRICE_LISTS` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
+| `price_list_id` | BIGINT FK → `ma_price_lists` | |
+| `product_id` | BIGINT FK → `ma_products` | |
 | `price` | DECIMAL(15,4) | |
 | — | UNIQUE(`price_list_id`, `product_id`) | |
 
-**`TR_SALES`**
+**`tr_sales`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `price_list_id` | BIGINT FK → `MA_PRICE_LISTS` | |
-| `seller_id` | BIGINT FK → `MA_USERS` | |
-| `customer_id` | BIGINT FK → `MA_CUSTOMERS`, NULL | Nullable: venta de mostrador sin cliente registrado |
+| `branch_id` | BIGINT FK → `ma_branches` | |
+| `price_list_id` | BIGINT FK → `ma_price_lists` | |
+| `seller_id` | BIGINT FK → `ma_users` | |
+| `customer_id` | BIGINT FK → `ma_customers`, NULL | Nullable: venta de mostrador sin cliente registrado |
 | `sale_number` | VARCHAR(50) UNIQUE | |
 | `sale_date` | DATETIME | |
 | `subtotal`, `total_discount`, `total` | DECIMAL(15,4) | |
 | `status` | ENUM(`CONFIRMED`, `VOIDED`) | |
 | `created_at` | DATETIME | |
 
-**`TR_SALE_ITEMS`**
+**`tr_sale_items`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `sale_id` | BIGINT FK → `TR_SALES` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
+| `sale_id` | BIGINT FK → `tr_sales` | |
+| `product_id` | BIGINT FK → `ma_products` | |
 | `quantity`, `unit_price`, `subtotal` | DECIMAL(15,4) | |
 | `discount_pct` | DECIMAL(7,4) | |
 
-### 3.6 Transferencias (`TR_`)
+### 3.6 Transferencias (`tr_`)
 
-**`TR_TRANSFERS`**
+**`tr_transfers`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
 | `transfer_number` | VARCHAR(50) UNIQUE | |
-| `origin_branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `destination_branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `requested_by` | BIGINT FK → `MA_USERS` | |
+| `origin_branch_id` | BIGINT FK → `ma_branches` | |
+| `destination_branch_id` | BIGINT FK → `ma_branches` | |
+| `requested_by` | BIGINT FK → `ma_users` | |
 | `status` | ENUM(`REQUESTED`, `IN_PREPARATION`, `IN_TRANSIT`, `FULLY_RECEIVED`, `PARTIALLY_RECEIVED`, `CANCELLED`) | |
 | `urgency` | ENUM(`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) | |
 | `route_priority` | ENUM(`HIGH`, `MEDIUM`, `LOW`) | Antes VARCHAR libre |
@@ -444,44 +444,44 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `request_date`, `estimated_dispatch_date`, `actual_dispatch_date`, `estimated_arrival_date`, `actual_arrival_date` | DATETIME | |
 | `created_at` | DATETIME | |
 
-**`TR_TRANSFER_ITEMS`**
+**`tr_transfer_items`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `transfer_id` | BIGINT FK → `TR_TRANSFERS` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS` | |
+| `transfer_id` | BIGINT FK → `tr_transfers` | |
+| `product_id` | BIGINT FK → `ma_products` | |
 | `requested_quantity`, `shipped_quantity`, `received_quantity`, `difference` | DECIMAL(15,4) | |
 
-**`TR_TRANSFER_EVENTS`**
+**`tr_transfer_events`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `transfer_id` | BIGINT FK → `TR_TRANSFERS` | |
-| `status` | ENUM | Mismo dominio que `TR_TRANSFERS.status` |
+| `transfer_id` | BIGINT FK → `tr_transfers` | |
+| `status` | ENUM | Mismo dominio que `tr_transfers.status` |
 | `event_date` | DATETIME | |
 | `notes` | VARCHAR(500) | |
-| `recorded_by` | BIGINT FK → `MA_USERS` | |
+| `recorded_by` | BIGINT FK → `ma_users` | |
 
-### 3.7 Sistema — alertas y auditoría (`SY_`)
+### 3.7 Sistema — alertas y auditoría (`sy_`)
 
-**`SY_NOTIFICATIONS`**
+**`sy_notifications`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
 | `type` | ENUM(`LOW_STOCK`, `HIGH_STOCK`, `TRANSFER_SHORTAGE`) | |
-| `branch_id` | BIGINT FK → `MA_BRANCHES` | |
-| `product_id` | BIGINT FK → `MA_PRODUCTS`, NULL | |
+| `branch_id` | BIGINT FK → `ma_branches` | |
+| `product_id` | BIGINT FK → `ma_products`, NULL | |
 | `message` | VARCHAR(255) | |
 | `channel` | ENUM(`IN_APP`, `EMAIL`) | |
 | `status` | ENUM(`PENDING`, `SENT`, `READ`) | |
-| `recipient_user_id` | BIGINT FK → `MA_USERS`, NULL | |
+| `recipient_user_id` | BIGINT FK → `ma_users`, NULL | |
 | `generated_at` | DATETIME | |
 | `read_at` | DATETIME NULL | |
 
-**`SY_AUDIT_LOG`**
+**`sy_audit_log`**
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -489,12 +489,17 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `entity` | VARCHAR(60) | |
 | `entity_id` | BIGINT | |
 | `action` | ENUM(`CREATE`, `UPDATE`, `DELETE`, `LOGIN`) | |
-| `user_id` | BIGINT FK → `MA_USERS` | |
+| `user_id` | BIGINT FK → `ma_users` | |
 | `old_values`, `new_values` | JSON NULL | |
 | `event_date` | DATETIME | |
 
 ---
 
-## 4. Próximo paso
+## 4. Estado de implementación
 
-Script DDL completo para MySQL (`database/queries/schema.sql`), que debe reflejar exactamente este documento tabla por columna — tarea siguiente del backlog de la épica "Modelado de Base de Datos".
+- [x] Script DDL completo para MySQL — `database/queries/01-createSchema.sql`, `02-addForeignKeys.sql`, `03-indexes.sql` (verificados corriendo contra MySQL 8 real: 26 tablas, 41 FKs).
+- [x] Migraciones versionadas con Flyway — `OPC-back/src/main/resources/db/migration/V1` a `V3` (mismo contenido que los scripts anteriores; ver ADR-007 en `requirements/Decisiones_Arquitectura.md` para la justificación).
+- [x] Datos mínimos de demostración — `V4__seed_demo_data.sql` (roles, sucursales, usuarios, catálogo, inventario inicial; credenciales en `README.md`).
+- [ ] Entidades JPA / código de backend que efectivamente lea y escriba sobre este esquema (pendiente, épicas de módulos de negocio).
+
+**Nota sobre duplicación intencional:** `database/queries/` y `OPC-back/src/main/resources/db/migration/` tienen el mismo SQL. La copia de Flyway es la que se ejecuta automáticamente y es la fuente de verdad real; `database/queries/` queda como copia de referencia para consulta manual (DBeaver, etc.). Cualquier cambio de esquema futuro se hace primero como una migración Flyway nueva (`V5__...`), nunca editando las ya aplicadas.

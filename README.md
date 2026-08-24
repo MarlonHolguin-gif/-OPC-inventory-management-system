@@ -110,3 +110,22 @@ Pendiente (se completa incrementalmente conforme avanza el backlog, no todo al f
 **Estado actual (para no confundir un límite conocido con un error):** el frontend ya tiene el enrutamiento completo (`/login` pública, `/dashboard` privada), pero el backend todavía no expone el endpoint de autenticación — el formulario de login no va a autenticar de verdad hasta que se implemente la épica de Autenticación. Esto es esperado en el estado actual del proyecto, no un bug.
 
 Para bajar todo: `docker compose down` (agrega `-v` si además quieres borrar los datos de MySQL).
+
+## Datos de demostración
+
+Al levantar el proyecto (`docker compose up`), Flyway crea el esquema **y** siembra datos mínimos automáticamente (`OPC-back/src/main/resources/db/migration/V4__seed_demo_data.sql`) — 3 sucursales, 6 usuarios (uno por rol y sucursal), 4 categorías, 4 unidades de medida, 10 productos y su inventario inicial en las 3 sucursales. No hace falta cargar nada a mano para probar los módulos.
+
+**Todos los usuarios de demo comparten la misma contraseña** (ninguna credencial vive en código fuente — solo el hash BCrypt está en la migración):
+
+| Rol | Email | Sucursal |
+|---|---|---|
+| Administrador general | `admin@opc.com` | Todas |
+| Gerente de sucursal | `gerente.bogota@opc.com` | Bogotá |
+| Gerente de sucursal | `gerente.medellin@opc.com` | Medellín |
+| Operador de inventario | `operador.bogota@opc.com` | Bogotá |
+| Operador de inventario | `operador.medellin@opc.com` | Medellín |
+| Operador de inventario | `operador.cali@opc.com` | Cali |
+
+**Password para todos:** `OpcDemo#2026`
+
+El inventario sembrado incluye a propósito productos por debajo de `min_stock` y por encima de `max_stock` en varias sucursales, para poder probar las Alertas Inteligentes sin tener que forzar esos casos manualmente.

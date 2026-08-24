@@ -7,13 +7,6 @@
 -- Los índices simples sobre columnas FK ya los crea InnoDB automáticamente al
 -- agregar cada FOREIGN KEY en 02-addForeignKeys.sql — estos son adicionales
 -- (por fecha, y un compuesto que ninguna FK individual cubre).
---
--- ATENCIÓN — ESTO ES UNA COPIA DE REFERENCIA, NO SE EJECUTA AUTOMÁTICAMENTE.
--- El esquema real de la aplicación lo maneja Flyway desde
--- OPC-back/src/main/resources/db/migration/V3__add_indexes.sql.
--- Si el esquema cambia, el cambio va PRIMERO como una migración Flyway nueva
--- (V4__..., nunca editando V1/V2/V3 ya aplicadas) — y opcionalmente se
--- refleja aquí después, a mano, solo como documentación de consulta.
 -- =============================================================================
 
 CREATE INDEX idx_tr_inventory_movements_date

@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import httpClient from '../api/httpClient';
 import { useAuth } from '../hooks/useAuth';
 
-// Contrato asumido con el backend (aún no implementado):
-// POST /api/auth/login { email, password } -> 200 { accessToken }
-// Ajustar cuando se construya el endpoint real en la épica de Autenticación.
+// Contrato real: POST /api/auth/login { email, password } ->
+// 200 { token, tokenType, userId, name, email, role, branches }
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await httpClient.post('/api/auth/login', { email, password });
-      login(data.accessToken);
+      login(data.token);
       navigate('/dashboard', { replace: true });
     } catch {
       setError('No se pudo iniciar sesión. Verifica tus credenciales.');

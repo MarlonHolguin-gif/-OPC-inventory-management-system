@@ -1,8 +1,16 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider';
 import ProtectedRoute from './routes/ProtectedRoute';
+import AppLayout from './layout/AppLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import InventoryPage from './pages/InventoryPage';
+import MovementFormPage from './pages/MovementFormPage';
+import UsersPage from './pages/UsersPage';
+import BranchesPage from './pages/BranchesPage';
+import AuditPage from './pages/AuditPage';
+
+const GENERAL_ADMIN_ROLE = 'GENERAL_ADMIN';
 
 function App() {
   return (
@@ -12,7 +20,17 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/inventario" element={<InventoryPage />} />
+              <Route path="/movimientos" element={<MovementFormPage />} />
+
+              <Route element={<ProtectedRoute roles={[GENERAL_ADMIN_ROLE]} />}>
+                <Route path="/usuarios" element={<UsersPage />} />
+                <Route path="/sucursales" element={<BranchesPage />} />
+                <Route path="/auditoria" element={<AuditPage />} />
+              </Route>
+            </Route>
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

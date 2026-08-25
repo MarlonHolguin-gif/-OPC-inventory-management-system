@@ -1,4 +1,4 @@
-package mh.opc_back;
+package opcback;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

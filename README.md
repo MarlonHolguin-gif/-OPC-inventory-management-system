@@ -35,11 +35,11 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
 │   ├── .mvn/wrapper/              # Configuración del wrapper
 │   └── src/
 │       ├── main/
-│       │   ├── java/mh/opc_back/         # Código fuente (controllers, services, repositories, entities, config)
+│       │   ├── java/opcback/              # Código fuente (paquete por módulo: auth, branches, products, inventory...)
 │       │   └── resources/
 │       │       └── application.properties # Config de la app (BD, JWT, puerto — vía variables de entorno)
 │       └── test/
-│           └── java/mh/opc_back/         # Pruebas unitarias/integración
+│           └── java/opcback/              # Pruebas unitarias/integración
 │
 └── OPC-front/                    # ───── FRONTEND — React + Vite ─────
     ├── Dockerfile                # Build multi-stage (Node → nginx), recibe VITE_API_BASE_URL como build arg

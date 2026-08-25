@@ -1,4 +1,4 @@
-package mh.opc_back;
+package opcback;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

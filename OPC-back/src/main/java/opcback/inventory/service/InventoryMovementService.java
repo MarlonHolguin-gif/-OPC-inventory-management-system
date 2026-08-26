@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.LocalDateTime;
 
 /**
@@ -28,9 +29,9 @@ import java.time.LocalDateTime;
  *
  * register() inserta el movimiento Y actualiza el inventario dentro de la
  * MISMA transacción: si el update de tr_inventory falla (ej. overflow de
- * DECIMAL(15,4), fila bloqueada, lo que sea), Spring hace rollback también
- * del INSERT en tr_inventory_movements — no puede quedar un movimiento
- * huérfano sin su efecto en el stock.
+ * DECIMAL(15,4), stock insuficiente, lo que sea), Spring hace rollback
+ * también del INSERT en tr_inventory_movements — no puede quedar un
+ * movimiento huérfano sin su efecto en el stock.
  */
 @Service
 @RequiredArgsConstructor
@@ -57,12 +58,24 @@ public class InventoryMovementService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + email))
                 .getId();
 
+        Inventory inventory = inventoryRepository.findByBranchIdAndProductId(request.branchId(), request.productId())
+                .orElseGet(() -> createEmptyInventory(request.branchId(), product));
+
+        BigDecimal unitCost = request.unitCost() != null ? request.unitCost() : BigDecimal.ZERO;
+
+        if (request.movementType().isInbound()) {
+            applyInbound(inventory, request.quantity(), unitCost);
+        } else {
+            applyOutbound(inventory, request.quantity());
+        }
+        inventory.setUpdatedAt(LocalDateTime.now());
+
         InventoryMovement movement = new InventoryMovement();
         movement.setBranchId(request.branchId());
         movement.setProduct(product);
         movement.setMovementType(request.movementType());
         movement.setQuantity(request.quantity());
-        movement.setUnitCost(request.unitCost() != null ? request.unitCost() : BigDecimal.ZERO);
+        movement.setUnitCost(unitCost);
         movement.setReason(request.reason());
         movement.setResponsibleUserId(responsibleUserId);
         movement.setReferenceType(request.referenceType() != null ? request.referenceType() : DEFAULT_REFERENCE_TYPE);
@@ -71,16 +84,40 @@ public class InventoryMovementService {
         movement.setCreatedAt(LocalDateTime.now());
 
         InventoryMovement savedMovement = inventoryMovementRepository.save(movement);
-
-        Inventory inventory = inventoryRepository.findByBranchIdAndProductId(request.branchId(), request.productId())
-                .orElseGet(() -> createEmptyInventory(request.branchId(), product));
-
-        BigDecimal signedQuantity = request.movementType().isInbound() ? request.quantity() : request.quantity().negate();
-        inventory.applyMovement(signedQuantity);
-        inventory.setUpdatedAt(LocalDateTime.now());
         Inventory savedInventory = inventoryRepository.save(inventory);
 
         return InventoryMovementResponse.from(savedMovement, savedInventory.getCurrentQuantity());
+    }
+
+    /**
+     * Costo promedio ponderado (sección 2.3 del análisis de requerimientos):
+     * nuevo_costo = (stock_actual*costo_actual + cantidad*costo_unitario) /
+     * (stock_actual + cantidad). Solo se recalcula si viene un costo real
+     * (unitCost > 0) — un ingreso sin costo (ej. un ajuste positivo por
+     * conteo físico) no debe diluir el costo promedio con un $0 falso.
+     */
+    private void applyInbound(Inventory inventory, BigDecimal quantity, BigDecimal unitCost) {
+        if (unitCost.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal currentQuantity = inventory.getCurrentQuantity();
+            BigDecimal currentCost = inventory.getWeightedAvgCost();
+            BigDecimal totalValue = currentQuantity.multiply(currentCost).add(quantity.multiply(unitCost));
+            BigDecimal newTotalQuantity = currentQuantity.add(quantity);
+            inventory.setWeightedAvgCost(totalValue.divide(newTotalQuantity, new MathContext(10)));
+        }
+        inventory.applyMovement(quantity);
+    }
+
+    /**
+     * Rechaza el retiro si no hay stock suficiente — no deja current_quantity
+     * en negativo. Al lanzar antes de guardar nada, ni el movimiento ni el
+     * update de inventario se persisten (misma transacción).
+     */
+    private void applyOutbound(Inventory inventory, BigDecimal quantity) {
+        if (inventory.getCurrentQuantity().compareTo(quantity) < 0) {
+            throw new IllegalStateException(
+                    "Stock insuficiente: disponible " + inventory.getCurrentQuantity() + ", solicitado " + quantity);
+        }
+        inventory.applyMovement(quantity.negate());
     }
 
     private Inventory createEmptyInventory(Long branchId, Product product) {

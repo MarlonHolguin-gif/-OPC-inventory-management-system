@@ -50,6 +50,8 @@ export default function MovementFormPage() {
     const parsedQuantity = Number(quantity);
     if (!quantity || Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
       errors.quantity = 'La cantidad debe ser un número positivo.';
+    } else if (!Number.isInteger(parsedQuantity)) {
+      errors.quantity = 'La cantidad debe ser un número entero (no se venden fracciones de unidad).';
     }
     if (!reason.trim()) {
       errors.reason = 'El motivo no puede estar vacío.';
@@ -89,7 +91,7 @@ export default function MovementFormPage() {
     <main>
       <h1>Registrar movimiento de inventario</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="branch">Sucursal</label>
         <select id="branch" value={branchId} onChange={(event) => setBranchId(event.target.value)}>
           {availableBranches.map((branch) => (
@@ -125,7 +127,8 @@ export default function MovementFormPage() {
         <input
           id="quantity"
           type="number"
-          step="0.0001"
+          step="1"
+          min="1"
           value={quantity}
           onChange={(event) => setQuantity(event.target.value)}
         />

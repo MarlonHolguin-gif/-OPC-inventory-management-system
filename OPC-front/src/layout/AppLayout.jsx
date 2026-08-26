@@ -15,10 +15,12 @@ export default function AppLayout() {
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/inventario">Inventario</Link>
           <Link to="/movimientos">Movimientos</Link>
+          <Link to="/compras">Compras</Link>
           {isAdmin && (
             <>
               <Link to="/usuarios">Usuarios</Link>
               <Link to="/sucursales">Sucursales</Link>
+              <Link to="/proveedores">Proveedores</Link>
               <Link to="/auditoria">Auditoría</Link>
             </>
           )}

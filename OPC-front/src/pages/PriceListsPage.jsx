@@ -187,14 +187,7 @@ export default function PriceListsPage() {
             <tr key={priceList.id}>
               <td>{priceList.name}</td>
               <td>
-                <span
-                  style={{
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    color: 'white',
-                    backgroundColor: isVigente(priceList) ? '#2e7d32' : '#9e9e9e',
-                  }}
-                >
+                <span className={`badge ${isVigente(priceList) ? 'badge-ok' : 'badge-bad'}`}>
                   {isVigente(priceList) ? 'Vigente hoy' : 'No vigente'}
                 </span>
               </td>

@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import httpClient from '../api/httpClient';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
+import { SunIcon, MoonIcon } from '../components/icons/UtilityIcons';
+import './LoginPage.css';
 
 // Contrato real: POST /api/auth/login { email, password } ->
 // 200 { token, tokenType, userId, name, email, role, branches }
@@ -11,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
@@ -19,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await httpClient.post('/api/auth/login', { email, password });
-      login(data.token);
+      login(data.token, data.refreshToken);
       navigate('/dashboard', { replace: true });
     } catch {
       setError('No se pudo iniciar sesión. Verifica tus credenciales.');
@@ -29,33 +33,47 @@ export default function LoginPage() {
   };
 
   return (
-    <main>
-      <h1>Iniciar sesión</h1>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="email">Correo</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
+    <main className="login-screen">
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="theme-toggle login-theme-toggle"
+        aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+      >
+        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+      </button>
 
-        <label htmlFor="password">Contraseña</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
+      <div className="login-card">
+        <div className="login-logo">OP</div>
+        <h1 className="login-title">OptiPlant</h1>
+        <p className="login-subtitle">Sistema de inventario multi-sucursal</p>
 
-        {error && <p role="alert">{error}</p>}
+        <form onSubmit={handleSubmit} className="login-form">
+          <label htmlFor="email">Correo</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Ingresando...' : 'Ingresar'}
-        </button>
-      </form>
+          <label htmlFor="password">Contraseña</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+
+          {error && <p role="alert">{error}</p>}
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar'}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

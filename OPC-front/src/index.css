@@ -1,111 +1,359 @@
+/*
+ * Sistema de diseño de la app — misma identidad ("Panel oscuro / consola"
+ * elegida en /design) en sus dos variantes, claro y oscuro. El tema activo
+ * lo decide el atributo data-theme en <html> (ver src/hooks/useTheme.js) y
+ * se persiste en localStorage — no depende de prefers-color-scheme, para
+ * que el usuario pueda alternar manualmente sin importar el SO.
+ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Tema claro (default) */
+  --bg: oklch(98% 0.004 260);
+  --rail: oklch(95% 0.006 260);
+  --surface: oklch(100% 0 0);
+  --surface-hover: oklch(95% 0.006 260);
+  --border: oklch(88% 0.008 260);
+  --text: oklch(22% 0.02 260);
+  --text-dim: oklch(48% 0.015 260);
+  --accent: oklch(45% 0.14 165);
+  --accent-dim: oklch(93% 0.05 165);
+  --bad: oklch(50% 0.19 25);
+  --bad-dim: oklch(94% 0.06 25);
+  --warn: oklch(55% 0.15 80);
+  --warn-dim: oklch(94% 0.06 80);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+:root[data-theme='dark'] {
+  --bg: oklch(16% 0.01 260);
+  --rail: oklch(13% 0.012 260);
+  --surface: oklch(21% 0.012 260);
+  --surface-hover: oklch(24% 0.014 260);
+  --border: oklch(30% 0.012 260);
+  --text: oklch(92% 0.006 260);
+  --text-dim: oklch(63% 0.01 260);
+  --accent: oklch(75% 0.16 165);
+  --accent-dim: oklch(28% 0.05 165);
+  --bad: oklch(68% 0.18 25);
+  --bad-dim: oklch(28% 0.07 25);
+  --warn: oklch(78% 0.14 80);
+  --warn-dim: oklch(30% 0.06 80);
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  color-scheme: dark;
 }
 
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+* {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
+html,
+body,
+#root {
+  height: 100%;
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  opacity: 0.85;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 18px;
+}
+h1 {
+  font-size: 24px;
+}
+h2 {
+  font-size: 16px;
+}
+h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+p {
+  margin: 0 0 12px;
+}
+
+main {
+  padding: 28px 32px;
+  overflow-x: auto;
+}
+
+/* Formularios: cada <form> es una tarjeta de superficie, como en el mockup */
+form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 640px;
+}
+
+label {
+  display: block;
+  font: 600 11.5px var(--font-body);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 14px 0 6px;
+}
+label:first-of-type {
+  margin-top: 0;
+}
+
+input,
+select {
+  width: 100%;
+  font: 14.5px var(--font-mono);
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+input:focus,
+select:focus {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 0;
+}
+input:disabled {
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+input[type='checkbox'] {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+/* Botones: sin tocar cada página, el estilo se decide por el atributo
+   `type` que ya usan todas — submit = acción principal, button = secundaria. */
+button {
+  font: 600 13.5px var(--font-body);
+  padding: 8px 15px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  margin: 4px 8px 4px 0;
+}
+button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.55;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+button[type='submit'] {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+button[type='submit']:hover {
+  opacity: 0.9;
+  color: var(--bg);
+}
+button[type='submit']:disabled {
+  background: var(--border);
+  border-color: var(--border);
+  color: var(--text-dim);
+  opacity: 1;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+th {
+  text-align: left;
+  font: 600 11px var(--font-body);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 12px 14px;
+  font: 14px var(--font-body);
+  border-top: 1px solid var(--border);
+}
+tbody tr:hover td {
+  background: var(--surface-hover);
+}
+
+input[type='search'] {
+  font-family: var(--font-body);
+}
+
+[role='alert'] {
+  background: var(--bad-dim);
+  color: var(--bad);
+  border: 1px solid var(--bad-dim);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font: 600 13.5px var(--font-body);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* Panel de superficie para sub-secciones fuera de un <form> (ej. gestionar
+   sucursales de un usuario) — mismo lenguaje visual que las tarjetas. */
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+.branch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.branch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: 500 15.5px var(--font-body);
+  color: var(--text);
+  cursor: pointer;
+}
+.branch-toggle:hover {
+  border-color: var(--accent);
+}
+.branch-toggle.checked {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.branch-toggle input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Insignia de estado reutilizable (vigente/no vigente, alertas, etc.) */
+.badge {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font: 600 12px var(--font-body);
+}
+.badge-ok {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.badge-bad {
+  background: var(--bad-dim);
+  color: var(--bad);
+}
+.badge-warn {
+  background: var(--warn-dim);
+  color: var(--warn);
+}
+
+/* Input con un botón de acción incrustado en la misma casilla (ej. el ojo
+   de mostrar/ocultar contraseña), como en cualquier formulario de la web. */
+.input-with-action {
+  position: relative;
+  display: flex;
+}
+.input-with-action input {
+  padding-right: 38px;
+}
+.input-with-action .input-action {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  padding: 5px;
+  margin: 0;
+  color: var(--text-dim);
+  display: flex;
+}
+.input-with-action .input-action:hover {
+  color: var(--accent);
+  border: none;
+}
+
+/* Botón de alternar tema (sol/luna) */
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  padding: 7px;
+  margin: 0;
+  border-radius: 999px;
+  display: flex;
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* --- Responsive --- */
+/* El riel (.app-rail y compañía) se ajusta en AppLayout.css, junto a sus
+   reglas base — así la cascada no depende del orden de import entre
+   archivos. */
+@media (max-width: 720px) {
+  main {
+    padding: 18px 16px;
+  }
+  form {
+    max-width: none;
+  }
 }

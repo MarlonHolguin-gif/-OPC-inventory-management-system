@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { decodeJwtPayload } from '../api/jwt';
-import httpClient, { ACCESS_TOKEN_KEY } from '../api/httpClient';
+import httpClient, { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../api/httpClient';
 import AuthContext from './AuthContext';
 
 export function AuthProvider({ children }) {
@@ -31,13 +31,25 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  const login = (accessToken) => {
+  const login = (accessToken, refreshToken) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
     setToken(accessToken);
   };
 
   const logout = () => {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (refreshToken) {
+      // Best-effort: si esta petición falla (ej. sin red), igual se cierra
+      // la sesión localmente — pero sin esto, un refresh token robado
+      // seguiría sirviendo hasta su expiración natural aunque el usuario
+      // haya cerrado sesión.
+      httpClient.post('/api/auth/logout', { refreshToken }).catch(() => {});
+    }
     localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     setToken(null);
   };
 

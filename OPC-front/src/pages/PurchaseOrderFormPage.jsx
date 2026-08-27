@@ -171,7 +171,7 @@ export default function PurchaseOrderFormPage() {
                 <td>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     value={item.discount}
                     onChange={(event) => updateItem(index, 'discount', event.target.value)}

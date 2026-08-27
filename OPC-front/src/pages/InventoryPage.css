@@ -2,6 +2,7 @@
   display: flex;
   gap: 1rem;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
@@ -14,16 +15,16 @@
 }
 
 .alert-badge--normal {
-  background: #dcf5e3;
-  color: #1e7a3a;
+  background: var(--accent-dim);
+  color: var(--accent);
 }
 
 .alert-badge--low_stock {
-  background: #fde2e1;
-  color: #b3261e;
+  background: var(--bad-dim);
+  color: var(--bad);
 }
 
 .alert-badge--high_stock {
-  background: #fff2cc;
-  color: #8a6d00;
+  background: var(--warn-dim);
+  color: var(--warn);
 }

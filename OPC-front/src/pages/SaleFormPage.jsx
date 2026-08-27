@@ -249,7 +249,7 @@ export default function SaleFormPage() {
                       ))}
                     </select>
                   </td>
-                  <td style={insufficientStock ? { color: 'red', fontWeight: 'bold' } : undefined}>
+                  <td style={insufficientStock ? { color: 'var(--bad)', fontWeight: 'bold' } : undefined}>
                     {item.productId ? detail.availableStock ?? 0 : '—'}
                   </td>
                   <td>
@@ -264,7 +264,7 @@ export default function SaleFormPage() {
                   <td>
                     <input
                       type="number"
-                      step="0.01"
+                      step="1"
                       min="0"
                       max="100"
                       value={item.discountPct}

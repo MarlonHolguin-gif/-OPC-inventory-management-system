@@ -115,7 +115,7 @@ Estado funcional actual, backend y frontend. El detalle técnico por tabla/entid
 
 | Módulo | Estado | Notas |
 |---|---|---|
-| Autenticación y usuarios | ✅ Completo | Login JWT, sesión por rol, CRUD de usuarios y sucursales, asignación de sucursales por usuario |
+| Autenticación y usuarios | ✅ Completo | Access token (15 min) + refresh token persistido y rotado (7 días, `/api/auth/refresh`), logout que revoca el refresh token, sesión por rol, CRUD de usuarios y sucursales, asignación de sucursales por usuario |
 | Catálogo (categorías, unidades, productos) | ✅ Completo | Incluye conversión de unidades por producto (ej. 1 caja = 12 unidades) |
 | Inventario | ✅ Completo | Consulta de stock por sucursal, registro de ingresos/retiros con validación de stock y recálculo de costo promedio ponderado, alertas de stock bajo/alto |
 | Compras | ✅ Completo | Proveedores, órdenes de compra, recepción total/parcial, histórico filtrable |
@@ -124,6 +124,8 @@ Estado funcional actual, backend y frontend. El detalle técnico por tabla/entid
 | Alertas y auditoría | ❌ Pendiente | Sin implementar — dejado deliberadamente para el cierre del backlog |
 
 Todos los módulos "Completo" tienen backend y frontend funcionales, verificados contra Docker/MySQL real y en navegador (no solo compilación). Único punto pendiente de diseño: la lista de precios es independiente de la sucursal (cualquier sucursal puede usar cualquier lista vigente) — ver la discusión en [`requirements/IA_EVIDENCIA.md`](requirements/IA_EVIDENCIA.md).
+
+**Interfaz:** tema claro/oscuro alternable (botón sol/luna, persistido por navegador) y diseño responsive — el panel de navegación se adapta a pantallas angostas y las tablas/formularios anchos hacen scroll dentro de su propio contenedor en vez de romper la página.
 
 ## Datos de demostración
 

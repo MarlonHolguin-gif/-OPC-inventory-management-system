@@ -4,11 +4,13 @@ import lombok.RequiredArgsConstructor;
 import opcback.auth.dto.LoginRequest;
 import opcback.auth.dto.LoginResponse;
 import opcback.auth.dto.MeResponse;
+import opcback.auth.dto.RefreshResponse;
 import opcback.auth.entity.User;
 import opcback.auth.repository.UserBranchRepository;
 import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.security.JwtService;
+import opcback.security.RefreshTokenService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,8 +27,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserBranchRepository userBranchRepository;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
@@ -36,9 +39,10 @@ public class AuthService {
 
         String role = user.getRole().getCode();
         String token = jwtService.generateToken(user.getId(), user.getEmail(), role);
+        String refreshToken = refreshTokenService.issue(user);
 
         return new LoginResponse(token, "Bearer", user.getId(), user.getName(), user.getEmail(), role,
-                resolveBranches(user, role));
+                resolveBranches(user, role), refreshToken);
     }
 
     /**
@@ -54,6 +58,35 @@ public class AuthService {
 
         String role = user.getRole().getCode();
         return new MeResponse(user.getId(), user.getName(), user.getEmail(), role, resolveBranches(user, role));
+    }
+
+    /**
+     * Canjea un refresh token válido por un access token nuevo — y por un
+     * refresh token de reemplazo (rotación de un solo uso, ver
+     * RefreshTokenService). Este es el punto que el interceptor de axios
+     * del frontend llama automáticamente cuando una petición recibe 401
+     * por access token expirado, antes de rendirse y mandar al login.
+     */
+    @Transactional
+    public RefreshResponse refresh(String rawRefreshToken) {
+        User user = refreshTokenService.consume(rawRefreshToken);
+        String role = user.getRole().getCode();
+
+        String newAccessToken = jwtService.generateToken(user.getId(), user.getEmail(), role);
+        String newRefreshToken = refreshTokenService.issue(user);
+
+        return new RefreshResponse(newAccessToken, "Bearer", newRefreshToken);
+    }
+
+    /**
+     * Revoca el refresh token en logout — sin esto, un refresh token
+     * robado seguiría siendo válido hasta su expiración natural aunque el
+     * usuario cierre sesión (la consecuencia de seguridad que quedó
+     * anotada como pendiente en ADR-003).
+     */
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
     }
 
     private Object resolveBranches(User user, String role) {

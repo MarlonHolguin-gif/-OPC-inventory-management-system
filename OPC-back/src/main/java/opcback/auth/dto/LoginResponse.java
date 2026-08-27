@@ -12,6 +12,7 @@ public record LoginResponse(
         String name,
         String email,
         String role,
-        Object branches
+        Object branches,
+        String refreshToken
 ) {
 }

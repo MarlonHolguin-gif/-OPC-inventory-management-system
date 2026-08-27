@@ -35,11 +35,14 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
 │   ├── .mvn/wrapper/              # Configuración del wrapper
 │   └── src/
 │       ├── main/
-│       │   ├── java/opcback/              # Código fuente (paquete por módulo: auth, branches, products, inventory...)
+│       │   ├── java/opcback/              # Código fuente, un paquete por dominio: auth, branches, products,
+│       │   │                              # inventory, purchases, sales, security, config, exception
+│       │   │                              # (dashboard, system y transfers existen como paquetes vacíos,
+│       │   │                              # reservados para épicas del backlog aún no abordadas)
 │       │   └── resources/
 │       │       └── application.properties # Config de la app (BD, JWT, puerto — vía variables de entorno)
 │       └── test/
-│           └── java/opcback/              # Pruebas unitarias/integración
+│           └── java/opcback/              # Pruebas unitarias (inventory, purchases, sales)
 │
 └── OPC-front/                    # ───── FRONTEND — React + Vite ─────
     ├── Dockerfile                # Build multi-stage (Node → nginx), recibe VITE_API_BASE_URL como build arg
@@ -56,8 +59,9 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
         ├── api/httpClient.js       # Cliente HTTP centralizado (axios) — adjunta el JWT automáticamente
         ├── context/                # AuthProvider (estado de sesión)
         ├── hooks/useAuth.js        # Hook de acceso al contexto de autenticación
-        ├── routes/ProtectedRoute.jsx # Guarda de rutas privadas
-        └── pages/                  # LoginPage, DashboardPage
+        ├── routes/ProtectedRoute.jsx # Guarda de rutas privadas (por autenticación y, opcionalmente, por rol)
+        ├── layout/AppLayout.jsx    # Encabezado con navegación por rol + logout
+        └── pages/                  # Una pantalla por módulo — ver "Módulos implementados" más abajo
 ```
 
 ### Notas sobre la estructura
@@ -103,9 +107,23 @@ Los 4 diagramas obligatorios de la sección 7.1 de la prueba técnica ya están 
    ```
 5. Abre el frontend en `http://localhost:3000`.
 
-**Estado actual (para no confundir un límite conocido con un error):** el frontend ya tiene el enrutamiento completo (`/login` pública, `/dashboard` privada), pero el backend todavía no expone el endpoint de autenticación — el formulario de login no va a autenticar de verdad hasta que se implemente la épica de Autenticación. Esto es esperado en el estado actual del proyecto, no un bug.
-
 Para bajar todo: `docker compose down` (agrega `-v` si además quieres borrar los datos de MySQL).
+
+## Módulos implementados
+
+Estado funcional actual, backend y frontend. El detalle técnico por tabla/entidad está en [`database/docs/DER.md`](database/docs/DER.md#4-estado-de-implementación).
+
+| Módulo | Estado | Notas |
+|---|---|---|
+| Autenticación y usuarios | ✅ Completo | Login JWT, sesión por rol, CRUD de usuarios y sucursales, asignación de sucursales por usuario |
+| Catálogo (categorías, unidades, productos) | ✅ Completo | Incluye conversión de unidades por producto (ej. 1 caja = 12 unidades) |
+| Inventario | ✅ Completo | Consulta de stock por sucursal, registro de ingresos/retiros con validación de stock y recálculo de costo promedio ponderado, alertas de stock bajo/alto |
+| Compras | ✅ Completo | Proveedores, órdenes de compra, recepción total/parcial, histórico filtrable |
+| Ventas | ✅ Completo | Clientes, listas de precios (con vigencia por fecha), registro de venta con validación de stock, histórico filtrable |
+| Transferencias entre sucursales | ❌ Pendiente | Sin implementar — próxima épica del backlog |
+| Alertas y auditoría | ❌ Pendiente | Sin implementar — dejado deliberadamente para el cierre del backlog |
+
+Todos los módulos "Completo" tienen backend y frontend funcionales, verificados contra Docker/MySQL real y en navegador (no solo compilación). Único punto pendiente de diseño: la lista de precios es independiente de la sucursal (cualquier sucursal puede usar cualquier lista vigente) — ver la discusión en [`requirements/IA_EVIDENCIA.md`](requirements/IA_EVIDENCIA.md).
 
 ## Datos de demostración
 
@@ -125,3 +143,5 @@ Al levantar el proyecto (`docker compose up`), Flyway crea el esquema **y** siem
 **Password para todos:** `OpcDemo#2026`
 
 El inventario sembrado incluye a propósito productos por debajo de `min_stock` y por encima de `max_stock` en varias sucursales, para poder probar las Alertas Inteligentes sin tener que forzar esos casos manualmente.
+
+También viene sembrada una lista de precios ("Lista General", vigente y sin fecha de vencimiento) con precio asignado a la mayoría de los productos — se puede registrar una venta de prueba sin tener que crear una lista de precios primero.

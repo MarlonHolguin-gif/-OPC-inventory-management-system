@@ -114,10 +114,19 @@ public class InventoryMovementService {
      */
     private void applyOutbound(Inventory inventory, BigDecimal quantity) {
         if (inventory.getCurrentQuantity().compareTo(quantity) < 0) {
-            throw new IllegalStateException(
-                    "Stock insuficiente: disponible " + inventory.getCurrentQuantity() + ", solicitado " + quantity);
+            throw new IllegalStateException("Stock insuficiente: disponible " + formatQuantity(inventory.getCurrentQuantity())
+                    + ", solicitado " + formatQuantity(quantity));
         }
         inventory.applyMovement(quantity.negate());
+    }
+
+    /**
+     * tr_inventory.current_quantity es DECIMAL(15,4), así que un stock
+     * entero como 85 llega desde la BD como "85.0000" — se le quitan los
+     * ceros de más para que el mensaje de error sea legible.
+     */
+    private static String formatQuantity(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 
     private Inventory createEmptyInventory(Long branchId, Product product) {

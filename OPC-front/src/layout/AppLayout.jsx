@@ -16,11 +16,16 @@ export default function AppLayout() {
           <Link to="/inventario">Inventario</Link>
           <Link to="/movimientos">Movimientos</Link>
           <Link to="/compras">Compras</Link>
+          <Link to="/ventas/nueva">Ventas</Link>
           {isAdmin && (
             <>
               <Link to="/usuarios">Usuarios</Link>
               <Link to="/sucursales">Sucursales</Link>
               <Link to="/proveedores">Proveedores</Link>
+              <Link to="/catalogo">Catálogo</Link>
+              <Link to="/listas-precios">Listas de precios</Link>
+              <Link to="/clientes">Clientes</Link>
+              <Link to="/ventas/historico">Histórico de ventas</Link>
               <Link to="/auditoria">Auditoría</Link>
             </>
           )}

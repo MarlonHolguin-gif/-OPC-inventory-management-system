@@ -13,6 +13,11 @@ import UsersPage from './pages/UsersPage';
 import BranchesPage from './pages/BranchesPage';
 import SuppliersPage from './pages/SuppliersPage';
 import AuditPage from './pages/AuditPage';
+import SaleFormPage from './pages/SaleFormPage';
+import PriceListsPage from './pages/PriceListsPage';
+import CatalogPage from './pages/CatalogPage';
+import CustomersPage from './pages/CustomersPage';
+import SalesHistoryPage from './pages/SalesHistoryPage';
 
 const GENERAL_ADMIN_ROLE = 'GENERAL_ADMIN';
 
@@ -31,11 +36,16 @@ function App() {
               <Route path="/compras" element={<PurchaseOrdersPage />} />
               <Route path="/compras/nueva" element={<PurchaseOrderFormPage />} />
               <Route path="/compras/:orderId" element={<PurchaseOrderDetailPage />} />
+              <Route path="/ventas/nueva" element={<SaleFormPage />} />
 
               <Route element={<ProtectedRoute roles={[GENERAL_ADMIN_ROLE]} />}>
                 <Route path="/usuarios" element={<UsersPage />} />
                 <Route path="/sucursales" element={<BranchesPage />} />
                 <Route path="/proveedores" element={<SuppliersPage />} />
+                <Route path="/listas-precios" element={<PriceListsPage />} />
+                <Route path="/catalogo" element={<CatalogPage />} />
+                <Route path="/clientes" element={<CustomersPage />} />
+                <Route path="/ventas/historico" element={<SalesHistoryPage />} />
                 <Route path="/auditoria" element={<AuditPage />} />
               </Route>
             </Route>

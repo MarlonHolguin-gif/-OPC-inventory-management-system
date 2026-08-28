@@ -9,6 +9,7 @@ import {
   MovementsIcon,
   PurchasesIcon,
   SalesIcon,
+  TransfersIcon,
   UsersIcon,
   BranchesIcon,
   SuppliersIcon,
@@ -29,6 +30,7 @@ const OPERATION_ITEMS = [
   { to: '/movimientos', label: 'Mov.', icon: MovementsIcon },
   { to: '/compras', label: 'Compr.', icon: PurchasesIcon },
   { to: '/ventas/nueva', label: 'Ventas', icon: SalesIcon },
+  { to: '/transferencias', label: 'Transf.', icon: TransfersIcon },
 ];
 
 const ADMIN_ITEMS = [

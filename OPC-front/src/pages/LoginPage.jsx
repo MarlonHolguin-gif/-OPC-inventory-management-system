@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import httpClient from '../api/httpClient';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { SunIcon, MoonIcon } from '../components/icons/UtilityIcons';
+import { SunIcon, MoonIcon, EyeIcon, EyeOffIcon } from '../components/icons/UtilityIcons';
 import './LoginPage.css';
 
 // Contrato real: POST /api/auth/login { email, password } ->
@@ -11,6 +11,7 @@ import './LoginPage.css';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -59,13 +60,24 @@ export default function LoginPage() {
           />
 
           <label htmlFor="password">Contraseña</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
+          <div className="input-with-action">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="input-action"
+              onClick={() => setShowPassword((current) => !current)}
+              aria-pressed={showPassword}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          </div>
 
           {error && <p role="alert">{error}</p>}
 

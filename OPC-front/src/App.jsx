@@ -9,6 +9,9 @@ import MovementFormPage from './pages/MovementFormPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import PurchaseOrderFormPage from './pages/PurchaseOrderFormPage';
 import PurchaseOrderDetailPage from './pages/PurchaseOrderDetailPage';
+import TransfersPage from './pages/TransfersPage';
+import TransferFormPage from './pages/TransferFormPage';
+import TransferDetailPage from './pages/TransferDetailPage';
 import UsersPage from './pages/UsersPage';
 import BranchesPage from './pages/BranchesPage';
 import SuppliersPage from './pages/SuppliersPage';
@@ -37,6 +40,9 @@ function App() {
               <Route path="/compras/nueva" element={<PurchaseOrderFormPage />} />
               <Route path="/compras/:orderId" element={<PurchaseOrderDetailPage />} />
               <Route path="/ventas/nueva" element={<SaleFormPage />} />
+              <Route path="/transferencias" element={<TransfersPage />} />
+              <Route path="/transferencias/nueva" element={<TransferFormPage />} />
+              <Route path="/transferencias/:transferId" element={<TransferDetailPage />} />
 
               <Route element={<ProtectedRoute roles={[GENERAL_ADMIN_ROLE]} />}>
                 <Route path="/usuarios" element={<UsersPage />} />

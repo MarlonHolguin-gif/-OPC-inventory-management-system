@@ -64,6 +64,17 @@ export function SalesIcon(props) {
   );
 }
 
+export function TransfersIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="2" y="9" width="6" height="6" />
+      <rect x="16" y="9" width="6" height="6" />
+      <path d="M8 10h6l-2-2M14 8v4" />
+      <path d="M16 15H10l2 2M10 17v-4" />
+    </svg>
+  );
+}
+
 export function UsersIcon(props) {
   return (
     <svg {...base} {...props}>

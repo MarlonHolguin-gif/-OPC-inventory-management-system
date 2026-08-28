@@ -304,6 +304,100 @@ hr {
   color: var(--warn);
 }
 
+/* Línea de tiempo de estados de una transferencia (Transferencias > detalle)
+   — horizontal en pantallas anchas, vertical en angostas. */
+.transfer-timeline {
+  display: flex;
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.timeline-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 0 8px;
+}
+.timeline-step::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.timeline-step:first-child::before {
+  content: none;
+}
+.timeline-step.timeline-done::before {
+  background: var(--accent);
+}
+.timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border);
+}
+.timeline-step.timeline-done .timeline-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.timeline-step.timeline-current .timeline-dot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.timeline-body strong {
+  display: block;
+  font: 600 13px var(--font-body);
+  color: var(--text-dim);
+}
+.timeline-step.timeline-done .timeline-body strong,
+.timeline-step.timeline-current .timeline-body strong {
+  color: var(--text);
+}
+.timeline-body time {
+  display: block;
+  font: 12px var(--font-mono);
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.timeline-notes {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+@media (max-width: 720px) {
+  .transfer-timeline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .timeline-step {
+    flex-direction: row;
+    text-align: left;
+    width: 100%;
+  }
+  .timeline-step::before {
+    top: -9px;
+    left: 6px;
+    width: 2px;
+    height: 18px;
+  }
+}
+
 /* Input con un botón de acción incrustado en la misma casilla (ej. el ojo
    de mostrar/ocultar contraseña), como en cualquier formulario de la web. */
 .input-with-action {

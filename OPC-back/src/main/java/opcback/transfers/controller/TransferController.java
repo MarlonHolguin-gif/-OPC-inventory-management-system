@@ -2,23 +2,30 @@ package opcback.transfers.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import opcback.transfers.dto.LogisticsComplianceRow;
 import opcback.transfers.dto.TransferCreateRequest;
 import opcback.transfers.dto.TransferDispatchRequest;
 import opcback.transfers.dto.TransferEventResponse;
 import opcback.transfers.dto.TransferPrepareRequest;
 import opcback.transfers.dto.TransferReceivePartialRequest;
 import opcback.transfers.dto.TransferResponse;
+import opcback.transfers.dto.TransferRoutePriorityRequest;
+import opcback.transfers.entity.TransferRoutePriority;
 import opcback.transfers.service.TransferService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -35,8 +42,21 @@ public class TransferController {
     private final TransferService transferService;
 
     @GetMapping
-    public List<TransferResponse> listAll() {
-        return transferService.listAll();
+    public List<TransferResponse> listAll(@RequestParam(required = false) TransferRoutePriority routePriority) {
+        return transferService.listAll(routePriority);
+    }
+
+    /**
+     * Reporte de cumplimiento logístico: % de transferencias con
+     * fecha_llegada_real <= fecha_estimada_llegada, agrupado por sucursal
+     * origen y prioridad de ruta. El rango filtra por fecha_llegada_real
+     * (la fecha que el reporte mide), no por fecha de solicitud.
+     */
+    @GetMapping("/reports/compliance")
+    public List<LogisticsComplianceRow> complianceReport(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        return transferService.complianceReport(from, to);
     }
 
     @GetMapping("/{id}")
@@ -53,6 +73,12 @@ public class TransferController {
     public ResponseEntity<TransferResponse> create(
             @Valid @RequestBody TransferCreateRequest request, Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED).body(transferService.create(request, authentication));
+    }
+
+    @PatchMapping("/{id}/route-priority")
+    public TransferResponse updateRoutePriority(
+            @PathVariable Long id, @Valid @RequestBody TransferRoutePriorityRequest request, Authentication authentication) {
+        return transferService.updateRoutePriority(id, request, authentication);
     }
 
     @PostMapping("/{id}/prepare")

@@ -1,6 +1,7 @@
 package opcback.transfers.dto;
 
 import opcback.transfers.entity.Transfer;
+import opcback.transfers.entity.TransferRoutePriority;
 import opcback.transfers.entity.TransferStatus;
 import opcback.transfers.entity.TransferUrgency;
 
@@ -16,6 +17,7 @@ public record TransferResponse(
         Long requestedBy,
         TransferStatus status,
         TransferUrgency urgency,
+        TransferRoutePriority routePriority,
         String carrier,
         BigDecimal shippingCost,
         LocalDateTime requestDate,
@@ -33,6 +35,7 @@ public record TransferResponse(
                 transfer.getRequestedBy(),
                 transfer.getStatus(),
                 transfer.getUrgency(),
+                transfer.getRoutePriority(),
                 transfer.getCarrier(),
                 transfer.getShippingCost(),
                 transfer.getRequestDate(),

@@ -10,6 +10,7 @@ import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
+import opcback.transfers.dto.LogisticsComplianceRow;
 import opcback.transfers.dto.PrepareItemRequest;
 import opcback.transfers.dto.ReceivePartialItemRequest;
 import opcback.transfers.dto.TransferCreateRequest;
@@ -20,6 +21,7 @@ import opcback.transfers.dto.TransferItemResponse;
 import opcback.transfers.dto.TransferPrepareRequest;
 import opcback.transfers.dto.TransferReceivePartialRequest;
 import opcback.transfers.dto.TransferResponse;
+import opcback.transfers.dto.TransferRoutePriorityRequest;
 import opcback.transfers.entity.Transfer;
 import opcback.transfers.entity.TransferEvent;
 import opcback.transfers.entity.TransferItem;
@@ -32,9 +34,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +58,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TransferService {
 
+    private static final Set<TransferStatus> TERMINAL_STATUSES =
+            EnumSet.of(TransferStatus.FULLY_RECEIVED, TransferStatus.PARTIALLY_RECEIVED, TransferStatus.CANCELLED);
+
     private final TransferRepository transferRepository;
     private final TransferEventRepository transferEventRepository;
     private final ProductRepository productRepository;
@@ -60,8 +69,41 @@ public class TransferService {
     private final BranchAccessService branchAccessService;
     private final InventoryMovementService inventoryMovementService;
 
-    public List<TransferResponse> listAll() {
-        return transferRepository.findAll().stream().map(this::toResponse).toList();
+    public List<TransferResponse> listAll(TransferRoutePriority routePriority) {
+        return transferRepository.findAllFiltered(routePriority).stream().map(this::toResponse).toList();
+    }
+
+    /**
+     * Reporte de cumplimiento logístico: % de transferencias con
+     * fecha_llegada_real <= fecha_estimada_llegada, agrupado por sucursal
+     * origen y prioridad de ruta, filtrable por rango de fecha_llegada_real.
+     * Solo entran transferencias que ya llegaron y tenían fecha estimada —
+     * una transferencia sin fecha estimada no tiene con qué compararse, así
+     * que queda fuera del denominador (no cuenta como incumplimiento).
+     */
+    public List<LogisticsComplianceRow> complianceReport(LocalDateTime from, LocalDateTime to) {
+        Map<GroupKey, List<Transfer>> grouped = transferRepository.findForComplianceReport(from, to).stream()
+                .collect(Collectors.groupingBy(t -> new GroupKey(t.getOriginBranchId(), t.getRoutePriority())));
+
+        return grouped.entrySet().stream()
+                .map(entry -> {
+                    List<Transfer> transfers = entry.getValue();
+                    long total = transfers.size();
+                    long onTime = transfers.stream()
+                            .filter(t -> !t.getActualArrivalDate().isAfter(t.getEstimatedArrivalDate()))
+                            .count();
+                    BigDecimal percentage = BigDecimal.valueOf(onTime)
+                            .multiply(BigDecimal.valueOf(100))
+                            .divide(BigDecimal.valueOf(total), 1, RoundingMode.HALF_UP);
+                    return new LogisticsComplianceRow(
+                            entry.getKey().originBranchId(), entry.getKey().routePriority(), total, onTime, percentage);
+                })
+                .sorted(Comparator.<LogisticsComplianceRow, Long>comparing(LogisticsComplianceRow::originBranchId)
+                        .thenComparing(LogisticsComplianceRow::routePriority))
+                .toList();
+    }
+
+    private record GroupKey(Long originBranchId, TransferRoutePriority routePriority) {
     }
 
     public TransferResponse getById(Long id) {
@@ -114,6 +156,35 @@ public class TransferService {
 
         Transfer saved = transferRepository.save(transfer);
         recordEvent(saved, TransferStatus.REQUESTED, "Solicitud creada", requestedBy);
+
+        return toResponse(saved);
+    }
+
+    /**
+     * Fija/cambia la prioridad de ruta — la decide quien gestiona el envío,
+     * así que el chequeo de escritura es sobre la sucursal ORIGEN (mismo
+     * criterio que preparar/despachar). Se bloquea una vez que la
+     * transferencia ya llegó (completa o parcial): cambiarla después
+     * corrompería el agrupado histórico del reporte de cumplimiento
+     * logístico, que ya quedó calculado con la prioridad de ese momento.
+     */
+    @Transactional
+    public TransferResponse updateRoutePriority(
+            Long transferId, TransferRoutePriorityRequest request, Authentication authentication) {
+        Transfer transfer = findTransferOrThrow(transferId);
+        branchAccessService.assertCanWrite(authentication.getName(), transfer.getOriginBranchId());
+
+        if (TERMINAL_STATUSES.contains(transfer.getStatus())) {
+            throw new IllegalStateException(
+                    "La transferencia " + transfer.getTransferNumber() + " ya está finalizada (estado: "
+                            + transfer.getStatus() + "), no admite cambios de prioridad de ruta");
+        }
+
+        transfer.setRoutePriority(request.routePriority());
+        Transfer saved = transferRepository.save(transfer);
+
+        recordEvent(saved, saved.getStatus(), "Prioridad de ruta cambiada a " + request.routePriority(),
+                resolveUserId(authentication));
 
         return toResponse(saved);
     }

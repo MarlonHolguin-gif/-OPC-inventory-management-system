@@ -21,6 +21,15 @@
   --warn: oklch(55% 0.15 80);
   --warn-dim: oklch(94% 0.06 80);
 
+  /* Paleta categórica para gráficas (reporte de cumplimiento logístico) —
+     hex literal, no oklch: son los valores exactos que pasaron el
+     validador de daltonismo/contraste (skill dataviz) contra la superficie
+     real de esta app; re-derivarlos en oklch podría desviarlos del valor
+     validado. Prioridad de ruta baja/media/alta, en ese orden fijo. */
+  --chart-low: #2a78d6;
+  --chart-medium: #1baf7a;
+  --chart-high: #eb6834;
+
   --font-heading: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
@@ -42,6 +51,10 @@
   --bad-dim: oklch(28% 0.07 25);
   --warn: oklch(78% 0.14 80);
   --warn-dim: oklch(30% 0.06 80);
+
+  --chart-low: #3987e5;
+  --chart-medium: #199e70;
+  --chart-high: #d95926;
 
   color-scheme: dark;
 }
@@ -450,4 +463,115 @@ hr {
   form {
     max-width: none;
   }
+}
+
+/* Panel de transferencias activas (Transferencias > panel): secciones por
+   estado + indicador de refresco. */
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.panel-refresh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 12.5px var(--font-mono);
+  color: var(--text-dim);
+}
+.panel-refresh button {
+  margin: 0;
+  padding: 5px 12px;
+}
+.status-section {
+  margin-bottom: 26px;
+}
+.status-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-section .count {
+  font: 600 12px var(--font-mono);
+  color: var(--text-dim);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+/* Reporte de cumplimiento logístico: gráfica de barras agrupadas hecha a
+   mano (sin librería), siguiendo el skill dataviz: barras <=24px con
+   esquina superior redondeada, gap de 2px entre barras, gridlines
+   recesivas, leyenda solo si hay 2+ series presentes. */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font: 600 12.5px var(--font-body);
+  color: var(--text-dim);
+}
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.compliance-chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  overflow-x: auto;
+}
+.compliance-chart {
+  display: block;
+  /* Tamaño natural = sus propios atributos width/height (coinciden con el
+     viewBox) — nunca se estira a lo ancho del contenedor: si lo hiciera,
+     el texto/las barras se agrandarían desproporcionadamente respecto a
+     sus unidades reales. max-width solo lo encoge si no entra, nunca lo
+     agranda; overflow-x del wrapper cubre el resto. */
+  max-width: 100%;
+}
+.chart-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart-baseline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart-axis-label {
+  font: 11px var(--font-body);
+  fill: var(--text-dim);
+}
+.chart-bar-label {
+  font: 600 11px var(--font-mono);
+  fill: var(--text);
+}
+.chart-bar {
+  transition: opacity 0.12s;
+}
+.chart-bar-group:hover .chart-bar,
+.chart-bar-group:focus .chart-bar {
+  opacity: 0.8;
+}
+.chart-bar-group:focus {
+  outline: none;
+}
+.chart-bar-group:focus .chart-bar {
+  stroke: var(--text);
+  stroke-width: 1.5;
 }

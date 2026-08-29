@@ -10,6 +10,7 @@ import {
   PurchasesIcon,
   SalesIcon,
   TransfersIcon,
+  ComplianceIcon,
   UsersIcon,
   BranchesIcon,
   SuppliersIcon,
@@ -41,6 +42,7 @@ const ADMIN_ITEMS = [
   { to: '/listas-precios', label: 'Precios', icon: PriceListIcon },
   { to: '/clientes', label: 'Client.', icon: CustomersIcon },
   { to: '/ventas/historico', label: 'Histór.', icon: HistoryIcon },
+  { to: '/transferencias/cumplimiento', label: 'Cumplim.', icon: ComplianceIcon },
   { to: '/auditoria', label: 'Audit.', icon: AuditIcon },
 ];
 

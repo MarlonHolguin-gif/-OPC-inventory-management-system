@@ -75,6 +75,16 @@ export function TransfersIcon(props) {
   );
 }
 
+export function ComplianceIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 19a8 8 0 0116 0" />
+      <path d="M12 19l4.5-6.5" />
+      <circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function UsersIcon(props) {
   return (
     <svg {...base} {...props}>

@@ -12,6 +12,7 @@ import PurchaseOrderDetailPage from './pages/PurchaseOrderDetailPage';
 import TransfersPage from './pages/TransfersPage';
 import TransferFormPage from './pages/TransferFormPage';
 import TransferDetailPage from './pages/TransferDetailPage';
+import LogisticsComplianceReportPage from './pages/LogisticsComplianceReportPage';
 import UsersPage from './pages/UsersPage';
 import BranchesPage from './pages/BranchesPage';
 import SuppliersPage from './pages/SuppliersPage';
@@ -52,6 +53,7 @@ function App() {
                 <Route path="/catalogo" element={<CatalogPage />} />
                 <Route path="/clientes" element={<CustomersPage />} />
                 <Route path="/ventas/historico" element={<SalesHistoryPage />} />
+                <Route path="/transferencias/cumplimiento" element={<LogisticsComplianceReportPage />} />
                 <Route path="/auditoria" element={<AuditPage />} />
               </Route>
             </Route>

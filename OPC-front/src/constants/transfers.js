@@ -17,12 +17,26 @@ export const TRANSFER_URGENCY_LABELS = {
   CRITICAL: 'Crítica',
 };
 
+// Prioridad de ruta (TransferRoutePriority) — concepto distinto de la
+// urgencia de arriba: la fija la sucursal origen vía PATCH
+// /transfers/{id}/route-priority, solo tiene 3 valores (sin CRITICAL) y se
+// usa para clasificar rutas, no para la solicitud en sí.
+export const ROUTE_PRIORITY_LABELS = {
+  LOW: 'Baja',
+  MEDIUM: 'Media',
+  HIGH: 'Alta',
+};
+
 export function transferStatusLabel(status) {
   return TRANSFER_STATUS_LABELS[status] ?? status;
 }
 
 export function urgencyLabel(urgency) {
   return TRANSFER_URGENCY_LABELS[urgency] ?? urgency;
+}
+
+export function routePriorityLabel(routePriority) {
+  return ROUTE_PRIORITY_LABELS[routePriority] ?? routePriority;
 }
 
 export function statusBadgeClass(status) {

@@ -2,11 +2,13 @@ package opcback.transfers.repository;
 
 import opcback.transfers.entity.Transfer;
 import opcback.transfers.entity.TransferRoutePriority;
+import opcback.transfers.entity.TransferStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface TransferRepository extends JpaRepository<Transfer, Long> {
@@ -39,4 +41,22 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               and (:to is null or t.actualArrivalDate <= :to)
             """)
     List<Transfer> findForComplianceReport(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
+     * Base del dashboard de transferencias activas: excluye los estados que
+     * la tarjeta pide excluir explícitamente (FULLY_RECEIVED, CANCELLED),
+     * involucrando la sucursal como origen O destino — branchId null =
+     * todas (comparativa entre sucursales). Trae ítems + producto para
+     * poder proyectar el impacto por producto sin N+1.
+     */
+    @Query("""
+            select distinct t from Transfer t
+            left join fetch t.items i
+            left join fetch i.product p
+            where t.status not in :excludedStatuses
+              and (:branchId is null or t.originBranchId = :branchId or t.destinationBranchId = :branchId)
+            """)
+    List<Transfer> findActiveInvolvingBranch(
+            @Param("branchId") Long branchId,
+            @Param("excludedStatuses") Collection<TransferStatus> excludedStatuses);
 }

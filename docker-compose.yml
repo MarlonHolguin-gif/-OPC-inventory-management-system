@@ -30,6 +30,14 @@ services:
     container_name: opc-backend
     restart: unless-stopped
     environment:
+      # Sin esto el contenedor corre en UTC (default de la imagen base) y
+      # LocalDateTime.now() (fecha real de despacho/llegada, eventos, etc.)
+      # queda 5 horas adelantada respecto a la hora local del negocio —
+      # rompe cualquier comparación contra una fecha que el usuario escribe
+      # en un <input type="datetime-local"> (esa sí es hora local, sin
+      # conversión). Las columnas son DATETIME (no TIMESTAMP), así que
+      # MySQL no aplica ninguna conversión propia — el ajuste va aquí.
+      TZ: ${APP_TIMEZONE:-America/Bogota}
       SERVER_PORT: 8080
       DB_HOST: mysql
       DB_PORT: 3306

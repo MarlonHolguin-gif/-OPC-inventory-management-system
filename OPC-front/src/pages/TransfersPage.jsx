@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import httpClient from '../api/httpClient';
+import { useAuth } from '../hooks/useAuth';
 import { TRANSFER_STATUS_LABELS, urgencyBadgeClass, urgencyLabel } from '../constants/transfers';
+
+const GENERAL_ADMIN_ROLE = 'GENERAL_ADMIN';
 
 // Orden de las secciones del panel: primero lo que todavía necesita acción
 // (activas), después lo ya resuelto — coincide con el enunciado de la
@@ -14,6 +17,9 @@ function formatTime(date) {
 }
 
 export default function TransfersPage() {
+  const { role } = useAuth();
+  const isAdmin = role === GENERAL_ADMIN_ROLE;
+
   // null = todavía no cargó ni una vez ("Cargando…" de pantalla completa).
   // Un array (incluso vacío) ya cargó al menos una vez — los refrescos
   // automáticos posteriores actualizan este mismo estado sin volver a
@@ -77,7 +83,16 @@ export default function TransfersPage() {
           </button>
         </div>
       </div>
-      <Link to="/transferencias/nueva">+ Solicitar transferencia</Link>
+      <div className="button-row">
+        <Link to="/transferencias/nueva" className="button-link primary">
+          + Solicitar transferencia
+        </Link>
+        {isAdmin && (
+          <Link to="/transferencias/cumplimiento" className="button-link">
+            Ver cumplimiento logístico
+          </Link>
+        )}
+      </div>
 
       {sections.length === 0 && <p>No hay transferencias registradas todavía.</p>}
 

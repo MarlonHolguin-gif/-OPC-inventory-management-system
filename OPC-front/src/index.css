@@ -411,6 +411,26 @@ hr {
   }
 }
 
+/* Los dos formularios de recepción (completa/parcial) lado a lado en vez
+   de apilados — evita el scroll vertical innecesario en pantallas anchas. */
+.receive-forms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+.receive-forms-row form {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  margin-bottom: 0;
+}
+@media (max-width: 900px) {
+  .receive-forms-row {
+    flex-direction: column;
+  }
+}
+
 /* Input con un botón de acción incrustado en la misma casilla (ej. el ojo
    de mostrar/ocultar contraseña), como en cualquier formulario de la web. */
 .input-with-action {
@@ -465,6 +485,43 @@ hr {
   }
 }
 
+/* Fila de botones de navegación tipo "acción secundaria" (ej. "+ Solicitar
+   transferencia" / "Ver histórico de ventas") — link con pinta de botón,
+   .primary usa el mismo relleno de acento que button[type=submit]. */
+.button-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 13.5px var(--font-body);
+  padding: 8px 15px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-decoration: none;
+}
+.button-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  opacity: 1;
+}
+.button-link.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.button-link.primary:hover {
+  opacity: 0.9;
+  color: var(--bg);
+}
+
 /* Panel de transferencias activas (Transferencias > panel): secciones por
    estado + indicador de refresco. */
 .panel-header {
@@ -503,10 +560,34 @@ hr {
   padding: 1px 9px;
 }
 
-/* Reporte de cumplimiento logístico: gráfica de barras agrupadas hecha a
-   mano (sin librería), siguiendo el skill dataviz: barras <=24px con
-   esquina superior redondeada, gap de 2px entre barras, gridlines
-   recesivas, leyenda solo si hay 2+ series presentes. */
+/* Reporte de cumplimiento logístico: la gráfica y la tabla de detalle van
+   unidas en una sola tarjeta (no dos separadas) — cada una pierde su propio
+   marco/fondo y se separan con una línea divisoria en vez de un hueco. */
+.compliance-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 22px;
+}
+.compliance-panel .compliance-chart-wrap {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+}
+.compliance-panel table {
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+  margin: 20px 0 0;
+}
+
+/* Gráfica de barras agrupadas hecha a mano (sin librería), siguiendo el
+   skill dataviz: barras <=24px con esquina superior redondeada, gap de 2px
+   entre barras, gridlines recesivas, leyenda solo si hay 2+ series
+   presentes. */
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
@@ -574,4 +655,103 @@ hr {
 .chart-bar-group:focus .chart-bar {
   stroke: var(--text);
   stroke-width: 1.5;
+}
+
+/* Panel principal (Panel > dashboard con gráficas, Recharts) — grid de
+   tarjetas, la comparativa entre sucursales ocupa todo el ancho. */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+/* Co-locada aquí mismo, después de la regla base — puesta antes en el
+   archivo pierde contra ella pese a la media query (misma especificidad,
+   gana la que aparece después en la cascada; ver el mismo problema ya
+   documentado en AppLayout.css/.app-rail). */
+@media (max-width: 720px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.dashboard-grid .panel-card {
+  margin-bottom: 0;
+  /* Los ítems de grid tienen min-width:auto por default y no se encogen
+     por debajo del ancho intrínseco de su contenido — el ResponsiveContainer
+     de Recharts fija un width en px sobre su SVG hijo, así que sin esto la
+     tarjeta se desborda de su columna en vez de dejar que el SVG se ajuste
+     al espacio real disponible. */
+  min-width: 0;
+}
+.dashboard-section-wide {
+  grid-column: 1 / -1;
+}
+.dashboard-comparison-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+.dashboard-comparison-charts h3 {
+  margin-bottom: 10px;
+}
+
+/* Fila de cifras clave (ej. transferencias como origen/destino) — mismo
+   contrato que un "stat tile": etiqueta en mayúsculas + valor grande. */
+.stat-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.stat-tile {
+  flex: 1;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label {
+  font: 600 11px var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.stat-value {
+  font: 700 22px var(--font-heading);
+  color: var(--text);
+}
+
+/* Tooltip propio de las gráficas del dashboard — superficie + línea de
+   color junto al valor (nunca una caja rellena, ver skill dataviz). */
+.chart-tooltip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: 12.5px var(--font-body);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.chart-tooltip > strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.chart-tooltip-row strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+.chart-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

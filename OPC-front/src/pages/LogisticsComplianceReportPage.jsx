@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import httpClient from '../api/httpClient';
 import ComplianceBarChart from '../components/ComplianceBarChart';
 import { routePriorityLabel } from '../constants/transfers';
@@ -62,27 +63,19 @@ export default function LogisticsComplianceReportPage() {
         % de transferencias que llegaron a la sucursal destino antes o en la fecha estimada, por sucursal origen y
         prioridad de ruta.
       </p>
+
+      <div className="button-row">
+        <Link to="/transferencias" className="button-link">
+          ← Volver a transferencias
+        </Link>
+      </div>
+
       {error && <p role="alert">{error}</p>}
-
-      <form onSubmit={search} noValidate>
-        <label htmlFor="from">Desde (fecha de llegada)</label>
-        <input id="from" type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
-
-        <label htmlFor="to">Hasta (fecha de llegada)</label>
-        <input id="to" type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
-
-        <button type="submit" disabled={searching}>
-          {searching ? 'Consultando…' : 'Filtrar'}
-        </button>
-        <button type="button" onClick={clearFilters}>
-          Limpiar filtros
-        </button>
-      </form>
 
       {totalConsidered === 0 ? (
         <p>No hay transferencias recibidas con fecha estimada en este rango.</p>
       ) : (
-        <>
+        <div className="compliance-panel">
           <ComplianceBarChart rows={rows} branchCodes={branchCodes} branchNames={branchNames} />
 
           <table>
@@ -107,8 +100,23 @@ export default function LogisticsComplianceReportPage() {
               ))}
             </tbody>
           </table>
-        </>
+        </div>
       )}
+
+      <form onSubmit={search} noValidate>
+        <label htmlFor="from">Desde (fecha de llegada)</label>
+        <input id="from" type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
+
+        <label htmlFor="to">Hasta (fecha de llegada)</label>
+        <input id="to" type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} />
+
+        <button type="submit" disabled={searching}>
+          {searching ? 'Consultando…' : 'Filtrar'}
+        </button>
+        <button type="button" onClick={clearFilters}>
+          Limpiar filtros
+        </button>
+      </form>
     </main>
   );
 }

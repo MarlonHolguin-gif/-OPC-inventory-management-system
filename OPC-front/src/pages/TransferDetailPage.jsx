@@ -293,7 +293,7 @@ export default function TransferDetailPage() {
       )}
 
       {transfer.status === 'IN_TRANSIT' && canActOnDestination && (
-        <>
+        <div className="receive-forms-row">
           <form onSubmit={handleReceiveComplete} noValidate>
             <h2>Confirmar recepción completa (sucursal destino)</h2>
             <p>Usa esta opción cuando llegó exactamente lo despachado, sin diferencias.</p>
@@ -339,7 +339,7 @@ export default function TransferDetailPage() {
               {submitting ? 'Registrando…' : 'Confirmar recepción parcial'}
             </button>
           </form>
-        </>
+        </div>
       )}
 
       {RECEIVED_STATUSES.includes(transfer.status) && <p>Esta transferencia ya fue recibida — no admite más acciones.</p>}

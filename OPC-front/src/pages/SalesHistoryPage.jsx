@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import httpClient from '../api/httpClient';
 
 const EMPTY_FILTERS = { branchId: '', productId: '', customerId: '', sellerId: '', from: '', to: '' };
@@ -68,6 +69,13 @@ export default function SalesHistoryPage() {
   return (
     <main>
       <h1>Histórico de ventas</h1>
+
+      <div className="button-row">
+        <Link to="/ventas/nueva" className="button-link">
+          ← Volver a registrar venta
+        </Link>
+      </div>
+
       {error && <p role="alert">{error}</p>}
 
       <form onSubmit={search} noValidate>

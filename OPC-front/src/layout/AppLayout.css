@@ -4,7 +4,7 @@
 }
 
 .app-rail {
-  width: 76px;
+  width: 92px;
   flex-shrink: 0;
   background: var(--rail);
   border-right: 1px solid var(--border);

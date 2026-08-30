@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import httpClient from '../api/httpClient';
 import { useAuth } from '../hooks/useAuth';
 
+const GENERAL_ADMIN_ROLE = 'GENERAL_ADMIN';
 const EMPTY_ITEM = { productId: '', quantity: '', discountPct: '' };
 
 function toNumber(value) {
@@ -18,7 +20,8 @@ function isVigente(priceList) {
 }
 
 export default function SaleFormPage() {
-  const { branches: ownBranches } = useAuth();
+  const { branches: ownBranches, role } = useAuth();
+  const isAdmin = role === GENERAL_ADMIN_ROLE;
 
   const [availableBranches, setAvailableBranches] = useState([]);
   const [products, setProducts] = useState([]);
@@ -182,6 +185,14 @@ export default function SaleFormPage() {
   return (
     <main>
       <h1>Registrar venta</h1>
+
+      {isAdmin && (
+        <div className="button-row">
+          <Link to="/ventas/historico" className="button-link">
+            Ver histórico de ventas
+          </Link>
+        </div>
+      )}
 
       {error && <p role="alert">{error}</p>}
       {successMessage && <p>{successMessage}</p>}

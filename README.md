@@ -2,7 +2,7 @@
 
 Prueba técnica: sistema de gestión de inventario para una organización con múltiples sucursales, con visibilidad compartida de stock, compras, ventas y transferencias entre sucursales.
 
-**Stack:** Java 21 + Spring Boot (backend) · React + Vite (frontend) · MySQL (base de datos) · Docker Compose (orquestación).
+**Stack:** Java 21 + Spring Boot (backend) · React + Vite, Recharts para el dashboard (frontend) · MySQL (base de datos) · Docker Compose (orquestación).
 Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_Tecnologico.md`](requirements/Justificacion_Stack_Tecnologico.md).
 
 ## Estructura del repositorio
@@ -36,9 +36,9 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
 │   └── src/
 │       ├── main/
 │       │   ├── java/opcback/              # Código fuente, un paquete por dominio: auth, branches, products,
-│       │   │                              # inventory, purchases, sales, security, config, exception
-│       │   │                              # (dashboard, system y transfers existen como paquetes vacíos,
-│       │   │                              # reservados para épicas del backlog aún no abordadas)
+│       │   │                              # inventory, purchases, sales, transfers, dashboard, security,
+│       │   │                              # config, exception (system/alerts y system/audit siguen vacíos,
+│       │   │                              # reservados para la épica de Auditoría, deliberadamente al final)
 │       │   └── resources/
 │       │       └── application.properties # Config de la app (BD, JWT, puerto — vía variables de entorno)
 │       └── test/
@@ -120,8 +120,9 @@ Estado funcional actual, backend y frontend. El detalle técnico por tabla/entid
 | Inventario | ✅ Completo | Consulta de stock por sucursal, registro de ingresos/retiros con validación de stock y recálculo de costo promedio ponderado, alertas de stock bajo/alto |
 | Compras | ✅ Completo | Proveedores, órdenes de compra, recepción total/parcial, histórico filtrable |
 | Ventas | ✅ Completo | Clientes, listas de precios (con vigencia por fecha), registro de venta con validación de stock, histórico filtrable |
-| Transferencias entre sucursales | ❌ Pendiente | Sin implementar — próxima épica del backlog |
-| Alertas y auditoría | ❌ Pendiente | Sin implementar — dejado deliberadamente para el cierre del backlog |
+| Transferencias entre sucursales | ✅ Completo | Solicitud, preparación, despacho, recepción completa/parcial con línea de tiempo visual, clasificación por prioridad de ruta y reporte de cumplimiento logístico (% a tiempo por sucursal y prioridad) |
+| Dashboard gerencial | ✅ Completo | 5 KPIs con gráficas (Recharts): ventas del mes vs. anteriores, rotación de inventario, impacto de transferencias activas, productos por reabastecer, comparativa entre sucursales (solo administrador general) |
+| Alertas y auditoría | ❌ Pendiente | El estado de alerta (bajo/alto stock) ya se calcula y reutiliza en Inventario y el Dashboard; falta persistirlo como notificación (`sy_notifications`) y la auditoría de cambios — dejado deliberadamente para el cierre del backlog |
 
 Todos los módulos "Completo" tienen backend y frontend funcionales, verificados contra Docker/MySQL real y en navegador (no solo compilación). Único punto pendiente de diseño: la lista de precios es independiente de la sucursal (cualquier sucursal puede usar cualquier lista vigente) — ver la discusión en [`requirements/IA_EVIDENCIA.md`](requirements/IA_EVIDENCIA.md).
 

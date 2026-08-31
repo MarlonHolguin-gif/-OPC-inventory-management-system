@@ -48,7 +48,7 @@
 - **JWT stateless sin refresh** (decisión original de este proyecto, revertida): más simple de implementar, pero sin forma de revocar una sesión comprometida antes de que expire el token, y obligando a elegir entre expiraciones largas (más riesgo) o cortas (usuario deslogueado constantemente, sin forma de renovar en silencio).
 - **Sesiones de servidor (cookies + estado en memoria/Redis):** funcional, pero menos natural para un backend pensado como API REST consumida por una SPA, y añade un componente de infraestructura adicional (almacén de sesiones) que el refresh token en la misma BD relacional ya resuelve sin costo extra.
 
-**Consecuencias:** Requiere un endpoint `/auth/refresh` y rotación/invalidación del refresh token al hacer logout (pendiente — ver Épica de Autenticación en el backlog). El frontend (`OPC-front`) ya quedó preparado para este cambio: el cliente HTTP centralizado (`src/api/httpClient.js`) tiene el punto exacto documentado en código donde engancha la lógica de refresh automático en un 401, aunque hoy solo adjunta el access token porque el endpoint de refresh todavía no existe en el backend.
+**Consecuencias:** Ya implementado de punta a punta. El backend expone `/api/auth/login`, `/api/auth/refresh` (público, la seguridad la da el propio refresh token de un solo uso) y `/api/auth/logout` (revoca el refresh token). El cliente HTTP del frontend (`src/services/http/HttpClient.js`) inyecta el access token en cada request y, ante un 401, renueva automáticamente contra `/api/auth/refresh` y reintenta la petición una sola vez; varias peticiones que fallan a la vez comparten una misma promesa de renovación para no gastar el refresh token rotado más de una vez.
 
 **Historial de cambio:** decisión inicial "JWT stateless" tomada al inicio del proyecto; revisada y cambiada a "JWT + refresh token" durante la implementación del cliente HTTP del frontend, al cuestionar si stateless-sin-refresh no dejaba una superficie de riesgo innecesaria — la prueba técnica no exige ninguna de las dos variantes específicamente (solo pide justificar la que se use), así que se optó por la más defendible en seguridad.
 
@@ -87,9 +87,10 @@
 | **Repository** | Spring Data JPA, un `Repository` por entidad (`ProductRepository`, `SaleRepository`, etc. — a implementarse en las épicas de cada módulo) | Separa el acceso a datos de la lógica de negocio; es el patrón estándar e idiomático de Spring Data, no uno agregado manualmente |
 | **DTO (Data Transfer Object)** | Capa API del backend (planeado) | Evita exponer las entidades JPA directamente en las respuestas HTTP, desacoplando el modelo de persistencia del contrato público de la API |
 | **Customizer / configuración aditiva** | `OPC-back/src/main/java/opcback/config/SecurityConfig.java` | Patrón específico de Spring Boot 4: un bean `Customizer<HttpSecurity>` agrega una regla puntual (`/actuator/health` público) sin reconstruir toda la configuración de seguridad por defecto de Spring Boot |
-| **Interceptor** | `OPC-front/src/api/httpClient.js` (interceptores de request/response de axios) | Inyecta el JWT en cada petición y centraliza el manejo de 401 en un solo lugar, en vez de repetirlo en cada llamada a la API |
-| **Provider / Context** | `OPC-front/src/context/AuthProvider.jsx` + `src/hooks/useAuth.js` | Comparte el estado de sesión (token, login, logout) entre componentes no relacionados directamente, sin prop drilling |
-| **Route Guard** | `OPC-front/src/routes/ProtectedRoute.jsx` | Centraliza la regla "sin sesión no se accede a rutas privadas" en un solo componente reutilizable, en vez de repetir la verificación en cada página |
+| **Interceptor** | `OPC-front/src/services/http/HttpClient.js` (clase estática sobre una instancia de axios, con interceptores de request/response) | Inyecta el JWT en cada petición y centraliza el manejo de 401 (renovación + reintento) en un solo lugar, en vez de repetirlo en cada llamada a la API |
+| **Store global (signals)** | `OPC-front/src/stores/` — `AuthStore`, `ThemeStore`, `UiStore`, `BranchDirectoryStore` | Comparte estado de sesión, tema, mensajería de UI y el directorio de sucursales entre componentes no relacionados, sin prop drilling ni React Context — con `@preact/signals-react` cualquier componente que lea un signal se re-renderiza solo (ver ADR-008) |
+| **Controller / Presentation** | `OPC-front/src/pages/<Modulo>/<Modulo>Controller.js` (+ `src/lib/Controller` y sus bases: `FormController`, `PollingController`, `CrudListController`) | Separa la lógica de cada pantalla (carga de datos, acciones, estado) de su render — el componente `<Modulo>Page.jsx` solo pinta el DOM leyendo los signals del controller (ver ADR-008) |
+| **Route Guard** | `OPC-front/src/routes/ProtectedRoute.jsx` (lee `AuthStore`) | Centraliza la regla "sin sesión no se accede a rutas privadas" (y, opcional, por rol) en un solo componente reutilizable, en vez de repetir la verificación en cada página |
 
 **Alternativas descartadas:**
 - **CQRS (separar modelos de lectura y escritura):** válido para sistemas con cargas de lectura muy distintas a las de escritura, pero es una complejidad no justificada por el volumen y alcance de esta prueba técnica.
@@ -150,3 +151,31 @@ Se evaluó separar por **esquemas de MySQL** en vez de por prefijo, y se descart
 - Verificado end-to-end dos veces: desde volumen vacío (Flyway crea las 4 migraciones) y en un reinicio sin borrar datos (Flyway detecta "esquema al día" y no reintenta nada).
 
 **Referencias:** `database/docs/DER.md` sección 4 (estado de implementación) y `database/queries/*.sql` (nota de "copia de referencia" en cada archivo).
+
+---
+
+## ADR-008 — Arquitectura del frontend por capas: Controller/Service/Store + signals
+
+**Estado:** Aceptada — reemplaza el enfoque inicial (una página React por módulo con toda la lógica adentro)
+
+**Contexto:** Al crecer a ~15 módulos, cada `pages/<X>Page.jsx` mezclaba en un solo archivo la inserción en el DOM (JSX), las llamadas al backend (`httpClient.get('/api/…')` sueltos), el estado local (`useState`/`useEffect`) y la comunicación entre componentes por *callbacks* pasados como props (`onChanged`, `onClose`, `setError`). Archivos de 300–600 líneas, cada página reimplementando su propia tabla, formulario CRUD, buscador y estados de carga/error.
+
+**Decisión:** Separar el frontend en capas explícitas:
+
+- **`pages/<Modulo>/`** — una carpeta por módulo. `<Modulo>Controller.js` es una **clase** que concentra la lógica (carga de datos, acciones, validación) con el estado en *signals* (`@preact/signals-react`); no contiene JSX. `<Modulo>Page.jsx` es un componente función delgado que solo lee los signals del controller y pinta. Formularios y sub-paneles tienen su propio sub-controller (`FormController` como base).
+- **`services/`** — llamadas al backend. Clases con métodos estáticos, una por entidad, dentro de la carpeta del módulo (`pages/Catalog/services/CategoryService.js`); en `src/services/` solo lo transversal (`http/HttpClient`, `AuthService`).
+- **`stores/`** — estado global en signals: `AuthStore` (sesión, reemplaza a `AuthProvider`/`AuthContext`), `ThemeStore`, `UiStore` (mensajería de error/éxito, reemplaza el prop-drilling de `setError`), `BranchDirectoryStore`.
+- **`lib/`** — bases de clase reutilizables (`Controller`, `FormController`, `PollingController`, `CrudListController`) y el hook `useController` que instancia un controller estable por componente.
+- **`components/`** — presentacionales compartidos (`DataTable`, `Tabs`, `Modal`, `FilterBar`, `Field*`, `EntityForm`, …).
+
+**Alternativas descartadas:**
+- **Seguir con páginas monolíticas:** el patrón ya no escalaba — el prop-drilling de callbacks y la duplicación de tabla/formulario/buscador crecían con cada módulo nuevo.
+- **Redux / Zustand para el estado:** resuelven el estado global, pero *signals* da re-render automático fino (cualquier componente que lee `signal.value` se suscribe solo) sin *boilerplate* de acciones/reducers ni selectores, y encaja mejor con la idea de tener la lógica en clases fuera de React.
+- **Componentes de clase de React:** se descartó — React 19 desaconseja las clases de componente y perderían el acceso directo a los hooks; en cambio la *lógica* va en clases normales y el render queda en una función mínima.
+
+**Consecuencias:**
+- `@vitejs/plugin-react` v6 usa oxc y ya no expone la opción `babel`, así que el *transform* de `@preact/signals-react` se corre con `@rolldown/plugin-babel` en `vite.config.js`. Sin ese transform, leer `signal.value` en un componente no dispara re-render.
+- La navegación desde un controller (que no debe conocer el router) se hace con un signal `redirect` + el hook `useRedirect`.
+- Cada módulo lleva sus estilos co-locados (`pages/<Modulo>/<Modulo>.css`); `src/index.css` queda solo con tokens de diseño, estilos base de elementos y primitivas compartidas.
+
+**Referencias:** árbol de `src/` en `README.md`; entrada 2.20 de `IA_EVIDENCIA.md`.

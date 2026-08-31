@@ -50,18 +50,23 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
     ├── .env.example              # Plantilla: URL base de la API (VITE_API_BASE_URL)
     ├── index.html
     ├── package.json
-    ├── vite.config.js
+    ├── vite.config.js            # Vite + alias @/ → src/ + transform de @preact/signals-react
+    ├── jsconfig.json             # Resolución del alias @/ para el editor
     ├── eslint.config.js
     ├── public/                   # Assets estáticos (favicon, icons)
-    └── src/
-        ├── App.jsx                # Enrutamiento (React Router): rutas públicas/privadas
+    └── src/                       # Arquitectura por capas: DOM en pages/, backend en services/, estado en stores/
         ├── main.jsx                # Punto de entrada de la SPA
-        ├── api/httpClient.js       # Cliente HTTP centralizado (axios) — adjunta el JWT automáticamente
-        ├── context/                # AuthProvider (estado de sesión)
-        ├── hooks/useAuth.js        # Hook de acceso al contexto de autenticación
-        ├── routes/ProtectedRoute.jsx # Guarda de rutas privadas (por autenticación y, opcionalmente, por rol)
-        ├── layout/AppLayout.jsx    # Encabezado con navegación por rol + logout
-        └── pages/                  # Una pantalla por módulo — ver "Módulos implementados" más abajo
+        ├── App.jsx                 # <BrowserRouter> + <AppRouter/>
+        ├── app/                    # routes.js (paths + nav por rol) + AppRouter.jsx
+        ├── services/               # Solo transversal: http/HttpClient (axios + JWT + refresh), AuthService
+        ├── stores/                 # Estado global en signals: AuthStore, ThemeStore, UiStore, BranchDirectoryStore
+        ├── lib/                    # Bases de clase: Controller, FormController, PollingController, CrudListController; useController, format
+        ├── routes/ProtectedRoute.jsx # Guarda de rutas privadas (autenticación y, opcional, rol) — lee AuthStore
+        ├── layout/AppLayout.jsx    # Riel de navegación por rol + barra superior (saludo, notificaciones, tema, logout)
+        ├── components/             # Compartidos: DataTable, Tabs, Modal, FilterBar, Field*, EntityForm, Alert, NotificationBell/…
+        └── pages/<Modulo>/         # Una carpeta por módulo: <Modulo>Controller.js (clase, estado en signals) +
+                                    # <Modulo>Page.jsx (función delgada) + services/ (endpoints del módulo) +
+                                    # components/ + constants.js + <Modulo>.css
 ```
 
 ### Notas sobre la estructura
@@ -122,11 +127,11 @@ Estado funcional actual, backend y frontend. El detalle técnico por tabla/entid
 | Ventas | ✅ Completo | Clientes, listas de precios (con vigencia por fecha), registro de venta con validación de stock, histórico filtrable |
 | Transferencias entre sucursales | ✅ Completo | Solicitud, preparación, despacho, recepción completa/parcial con línea de tiempo visual, clasificación por prioridad de ruta y reporte de cumplimiento logístico (% a tiempo por sucursal y prioridad) |
 | Dashboard gerencial | ✅ Completo | 5 KPIs con gráficas (Recharts): ventas del mes vs. anteriores, rotación de inventario, impacto de transferencias activas, productos por reabastecer, comparativa entre sucursales (solo administrador general) |
-| Alertas y auditoría | ❌ Pendiente | El estado de alerta (bajo/alto stock) ya se calcula y reutiliza en Inventario y el Dashboard; falta persistirlo como notificación (`sy_notifications`) y la auditoría de cambios — dejado deliberadamente para el cierre del backlog |
+| Alertas y auditoría | 🟡 Frontend listo, backend en integración | En `OPC-front` ya están la campana de notificaciones (polling, marcado de leídas) y la vista de consulta de auditoría (solo administrador general, filtros y diff antes/después). El backend correspondiente (`sy_notifications`, `sy_audit_log` y el interceptor genérico de auditoría) está desarrollado pero pendiente de merge — dejado para el cierre del backlog |
 
 Todos los módulos "Completo" tienen backend y frontend funcionales, verificados contra Docker/MySQL real y en navegador (no solo compilación). Único punto pendiente de diseño: la lista de precios es independiente de la sucursal (cualquier sucursal puede usar cualquier lista vigente) — ver la discusión en [`requirements/IA_EVIDENCIA.md`](requirements/IA_EVIDENCIA.md).
 
-**Interfaz:** tema claro/oscuro alternable (botón sol/luna, persistido por navegador) y diseño responsive — el panel de navegación se adapta a pantallas angostas y las tablas/formularios anchos hacen scroll dentro de su propio contenedor en vez de romper la página.
+**Interfaz:** tema claro/oscuro alternable (botón sol/luna, persistido por navegador) y diseño responsive — el riel de navegación se colapsa a solo íconos en pantallas angostas y las tablas anchas hacen scroll dentro de su propio contenedor en vez de romper la página. Las altas y ediciones (proveedor, cliente, producto, orden de compra, venta, transferencia…) abren en ventana modal. El frontend está organizado por capas (ver el árbol de `src/` más arriba): cada módulo tiene un *controller* de clase con el estado en signals (`@preact/signals-react`), una capa de *services* con las llamadas al backend y una *page* que solo pinta el DOM.
 
 ## Datos de demostración
 

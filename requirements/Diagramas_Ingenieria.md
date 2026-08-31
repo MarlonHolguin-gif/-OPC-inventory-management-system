@@ -107,7 +107,7 @@ flowchart TB
 
     subgraph DockerCompose["Docker Compose — docker compose up (un solo comando)"]
         subgraph FrontendContainer["Contenedor frontend — nginx (build estático de React + Vite)"]
-            SPA["SPA React<br/>Router · AuthContext · httpClient (axios)"]
+            SPA["SPA React (por capas, ver ADR-008)<br/>Router · pages/&lt;Modulo&gt; (Controller + signals) · services/ · stores/ · HttpClient (axios)"]
         end
 
         subgraph BackendContainer["Contenedor backend — Java 21 + Spring Boot"]
@@ -115,7 +115,7 @@ flowchart TB
             Controllers["Controllers<br/>REST API"]
             Services["Services<br/>Lógica de negocio"]
             Repositories["Repositories<br/>Spring Data JPA"]
-            Flyway["Flyway<br/>Migraciones V1-V4"]
+            Flyway["Flyway<br/>Migraciones V1-V5"]
 
             Security --> Controllers --> Services --> Repositories
         end

@@ -11,11 +11,15 @@ import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.security.JwtService;
 import opcback.security.RefreshTokenService;
+import opcback.system.audit.service.AuditLogService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,18 +32,37 @@ public class AuthService {
     private final UserBranchRepository userBranchRepository;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final AuditLogService auditLogService;
 
+    /**
+     * Registro de eventos de autenticación (AUDITORIA): se resuelve el
+     * usuario ANTES de autenticar para poder registrar internamente, en un
+     * intento fallido, si el email correspondía o no a una cuenta real —
+     * sin que eso cambie en nada la respuesta HTTP, que sigue siendo el
+     * mismo 401 genérico de GlobalExceptionHandler para cualquier causa
+     * (email inexistente, contraseña incorrecta, cuenta desactivada). Ese
+     * 401 genérico ya existía antes de esta tarjeta; aquí solo se agrega el
+     * registro interno, nunca se cambia qué ve el cliente.
+     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+        Optional<User> maybeUser = userRepository.findByEmail(request.email());
 
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+        } catch (AuthenticationException ex) {
+            auditLogService.recordLoginFailure(request.email(), maybeUser.map(User::getId).orElse(null));
+            throw ex;
+        }
+
+        User user = maybeUser.orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
 
         String role = user.getRole().getCode();
         String token = jwtService.generateToken(user.getId(), user.getEmail(), role);
         String refreshToken = refreshTokenService.issue(user);
+
+        auditLogService.recordLoginSuccess(user);
 
         return new LoginResponse(token, "Bearer", user.getId(), user.getName(), user.getEmail(), role,
                 resolveBranches(user, role), refreshToken);

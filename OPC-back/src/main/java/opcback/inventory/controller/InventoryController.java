@@ -42,9 +42,11 @@ public class InventoryController {
     }
 
     /**
-     * Representa el consumo desde el módulo de Alertas Inteligentes (aún
-     * no implementado como épica propia) — mismo InventoryAlertService
-     * que usa listByBranch, solo filtrado a lo que no está NORMAL.
+     * Vista "al vuelo" del estado de alerta actual (mismo InventoryAlertService
+     * que usa listByBranch, solo filtrado a lo que no está NORMAL) — no
+     * confundir con GET /api/notificaciones, que lista los cruces de
+     * umbral ya persistidos en sy_notifications por
+     * NotificationService.notifyStockThresholdCrossed().
      */
     @GetMapping("/sucursal/{branchId}/alertas")
     public List<InventoryResponse> listAlertsByBranch(@PathVariable Long branchId) {

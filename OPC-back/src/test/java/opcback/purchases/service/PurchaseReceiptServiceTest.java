@@ -5,6 +5,7 @@ import opcback.auth.repository.UserRepository;
 import opcback.inventory.entity.Inventory;
 import opcback.inventory.repository.InventoryMovementRepository;
 import opcback.inventory.repository.InventoryRepository;
+import opcback.inventory.service.InventoryAlertService;
 import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
@@ -21,6 +22,7 @@ import opcback.purchases.repository.PurchaseOrderRepository;
 import opcback.purchases.repository.PurchaseReceiptItemRepository;
 import opcback.purchases.repository.PurchaseReceiptRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -74,6 +76,8 @@ class PurchaseReceiptServiceTest {
     @Mock
     private InventoryMovementRepository inventoryMovementRepository;
     @Mock
+    private NotificationService notificationService;
+    @Mock
     private Authentication authentication;
 
     private PurchaseReceiptService purchaseReceiptService;
@@ -85,7 +89,8 @@ class PurchaseReceiptServiceTest {
     @BeforeEach
     void setUp() {
         InventoryMovementService inventoryMovementService = new InventoryMovementService(
-                branchAccessService, productRepository, userRepository, inventoryRepository, inventoryMovementRepository);
+                branchAccessService, productRepository, userRepository, inventoryRepository,
+                inventoryMovementRepository, new InventoryAlertService(), notificationService);
 
         purchaseReceiptService = new PurchaseReceiptService(
                 purchaseOrderRepository, purchaseOrderItemRepository, purchaseReceiptRepository,

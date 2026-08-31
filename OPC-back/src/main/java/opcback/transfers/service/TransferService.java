@@ -10,6 +10,7 @@ import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import opcback.transfers.dto.LogisticsComplianceRow;
 import opcback.transfers.dto.PrepareItemRequest;
 import opcback.transfers.dto.ReceivePartialItemRequest;
@@ -68,6 +69,7 @@ public class TransferService {
     private final InventoryRepository inventoryRepository;
     private final BranchAccessService branchAccessService;
     private final InventoryMovementService inventoryMovementService;
+    private final NotificationService notificationService;
 
     public List<TransferResponse> listAll(TransferRoutePriority routePriority) {
         return transferRepository.findAllFiltered(routePriority).stream().map(this::toResponse).toList();
@@ -319,11 +321,9 @@ public class TransferService {
     /**
      * Card 5 — recepción parcial: registra lo que de verdad llegó por
      * ítem y calcula la diferencia (enviado - recibido) para que quede
-     * disponible para reclamo. Nota honesta: el disparo de notificación de
-     * faltante que menciona la tarjeta depende de la épica de Alertas
-     * (sy_notifications), que todavía no está implementada — la
-     * diferencia sí queda registrada y consultable, que es el criterio de
-     * aceptación real de esta tarjeta.
+     * disponible para reclamo, y dispara una notificación
+     * TRANSFERENCIA_FALTANTE por cada ítem con diferencia real (épica de
+     * Alertas, ver NotificationService.notifyTransferShortage).
      */
     @Transactional
     public TransferResponse receivePartial(Long transferId, TransferReceivePartialRequest request, Authentication authentication) {
@@ -358,6 +358,10 @@ public class TransferService {
             if (itemRequest.receivedQuantity().compareTo(BigDecimal.ZERO) > 0) {
                 registerInboundMovement(transfer, item, itemRequest.receivedQuantity(), authentication);
             }
+
+            // Card 3 — notificación de faltante, una por ítem con
+            // diferencia real (no se dispara si llegó todo lo enviado).
+            notificationService.notifyTransferShortage(transfer, item);
         }
 
         transfer.setActualArrivalDate(LocalDateTime.now());

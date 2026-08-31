@@ -64,6 +64,18 @@ public class BranchAccessService {
         return userBranchRepository.findBranchIdsByUserId(findUserOrThrow(email).getId());
     }
 
+    /**
+     * Expone el chequeo de rol que ya usaba internamente canWrite() — lo
+     * necesita, por ejemplo, el listado de notificaciones (Notificaciones:
+     * "todas si es ADMIN_GENERAL, si no solo las de sus sucursales
+     * asignadas"), que es una regla de LECTURA y no encaja en el resto de
+     * esta clase, pero reutiliza el mismo criterio en vez de duplicarlo.
+     */
+    @Transactional(readOnly = true)
+    public boolean isGeneralAdmin(String email) {
+        return isGeneralAdmin(findUserOrThrow(email));
+    }
+
     private User findUserOrThrow(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + email));

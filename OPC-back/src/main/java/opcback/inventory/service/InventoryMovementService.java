@@ -5,6 +5,7 @@ import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.dto.InventoryMovementResponse;
+import opcback.inventory.entity.AlertStatus;
 import opcback.inventory.entity.Inventory;
 import opcback.inventory.entity.InventoryMovement;
 import opcback.inventory.repository.InventoryMovementRepository;
@@ -12,6 +13,7 @@ import opcback.inventory.repository.InventoryRepository;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,8 @@ public class InventoryMovementService {
     private final UserRepository userRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryMovementRepository inventoryMovementRepository;
+    private final InventoryAlertService inventoryAlertService;
+    private final NotificationService notificationService;
 
     @Transactional
     public InventoryMovementResponse register(InventoryMovementRequest request, Authentication authentication) {
@@ -60,6 +64,15 @@ public class InventoryMovementService {
 
         Inventory inventory = inventoryRepository.findByBranchIdAndProductId(request.branchId(), request.productId())
                 .orElseGet(() -> createEmptyInventory(request.branchId(), product));
+
+        // Estado de alerta ANTES de aplicar el movimiento — se compara
+        // contra el de después para detectar un cruce real de umbral
+        // (card 1: "evaluar si cantidad_actual cruzó stock_mínimo o
+        // stock_máximo"), no solo "está en alerta" (eso ya lo estaría en
+        // cada movimiento siguiente, generando una notificación por cada
+        // uno mientras la condición no cambie).
+        AlertStatus statusBefore = inventoryAlertService.evaluate(
+                inventory.getCurrentQuantity(), inventory.getMinStock(), inventory.getMaxStock());
 
         BigDecimal unitCost = request.unitCost() != null ? request.unitCost() : BigDecimal.ZERO;
 
@@ -85,6 +98,12 @@ public class InventoryMovementService {
 
         InventoryMovement savedMovement = inventoryMovementRepository.save(movement);
         Inventory savedInventory = inventoryRepository.save(inventory);
+
+        AlertStatus statusAfter = inventoryAlertService.evaluate(
+                savedInventory.getCurrentQuantity(), savedInventory.getMinStock(), savedInventory.getMaxStock());
+        notificationService.notifyStockThresholdCrossed(
+                request.branchId(), product, statusBefore, statusAfter,
+                savedInventory.getCurrentQuantity(), savedInventory.getMinStock(), savedInventory.getMaxStock());
 
         return InventoryMovementResponse.from(savedMovement, savedInventory.getCurrentQuantity());
     }

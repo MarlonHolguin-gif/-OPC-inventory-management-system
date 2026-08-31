@@ -5,6 +5,7 @@ import opcback.auth.repository.UserRepository;
 import opcback.inventory.entity.Inventory;
 import opcback.inventory.repository.InventoryMovementRepository;
 import opcback.inventory.repository.InventoryRepository;
+import opcback.inventory.service.InventoryAlertService;
 import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
@@ -19,6 +20,7 @@ import opcback.sales.repository.PriceListRepository;
 import opcback.sales.repository.SaleItemRepository;
 import opcback.sales.repository.SaleRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,6 +85,8 @@ class SaleServiceTest {
     @Mock
     private InventoryMovementRepository inventoryMovementRepository;
     @Mock
+    private NotificationService notificationService;
+    @Mock
     private Authentication authentication;
 
     private SaleService saleService;
@@ -90,7 +94,8 @@ class SaleServiceTest {
     @BeforeEach
     void setUp() {
         InventoryMovementService inventoryMovementService = new InventoryMovementService(
-                branchAccessService, productRepository, userRepository, inventoryRepository, inventoryMovementRepository);
+                branchAccessService, productRepository, userRepository, inventoryRepository,
+                inventoryMovementRepository, new InventoryAlertService(), notificationService);
 
         saleService = new SaleService(
                 saleRepository, saleItemRepository, priceListRepository, priceListItemRepository,

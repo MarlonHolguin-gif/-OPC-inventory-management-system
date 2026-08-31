@@ -12,6 +12,7 @@ import opcback.inventory.repository.InventoryRepository;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,14 +54,20 @@ class InventoryMovementServiceTest {
     @Mock
     private InventoryMovementRepository inventoryMovementRepository;
     @Mock
+    private NotificationService notificationService;
+    @Mock
     private Authentication authentication;
 
     private InventoryMovementService inventoryMovementService;
 
     @BeforeEach
     void setUp() {
+        // InventoryAlertService es lógica pura sin dependencias — se usa la
+        // instancia real en vez de un mock, no hay nada que estar
+        // stubbeando en cada test.
         inventoryMovementService = new InventoryMovementService(
-                branchAccessService, productRepository, userRepository, inventoryRepository, inventoryMovementRepository);
+                branchAccessService, productRepository, userRepository, inventoryRepository,
+                inventoryMovementRepository, new InventoryAlertService(), notificationService);
 
         when(authentication.getName()).thenReturn(EMAIL);
 

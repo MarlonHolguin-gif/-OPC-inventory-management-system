@@ -4,13 +4,13 @@
 }
 
 .app-rail {
-  width: 92px;
+  width: 200px;
   flex-shrink: 0;
   background: var(--rail);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   padding: 16px 0;
 }
 
@@ -24,10 +24,12 @@
   justify-content: center;
   font: 700 13px var(--font-heading);
   color: var(--bg);
-  margin-bottom: 18px;
+  margin: 0 auto 18px;
   flex-shrink: 0;
 }
 
+/* Lista vertical: un ítem por fila, ícono + nombre completo alineados a la
+   izquierda. */
 .rail-nav {
   flex: 1;
   overflow-y: auto;
@@ -35,18 +37,19 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 1px;
+  padding: 0 8px;
 }
 
 .rail-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 11px 0;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 6px;
   color: var(--text-dim);
-  border-left: 2px solid transparent;
+  border: 1px solid transparent;
 }
 .rail-item:hover {
   color: var(--text);
@@ -55,30 +58,65 @@
 }
 .rail-item.active {
   color: var(--accent);
-  border-left-color: var(--accent);
+  border-color: var(--accent);
   background: var(--surface);
 }
+.rail-item svg {
+  flex-shrink: 0;
+}
 .rail-item span {
-  font: 600 9px var(--font-body);
-  letter-spacing: 0.02em;
+  font: 600 12.5px var(--font-body);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rail-divider {
-  width: 32px;
   height: 1px;
   background: var(--border);
-  margin: 10px 0;
-  flex-shrink: 0;
+  margin: 8px 6px;
 }
 
-.rail-user {
+.app-content {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/* Barra superior (antes vivía al fondo del riel como .rail-user) — campana
+   de notificaciones, tema claro/oscuro, usuario y logout, siempre arriba a
+   la derecha en todas las páginas. Sticky para que quede visible aunque
+   una página larga (ej. el Dashboard) haga scroll. */
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  width: 100%;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 28px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-greeting {
+  font: 14px var(--font-body);
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-greeting strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   flex-shrink: 0;
 }
 
@@ -107,20 +145,25 @@
   border: none;
 }
 
-.app-content {
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-}
-
+/* En pantallas angostas el riel se colapsa a solo íconos. */
 @media (max-width: 720px) {
   .app-rail {
-    width: 58px;
+    width: 56px;
+  }
+  .rail-nav {
+    padding: 0 6px;
   }
   .rail-item {
-    padding: 9px 0;
+    justify-content: center;
+    padding: 10px 0;
   }
   .rail-item span {
+    display: none;
+  }
+  .app-topbar {
+    padding: 12px 16px;
+  }
+  .topbar-greeting {
     display: none;
   }
 }

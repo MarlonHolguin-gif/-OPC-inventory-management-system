@@ -1,0 +1,63 @@
+/* Vista de consulta de auditoría (Auditoría). */
+
+.audit-table td button {
+  padding: 5px 12px;
+}
+
+/* Fila expandida con el diff antes/después del evento. */
+.audit-detail-row > td {
+  background: var(--surface-hover);
+  padding: 14px 18px;
+}
+
+/* Tabla del diff: campo / antes / después. */
+.audit-diff {
+  margin: 0;
+  border: 1px solid var(--border);
+}
+.audit-diff th[scope='row'] {
+  width: 200px;
+  color: var(--text-dim);
+  font: 600 12px var(--font-mono);
+  text-transform: none;
+  letter-spacing: 0;
+  vertical-align: top;
+}
+.audit-diff td {
+  font: 13px var(--font-mono);
+  vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.audit-diff .audit-diff-old {
+  color: var(--bad);
+}
+.audit-diff .audit-diff-new {
+  color: var(--accent);
+}
+/* Solo las filas realmente cambiadas se resaltan (en UPDATE el backend ya
+   filtra, pero en CREATE/DELETE marca todo). */
+.audit-diff-changed > th[scope='row'] {
+  color: var(--text);
+}
+.audit-diff-json {
+  margin: 0;
+  font: 12px var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.audit-diff-empty {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.audit-pager {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font: 12.5px var(--font-mono);
+  color: var(--text-dim);
+}
+.audit-pager button {
+  margin: 0;
+}

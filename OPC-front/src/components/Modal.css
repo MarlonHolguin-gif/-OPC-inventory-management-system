@@ -1,0 +1,80 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 20px 20px;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+}
+.modal-wide {
+  max-width: 900px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-header h2 {
+  margin: 0;
+}
+.modal-close {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  padding: 6px 8px;
+  margin: 0;
+}
+.modal-close:hover {
+  color: var(--bad);
+  border: none;
+}
+
+.modal-body {
+  padding: 22px;
+  overflow-y: auto;
+}
+
+/* Los formularios y paneles dentro del modal pierden su marco/fondo propio
+   (el modal ya es la superficie). */
+.modal-body > form,
+.modal-body > .panel-card {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  max-width: none;
+}
+
+@media (max-width: 720px) {
+  .modal-backdrop {
+    padding: 0;
+  }
+  .modal {
+    max-width: none;
+    min-height: 100%;
+    border-radius: 0;
+    max-height: none;
+  }
+}

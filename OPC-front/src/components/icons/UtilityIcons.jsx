@@ -48,3 +48,13 @@ export function MoonIcon(props) {
     </svg>
   );
 }
+
+// Bandeja de notificaciones (riel de navegación).
+export function BellIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 9a6 6 0 0112 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z" />
+      <path d="M10 19.5a2.2 2.2 0 004 0" />
+    </svg>
+  );
+}

@@ -1,0 +1,27 @@
+/* Navegación por pestañas (componente <Tabs>) — botón deshabilitado = tab
+   activa. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 22px;
+}
+.tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: 600 13.5px var(--font-body);
+  padding: 10px 14px;
+  margin: 0;
+}
+.tabs button:hover {
+  color: var(--text);
+}
+.tabs button:disabled {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  opacity: 1;
+  cursor: default;
+}

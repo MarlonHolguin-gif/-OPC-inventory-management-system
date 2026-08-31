@@ -1,0 +1,7 @@
+/* --- Estilos del módulo Ventas --- */
+
+/* La tabla de ítems del formulario de venta lleva su propio margen dentro
+   del scroll horizontal. */
+.sale-form .table-scroll {
+  margin: 6px 0 16px;
+}

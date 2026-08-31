@@ -1,61 +1,42 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../hooks/useTheme';
-import { roleName } from '../constants/roles';
-import { SunIcon, MoonIcon } from '../components/icons/UtilityIcons';
-import {
-  DashboardIcon,
-  InventoryIcon,
-  MovementsIcon,
-  PurchasesIcon,
-  SalesIcon,
-  TransfersIcon,
-  UsersIcon,
-  BranchesIcon,
-  SuppliersIcon,
-  CatalogIcon,
-  PriceListIcon,
-  CustomersIcon,
-  AuditIcon,
-  LogoutIcon,
-} from '../components/icons/NavIcons';
+import { Fragment, useEffect } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { AuthStore } from '@/stores/AuthStore';
+import { ThemeStore } from '@/stores/ThemeStore';
+import { UiStore } from '@/stores/UiStore';
+import { roleName, GENERAL_ADMIN } from '@/constants/roles';
+import { NAV_SECTIONS } from '@/app/routes';
+import { SunIcon, MoonIcon } from '@/components/icons/UtilityIcons';
+import { LogoutIcon } from '@/components/icons/NavIcons';
+import NotificationBell from '@/components/NotificationBell/NotificationBell';
+import { GlobalAlert } from '@/components/Alert';
 import './AppLayout.css';
-
-const GENERAL_ADMIN_ROLE = 'GENERAL_ADMIN';
-
-const OPERATION_ITEMS = [
-  { to: '/dashboard', label: 'Panel', icon: DashboardIcon },
-  { to: '/inventario', label: 'Inv.', icon: InventoryIcon },
-  { to: '/movimientos', label: 'Mov.', icon: MovementsIcon },
-  { to: '/compras', label: 'Compr.', icon: PurchasesIcon },
-  { to: '/ventas/nueva', label: 'Ventas', icon: SalesIcon },
-  { to: '/transferencias', label: 'Transf.', icon: TransfersIcon },
-];
-
-const ADMIN_ITEMS = [
-  { to: '/usuarios', label: 'Usr.', icon: UsersIcon },
-  { to: '/sucursales', label: 'Sucurs.', icon: BranchesIcon },
-  { to: '/proveedores', label: 'Prov.', icon: SuppliersIcon },
-  { to: '/catalogo', label: 'Catál.', icon: CatalogIcon },
-  { to: '/listas-precios', label: 'Precios', icon: PriceListIcon },
-  { to: '/clientes', label: 'Client.', icon: CustomersIcon },
-  { to: '/auditoria', label: 'Audit.', icon: AuditIcon },
-];
 
 function RailItem({ to, label, icon: Icon }) {
   return (
     <NavLink to={to} className={({ isActive }) => `rail-item${isActive ? ' active' : ''}`} title={label}>
       <Icon />
-      <span>{label.toUpperCase()}</span>
+      <span>{label}</span>
     </NavLink>
   );
 }
 
 export default function AppLayout() {
-  const { role, email, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const isAdmin = role === GENERAL_ADMIN_ROLE;
-  const initials = email ? email.slice(0, 2).toUpperCase() : '··';
+  const { pathname } = useLocation();
+
+  // Los mensajes de UiStore son globales; al cambiar de módulo se descartan
+  // (antes cada página tenía su propio estado de error local).
+  useEffect(() => {
+    UiStore.clear();
+  }, [pathname]);
+
+  const role = AuthStore.role.value;
+  const email = AuthStore.email.value;
+  const name = AuthStore.name.value;
+  const theme = ThemeStore.theme.value;
+  const isAdmin = role === GENERAL_ADMIN;
+  const initials = (name ?? email) ? (name ?? email).slice(0, 2).toUpperCase() : '··';
+
+  const sections = NAV_SECTIONS.filter((section) => !section.adminOnly || isAdmin);
 
   return (
     <div className="app-shell">
@@ -65,37 +46,46 @@ export default function AppLayout() {
         </div>
 
         <nav className="rail-nav">
-          {OPERATION_ITEMS.map((item) => (
-            <RailItem key={item.to} {...item} />
-          ))}
-
-          {isAdmin && (
-            <>
-              <div className="rail-divider" />
-              {ADMIN_ITEMS.map((item) => (
+          {sections.map((section, index) => (
+            <Fragment key={section.id}>
+              {index > 0 && <div className="rail-divider" />}
+              {section.items.map((item) => (
                 <RailItem key={item.to} {...item} />
               ))}
-            </>
-          )}
+            </Fragment>
+          ))}
         </nav>
-
-        <div className="rail-user" title={`${email ?? ''} — ${roleName(role)}`}>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="theme-toggle"
-            aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-          >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
-          <div className="rail-avatar">{initials}</div>
-          <button type="button" onClick={logout} className="rail-logout" aria-label="Cerrar sesión">
-            <LogoutIcon />
-          </button>
-        </div>
       </aside>
 
       <div className="app-content">
+        <header className="app-topbar" title={`${email ?? ''} — ${roleName(role)}`}>
+          <span className="topbar-greeting">
+            Buen día, <strong>{name ?? email ?? ''}</strong>
+          </span>
+
+          <div className="topbar-actions">
+            <NotificationBell />
+            <button
+              type="button"
+              onClick={ThemeStore.toggle}
+              className="icon-button"
+              aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+            <div className="rail-avatar">{initials}</div>
+            <button
+              type="button"
+              onClick={AuthStore.logout}
+              className="rail-logout"
+              aria-label="Cerrar sesión"
+            >
+              <LogoutIcon />
+            </button>
+          </div>
+        </header>
+
+        <GlobalAlert />
         <Outlet />
       </div>
     </div>

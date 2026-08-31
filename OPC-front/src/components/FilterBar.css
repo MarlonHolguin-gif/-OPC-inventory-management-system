@@ -1,0 +1,47 @@
+/* Barra de filtros horizontal (Ventas, Auditoría…). Anula el layout de
+   <form> global (columna, ancho 640) por una fila que envuelve.
+   `flex-direction: row` es imprescindible: el `form { flex-direction: column }`
+   global sigue aplicando si no se sobreescribe explícitamente. */
+.filter-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 16px;
+  max-width: none;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+.filter-field label {
+  margin: 0 0 4px;
+}
+.filter-field input,
+.filter-field select {
+  width: 190px;
+  min-width: 0;
+}
+.filter-field input[type='date'] {
+  width: 160px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-self: flex-end;
+  flex: 0 0 auto;
+}
+.filter-actions button {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .filter-field,
+  .filter-field input,
+  .filter-field select {
+    width: 100%;
+  }
+}

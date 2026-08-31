@@ -1,0 +1,239 @@
+/* --- Estilos del módulo Transferencias --- */
+
+/* Línea de tiempo de estados de una transferencia (detalle) — horizontal en
+   pantallas anchas, vertical en angostas. */
+.transfer-timeline {
+  display: flex;
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.timeline-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 0 8px;
+}
+.timeline-step::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.timeline-step:first-child::before {
+  content: none;
+}
+.timeline-step.timeline-done::before {
+  background: var(--accent);
+}
+.timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border);
+}
+.timeline-step.timeline-done .timeline-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.timeline-step.timeline-current .timeline-dot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.timeline-body strong {
+  display: block;
+  font: 600 13px var(--font-body);
+  color: var(--text-dim);
+}
+.timeline-step.timeline-done .timeline-body strong,
+.timeline-step.timeline-current .timeline-body strong {
+  color: var(--text);
+}
+.timeline-body time {
+  display: block;
+  font: 12px var(--font-mono);
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.timeline-notes {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+@media (max-width: 720px) {
+  .transfer-timeline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .timeline-step {
+    flex-direction: row;
+    text-align: left;
+    width: 100%;
+  }
+  .timeline-step::before {
+    top: -9px;
+    left: 6px;
+    width: 2px;
+    height: 18px;
+  }
+}
+
+/* Los dos formularios de recepción (completa/parcial) lado a lado. */
+.receive-forms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+.receive-forms-row form {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  margin-bottom: 0;
+}
+@media (max-width: 900px) {
+  .receive-forms-row {
+    flex-direction: column;
+  }
+}
+
+/* Panel de transferencias activas: secciones por estado + indicador de
+   refresco. */
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.panel-refresh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 12.5px var(--font-mono);
+  color: var(--text-dim);
+}
+.panel-refresh button {
+  margin: 0;
+  padding: 5px 12px;
+}
+.status-section {
+  margin-bottom: 26px;
+}
+.status-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-section .count {
+  font: 600 12px var(--font-mono);
+  color: var(--text-dim);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+/* Reporte de cumplimiento logístico: gráfica + tabla en una sola tarjeta. */
+.compliance-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 22px;
+}
+.compliance-panel .compliance-chart-wrap {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+}
+.compliance-panel table {
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+  margin: 20px 0 0;
+}
+
+/* Gráfica de barras agrupadas hecha a mano (sin librería, skill dataviz). */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font: 600 12.5px var(--font-body);
+  color: var(--text-dim);
+}
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.compliance-chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  overflow-x: auto;
+}
+.compliance-chart {
+  display: block;
+  max-width: 100%;
+}
+.chart-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart-baseline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart-axis-label {
+  font: 11px var(--font-body);
+  fill: var(--text-dim);
+}
+.chart-bar-label {
+  font: 600 11px var(--font-mono);
+  fill: var(--text);
+}
+.chart-bar {
+  transition: opacity 0.12s;
+}
+.chart-bar-group:hover .chart-bar,
+.chart-bar-group:focus .chart-bar {
+  opacity: 0.8;
+}
+.chart-bar-group:focus {
+  outline: none;
+}
+.chart-bar-group:focus .chart-bar {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}

@@ -1,9 +1,15 @@
 /*
  * Sistema de diseño de la app — misma identidad ("Panel oscuro / consola"
  * elegida en /design) en sus dos variantes, claro y oscuro. El tema activo
- * lo decide el atributo data-theme en <html> (ver src/hooks/useTheme.js) y
+ * lo decide el atributo data-theme en <html> (ver src/stores/ThemeStore.js) y
  * se persiste en localStorage — no depende de prefers-color-scheme, para
  * que el usuario pueda alternar manualmente sin importar el SO.
+ *
+ * Este archivo tiene solo: tokens de diseño, estilos base de elementos y las
+ * primitivas compartidas por varios módulos (.panel-card, .badge, .button-*).
+ * Los estilos propios de un módulo viven en su carpeta
+ * (pages/<Module>/<Module>.css) y los de un componente junto al componente
+ * (components/<Component>.css).
  */
 :root {
   /* Tema claro (default) */
@@ -170,6 +176,9 @@ input[type='checkbox'] {
   width: auto;
   accent-color: var(--accent);
 }
+input[type='search'] {
+  font-family: var(--font-body);
+}
 
 /* Botones: sin tocar cada página, el estilo se decide por el atributo
    `type` que ya usan todas — submit = acción principal, button = secundaria. */
@@ -237,10 +246,6 @@ tbody tr:hover td {
   background: var(--surface-hover);
 }
 
-input[type='search'] {
-  font-family: var(--font-body);
-}
-
 [role='alert'] {
   background: var(--bad-dim);
   color: var(--bad);
@@ -256,8 +261,10 @@ hr {
   margin: 22px 0;
 }
 
-/* Panel de superficie para sub-secciones fuera de un <form> (ej. gestionar
-   sucursales de un usuario) — mismo lenguaje visual que las tarjetas. */
+/* --- Primitivas compartidas por varios módulos --- */
+
+/* Panel de superficie para sub-secciones fuera de un <form> — mismo lenguaje
+   visual que las tarjetas. */
 .panel-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -266,38 +273,7 @@ hr {
   margin-bottom: 22px;
 }
 
-.branch-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 14px;
-  margin-top: 16px;
-}
-.branch-toggle {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: 500 15.5px var(--font-body);
-  color: var(--text);
-  cursor: pointer;
-}
-.branch-toggle:hover {
-  border-color: var(--accent);
-}
-.branch-toggle.checked {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-  color: var(--accent);
-}
-.branch-toggle input[type='checkbox'] {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-/* Insignia de estado reutilizable (vigente/no vigente, alertas, etc.) */
+/* Insignia de estado (vigente/no vigente, alertas, acciones de auditoría…). */
 .badge {
   display: inline-block;
   padding: 3px 11px;
@@ -317,182 +293,13 @@ hr {
   color: var(--warn);
 }
 
-/* Línea de tiempo de estados de una transferencia (Transferencias > detalle)
-   — horizontal en pantallas anchas, vertical en angostas. */
-.transfer-timeline {
-  display: flex;
-  list-style: none;
-  margin: 0 0 22px;
-  padding: 20px 22px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-.timeline-step {
-  position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 10px;
-  padding: 0 8px;
-}
-.timeline-step::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: -50%;
-  width: 100%;
-  height: 2px;
-  background: var(--border);
-  z-index: 0;
-}
-.timeline-step:first-child::before {
-  content: none;
-}
-.timeline-step.timeline-done::before {
-  background: var(--accent);
-}
-.timeline-dot {
-  position: relative;
-  z-index: 1;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--border);
-}
-.timeline-step.timeline-done .timeline-dot {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.timeline-step.timeline-current .timeline-dot {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-dim);
-}
-.timeline-body strong {
-  display: block;
-  font: 600 13px var(--font-body);
-  color: var(--text-dim);
-}
-.timeline-step.timeline-done .timeline-body strong,
-.timeline-step.timeline-current .timeline-body strong {
-  color: var(--text);
-}
-.timeline-body time {
-  display: block;
-  font: 12px var(--font-mono);
-  color: var(--text-dim);
-  margin-top: 2px;
-}
-.timeline-notes {
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  color: var(--text-dim);
-}
-
-@media (max-width: 720px) {
-  .transfer-timeline {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 18px;
-  }
-  .timeline-step {
-    flex-direction: row;
-    text-align: left;
-    width: 100%;
-  }
-  .timeline-step::before {
-    top: -9px;
-    left: 6px;
-    width: 2px;
-    height: 18px;
-  }
-}
-
-/* Los dos formularios de recepción (completa/parcial) lado a lado en vez
-   de apilados — evita el scroll vertical innecesario en pantallas anchas. */
-.receive-forms-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 22px;
-}
-.receive-forms-row form {
-  flex: 1;
-  min-width: 0;
-  max-width: none;
-  margin-bottom: 0;
-}
-@media (max-width: 900px) {
-  .receive-forms-row {
-    flex-direction: column;
-  }
-}
-
-/* Input con un botón de acción incrustado en la misma casilla (ej. el ojo
-   de mostrar/ocultar contraseña), como en cualquier formulario de la web. */
-.input-with-action {
-  position: relative;
-  display: flex;
-}
-.input-with-action input {
-  padding-right: 38px;
-}
-.input-with-action .input-action {
-  position: absolute;
-  right: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  padding: 5px;
-  margin: 0;
-  color: var(--text-dim);
-  display: flex;
-}
-.input-with-action .input-action:hover {
-  color: var(--accent);
-  border: none;
-}
-
-/* Botón de alternar tema (sol/luna) */
-.theme-toggle {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  padding: 7px;
-  margin: 0;
-  border-radius: 999px;
-  display: flex;
-}
-.theme-toggle:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-/* --- Responsive --- */
-/* El riel (.app-rail y compañía) se ajusta en AppLayout.css, junto a sus
-   reglas base — así la cascada no depende del orden de import entre
-   archivos. */
-@media (max-width: 720px) {
-  main {
-    padding: 18px 16px;
-  }
-  form {
-    max-width: none;
-  }
-}
-
-/* Fila de botones de navegación tipo "acción secundaria" (ej. "+ Solicitar
-   transferencia" / "Ver histórico de ventas") — link con pinta de botón,
-   .primary usa el mismo relleno de acento que button[type=submit]. */
+/* Fila de acciones secundarias tipo enlace-con-pinta-de-botón. */
 .button-row {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 22px;
+  flex-wrap: wrap;
 }
 .button-link {
   display: inline-flex;
@@ -522,236 +329,67 @@ hr {
   color: var(--bg);
 }
 
-/* Panel de transferencias activas (Transferencias > panel): secciones por
-   estado + indicador de refresco. */
-.panel-header {
+/* Fila de acciones al pie de un formulario (enviar / cancelar). */
+.form-actions {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.panel-refresh {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font: 12.5px var(--font-mono);
-  color: var(--text-dim);
-}
-.panel-refresh button {
-  margin: 0;
-  padding: 5px 12px;
-}
-.status-section {
-  margin-bottom: 26px;
-}
-.status-section h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.status-section .count {
-  font: 600 12px var(--font-mono);
-  color: var(--text-dim);
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 9px;
-}
-
-/* Reporte de cumplimiento logístico: la gráfica y la tabla de detalle van
-   unidas en una sola tarjeta (no dos separadas) — cada una pierde su propio
-   marco/fondo y se separan con una línea divisoria en vez de un hueco. */
-.compliance-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 22px;
-  margin-bottom: 22px;
-}
-.compliance-panel .compliance-chart-wrap {
-  border: none;
-  background: none;
-  padding: 0;
-  margin-bottom: 0;
-  overflow-x: auto;
-}
-.compliance-panel table {
-  border: none;
-  border-radius: 0;
-  border-top: 1px solid var(--border);
-  margin: 20px 0 0;
-}
-
-/* Gráfica de barras agrupadas hecha a mano (sin librería), siguiendo el
-   skill dataviz: barras <=24px con esquina superior redondeada, gap de 2px
-   entre barras, gridlines recesivas, leyenda solo si hay 2+ series
-   presentes. */
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  list-style: none;
-  margin: 0 0 14px;
-  padding: 0;
-  font: 600 12.5px var(--font-body);
-  color: var(--text-dim);
-}
-.chart-legend li {
-  display: flex;
-  align-items: center;
   gap: 8px;
+  margin-top: 8px;
 }
-.legend-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex-shrink: 0;
+
+/* Formulario de operación con tabla de ítems (registrar venta / orden de
+   compra / transferencia) — ocupa todo el ancho, no el de un formulario
+   normal. */
+.op-form {
+  max-width: none;
 }
-.compliance-chart-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px 22px;
-  margin-bottom: 22px;
+/* Fila de totales al pie de esos formularios. */
+.op-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 8px 0 16px;
+  font: 13.5px var(--font-mono);
+  color: var(--text-dim);
+}
+.op-totals strong {
+  color: var(--text);
+}
+
+/* Contenedor con scroll horizontal propio para tablas anchas — evita que
+   una tabla desborde su tarjeta o la página. */
+.table-scroll {
   overflow-x: auto;
+  margin-bottom: 22px;
 }
-.compliance-chart {
-  display: block;
-  /* Tamaño natural = sus propios atributos width/height (coinciden con el
-     viewBox) — nunca se estira a lo ancho del contenedor: si lo hiciera,
-     el texto/las barras se agrandarían desproporcionadamente respecto a
-     sus unidades reales. max-width solo lo encoge si no entra, nunca lo
-     agranda; overflow-x del wrapper cubre el resto. */
-  max-width: 100%;
-}
-.chart-gridline {
-  stroke: var(--border);
-  stroke-width: 1;
-}
-.chart-baseline {
-  stroke: var(--border);
-  stroke-width: 1;
-}
-.chart-axis-label {
-  font: 11px var(--font-body);
-  fill: var(--text-dim);
-}
-.chart-bar-label {
-  font: 600 11px var(--font-mono);
-  fill: var(--text);
-}
-.chart-bar {
-  transition: opacity 0.12s;
-}
-.chart-bar-group:hover .chart-bar,
-.chart-bar-group:focus .chart-bar {
-  opacity: 0.8;
-}
-.chart-bar-group:focus {
-  outline: none;
-}
-.chart-bar-group:focus .chart-bar {
-  stroke: var(--text);
-  stroke-width: 1.5;
-}
-
-/* Panel principal (Panel > dashboard con gráficas, Recharts) — grid de
-   tarjetas, la comparativa entre sucursales ocupa todo el ancho. */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: 20px;
-  align-items: start;
-}
-/* Co-locada aquí mismo, después de la regla base — puesta antes en el
-   archivo pierde contra ella pese a la media query (misma especificidad,
-   gana la que aparece después en la cascada; ver el mismo problema ya
-   documentado en AppLayout.css/.app-rail). */
-@media (max-width: 720px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.dashboard-grid .panel-card {
+.table-scroll > table {
   margin-bottom: 0;
-  /* Los ítems de grid tienen min-width:auto por default y no se encogen
-     por debajo del ancho intrínseco de su contenido — el ResponsiveContainer
-     de Recharts fija un width en px sobre su SVG hijo, así que sin esto la
-     tarjeta se desborda de su columna en vez de dejar que el SVG se ajuste
-     al espacio real disponible. */
-  min-width: 0;
-}
-.dashboard-section-wide {
-  grid-column: 1 / -1;
-}
-.dashboard-comparison-charts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
-}
-.dashboard-comparison-charts h3 {
-  margin-bottom: 10px;
 }
 
-/* Fila de cifras clave (ej. transferencias como origen/destino) — mismo
-   contrato que un "stat tile": etiqueta en mayúsculas + valor grande. */
-.stat-row {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 18px;
-}
-.stat-tile {
-  flex: 1;
-  background: var(--surface-hover);
+/* Botón circular de ícono genérico — lo comparten el de alternar tema
+   (sol/luna) y la campana de notificaciones. */
+.icon-button {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.stat-label {
-  font: 600 11px var(--font-body);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  background: transparent;
   color: var(--text-dim);
+  padding: 7px;
+  margin: 0;
+  border-radius: 999px;
+  display: flex;
 }
-.stat-value {
-  font: 700 22px var(--font-heading);
-  color: var(--text);
+.icon-button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
-/* Tooltip propio de las gráficas del dashboard — superficie + línea de
-   color junto al valor (nunca una caja rellena, ver skill dataviz). */
-.chart-tooltip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font: 12.5px var(--font-body);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-}
-.chart-tooltip > strong {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--text);
-}
-.chart-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-.chart-tooltip-row strong {
-  color: var(--text);
-  font-family: var(--font-mono);
-}
-.chart-tooltip-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+/* --- Responsive base --- */
+/* El riel (.app-rail y compañía) se ajusta en AppLayout.css, junto a sus
+   reglas base — así la cascada no depende del orden de import entre
+   archivos. */
+@media (max-width: 720px) {
+  main {
+    padding: 18px 16px;
+  }
+  form {
+    max-width: none;
+  }
 }

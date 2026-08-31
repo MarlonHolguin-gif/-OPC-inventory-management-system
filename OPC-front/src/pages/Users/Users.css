@@ -1,0 +1,33 @@
+/* --- Estilos del módulo Usuarios --- */
+
+/* Grid de sucursales con toggle (panel "Gestionar sucursales" de un usuario). */
+.branch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.branch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: 500 15.5px var(--font-body);
+  color: var(--text);
+  cursor: pointer;
+}
+.branch-toggle:hover {
+  border-color: var(--accent);
+}
+.branch-toggle.checked {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.branch-toggle input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}

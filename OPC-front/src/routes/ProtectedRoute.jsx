@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { AuthStore } from '@/stores/AuthStore';
+import { PATHS } from '@/app/routes';
 
 /**
  * Sin `roles`: solo exige sesión activa (redirige a /login si no hay).
@@ -7,14 +8,12 @@ import { useAuth } from '../hooks/useAuth';
  * (redirige a /dashboard si no cumple — está autenticado, solo no autorizado).
  */
 export default function ProtectedRoute({ roles }) {
-  const { isAuthenticated, role } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (!AuthStore.isAuthenticated.value) {
+    return <Navigate to={PATHS.login} replace />;
   }
 
-  if (roles && !roles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (roles && !roles.includes(AuthStore.role.value)) {
+    return <Navigate to={PATHS.dashboard} replace />;
   }
 
   return <Outlet />;

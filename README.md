@@ -37,8 +37,8 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
 │       ├── main/
 │       │   ├── java/opcback/              # Código fuente, un paquete por dominio: auth, branches, products,
 │       │   │                              # inventory, purchases, sales, transfers, dashboard, security,
-│       │   │                              # config, exception (system/alerts y system/audit siguen vacíos,
-│       │   │                              # reservados para la épica de Auditoría, deliberadamente al final)
+│       │   │                              # config, exception, y system/ (alerts = notificaciones de stock/faltantes;
+│       │   │                              # audit = interceptor genérico de auditoría sobre Hibernate)
 │       │   └── resources/
 │       │       └── application.properties # Config de la app (BD, JWT, puerto — vía variables de entorno)
 │       └── test/
@@ -127,7 +127,7 @@ Estado funcional actual, backend y frontend. El detalle técnico por tabla/entid
 | Ventas | ✅ Completo | Clientes, listas de precios (con vigencia por fecha), registro de venta con validación de stock, histórico filtrable |
 | Transferencias entre sucursales | ✅ Completo | Solicitud, preparación, despacho, recepción completa/parcial con línea de tiempo visual, clasificación por prioridad de ruta y reporte de cumplimiento logístico (% a tiempo por sucursal y prioridad) |
 | Dashboard gerencial | ✅ Completo | 5 KPIs con gráficas (Recharts): ventas del mes vs. anteriores, rotación de inventario, impacto de transferencias activas, productos por reabastecer, comparativa entre sucursales (solo administrador general) |
-| Alertas y auditoría | 🟡 Frontend listo, backend en integración | En `OPC-front` ya están la campana de notificaciones (polling, marcado de leídas) y la vista de consulta de auditoría (solo administrador general, filtros y diff antes/después). El backend correspondiente (`sy_notifications`, `sy_audit_log` y el interceptor genérico de auditoría) está desarrollado pero pendiente de merge — dejado para el cierre del backlog |
+| Alertas y auditoría | ✅ Completo | Notificaciones (`sy_notifications`): cruce de umbral de stock bajo/alto en cada movimiento y faltante de transferencia por ítem, con campana en el frontend (polling, marcado de leídas). Auditoría (`sy_audit_log`): interceptor genérico sobre eventos de Hibernate que registra altas/ediciones/bajas de las entidades clave (usuarios, productos, listas de precios, órdenes de compra, transferencias) más los eventos de login, con vista de consulta filtrable y diff antes/después para el administrador general |
 
 Todos los módulos "Completo" tienen backend y frontend funcionales, verificados contra Docker/MySQL real y en navegador (no solo compilación). Único punto pendiente de diseño: la lista de precios es independiente de la sucursal (cualquier sucursal puede usar cualquier lista vigente) — ver la discusión en [`requirements/IA_EVIDENCIA.md`](requirements/IA_EVIDENCIA.md).
 

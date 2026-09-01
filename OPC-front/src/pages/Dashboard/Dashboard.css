@@ -24,9 +24,20 @@
   /* El espaciado entre cajas lo da el `gap` de la grilla, no el margen que
      .panel-card trae por defecto (si no, la separación vertical se duplica). */
   margin-bottom: 0;
+  /* Columna flex: así un hijo con `flex:1` (la gráfica que se estira) puede
+     llenar la altura que la grilla le dio al card por `align-items:stretch`. */
+  display: flex;
+  flex-direction: column;
 }
 .dashboard-kpi h2 {
   margin-bottom: 12px;
+}
+
+/* Contenedor de gráfica que ocupa toda la altura restante del card, con un
+   mínimo para que no se aplaste cuando el card es el más bajo de su fila. */
+.dashboard-chart-fill {
+  flex: 1;
+  min-height: 220px;
 }
 /* Separador sutil entre KPIs contiguos en la misma fila. */
 .dashboard-section-wide {
@@ -65,6 +76,82 @@
 }
 .stat-value {
   font: 700 22px var(--font-heading);
+  color: var(--text);
+}
+
+/* Card de rotación: toggle alta/baja demanda + rango de fechas. */
+.rotation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.rotation-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.rotation-toggle button {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding: 6px 12px;
+  font: 600 12.5px var(--font-body);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.rotation-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.rotation-toggle button.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.rotation-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font: 600 11px var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.rotation-controls input[type='date'] {
+  margin: 0;
+  padding: 5px 8px;
+  font: 12.5px var(--font-body);
+}
+.rotation-caption {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Desglose por estado de las transferencias activas (card de impacto). */
+.transfer-status-breakdown {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.transfer-status-breakdown li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font: 12.5px var(--font-body);
+  color: var(--text-dim);
+}
+.transfer-status-breakdown li strong {
+  font: 700 13px var(--font-mono);
   color: var(--text);
 }
 

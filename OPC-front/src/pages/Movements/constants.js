@@ -7,3 +7,26 @@ export const MOVEMENT_TYPES = [
   { value: 'POSITIVE_ADJUSTMENT', label: 'Ajuste positivo (ingreso)' },
   { value: 'NEGATIVE_ADJUSTMENT', label: 'Ajuste negativo (retiro)' },
 ];
+
+// Etiquetas legibles de TODOS los tipos para el historial — ahí sí aparecen
+// los movimientos generados por Compras, Ventas y Transferencias.
+export const MOVEMENT_TYPE_LABELS = {
+  PURCHASE: 'Compra (ingreso)',
+  SALE: 'Venta (retiro)',
+  RETURN: 'Devolución (ingreso)',
+  POSITIVE_ADJUSTMENT: 'Ajuste positivo (ingreso)',
+  NEGATIVE_ADJUSTMENT: 'Ajuste negativo (retiro)',
+  TRANSFER_IN: 'Transferencia recibida (ingreso)',
+  TRANSFER_OUT: 'Transferencia enviada (retiro)',
+};
+
+export function movementTypeLabel(type) {
+  return MOVEMENT_TYPE_LABELS[type] ?? type;
+}
+
+// Opciones para el filtro del historial: los 7 tipos (los del formulario y
+// los generados por Compras/Ventas/Transferencias).
+export const MOVEMENT_TYPE_FILTER_OPTIONS = Object.entries(MOVEMENT_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));

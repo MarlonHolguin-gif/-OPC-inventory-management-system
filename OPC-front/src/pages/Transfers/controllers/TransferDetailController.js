@@ -21,7 +21,9 @@ export class TransferDetailController extends Controller {
   prepareQuantities = signal({});
   receiveQuantities = signal({});
   carrier = signal('');
+  estimatedDispatchDate = signal('');
   estimatedArrivalDate = signal('');
+  routePriorityDraft = signal('');
   shortageResolution = signal('');
   shortageNotes = signal('');
   submitting = signal(false);
@@ -47,6 +49,33 @@ export class TransferDetailController extends Controller {
 
   canActOnOrigin = computed(() => this.#canWrite(this.transfer.value?.originBranchId));
   canActOnDestination = computed(() => this.#canWrite(this.transfer.value?.destinationBranchId));
+
+  // 3.5 — clasificar la ruta por prioridad: la fija la sucursal origen
+  // mientras la transferencia no haya llegado ni se haya cancelado.
+  canClassifyRoute = computed(
+    () =>
+      this.canActOnOrigin.value &&
+      !this.isTerminal.value &&
+      !this.isCancelled.value,
+  );
+
+  // 3.5 — tiempos estimados vs. reales de los dos hitos del envío.
+  deliveryMilestones = computed(() => {
+    const transfer = this.transfer.value;
+    if (!transfer) return [];
+    return [
+      {
+        milestone: 'Despacho',
+        estimated: transfer.estimatedDispatchDate,
+        actual: transfer.actualDispatchDate,
+      },
+      {
+        milestone: 'Llegada a destino',
+        estimated: transfer.estimatedArrivalDate,
+        actual: transfer.actualArrivalDate,
+      },
+    ];
+  });
 
   #canWrite(branchId) {
     if (branchId == null) return false;
@@ -81,6 +110,7 @@ export class TransferDetailController extends Controller {
     this.loadError.value = null;
     this.transfer.value = transfer;
     this.events.value = events;
+    this.routePriorityDraft.value = transfer.routePriority ?? '';
 
     // Precarga: preparar sugiere enviar lo solicitado, recibir sugiere
     // recibir lo despachado — el usuario ajusta si hay diferencias.
@@ -106,8 +136,16 @@ export class TransferDetailController extends Controller {
     this.carrier.value = value;
   };
 
+  setEstimatedDispatchDate = (value) => {
+    this.estimatedDispatchDate.value = value;
+  };
+
   setEstimatedArrivalDate = (value) => {
     this.estimatedArrivalDate.value = value;
+  };
+
+  setRoutePriorityDraft = (value) => {
+    this.routePriorityDraft.value = value;
   };
 
   setShortageResolution = (value) => {
@@ -139,9 +177,27 @@ export class TransferDetailController extends Controller {
       transferItemId: item.id,
       shippedQuantity: Number(this.prepareQuantities.value[item.id] ?? 0),
     }));
+    const payload = {
+      estimatedDispatchDate: this.estimatedDispatchDate.value || null,
+      items,
+    };
     return this.#run(
-      () => TransferService.prepare(this.transferId, items),
+      () => TransferService.prepare(this.transferId, payload),
       'Envío preparado correctamente.',
+    );
+  }
+
+  // 3.5 — clasificar la ruta por prioridad (HIGH/MEDIUM/LOW).
+  saveRoutePriority(event) {
+    event.preventDefault();
+    const routePriority = this.routePriorityDraft.value;
+    if (!routePriority) {
+      UiStore.fail('Elige una prioridad de ruta.');
+      return undefined;
+    }
+    return this.#run(
+      () => TransferService.updateRoutePriority(this.transferId, routePriority),
+      'Prioridad de ruta actualizada.',
     );
   }
 

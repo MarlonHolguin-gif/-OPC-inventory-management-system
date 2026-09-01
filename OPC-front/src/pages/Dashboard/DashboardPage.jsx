@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
         <div className="dashboard-kpi-grid">
           <SalesTrendCard salesTrend={controller.salesTrend.value} />
-          <RotationCard rotation={controller.rotation.value} />
+          <RotationCard controller={controller} />
           <TransfersImpactCard transfersImpact={controller.transfersImpact.value} />
           <LowStockCard lowStock={controller.lowStock.value} />
         </div>

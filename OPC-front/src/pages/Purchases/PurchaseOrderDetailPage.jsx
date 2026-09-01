@@ -10,8 +10,14 @@ import { purchaseOrderStatusLabel } from './constants';
 const ITEM_COLUMNS = [
   { key: 'productSku', header: 'SKU' },
   { key: 'productName', header: 'Producto' },
+  { key: 'unitAbbreviation', header: 'Unidad' },
   { key: 'quantity', header: 'Pedido', align: 'right' },
-  { key: 'unitPrice', header: 'Precio unitario', align: 'right', render: (item) => formatCurrency(item.unitPrice) },
+  {
+    key: 'unitPrice',
+    header: 'Precio por unidad',
+    align: 'right',
+    render: (item) => formatCurrency(item.unitPrice),
+  },
   {
     key: 'discountPercentage',
     header: 'Descuento',
@@ -99,7 +105,7 @@ function PurchaseOrderDetailBody({ controller, order }) {
               {controller.pendingItems.value.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    {item.productSku} — {item.productName}
+                    {item.productSku} — {item.productName} <small>({item.unitAbbreviation})</small>
                   </td>
                   <td>{pendingQuantity(item)}</td>
                   <td>

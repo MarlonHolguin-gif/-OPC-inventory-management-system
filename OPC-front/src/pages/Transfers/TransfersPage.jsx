@@ -3,10 +3,17 @@ import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
+import { SelectField } from '@/components/Field';
 import { PATHS } from '@/app/routes';
 import { TransfersController } from './TransfersController';
 import { TransferForm } from './components/TransferForm';
-import { urgencyBadgeClass, urgencyLabel } from './constants';
+import {
+  ROUTE_PRIORITY_FILTER_OPTIONS,
+  routePriorityBadgeClass,
+  routePriorityLabel,
+  urgencyBadgeClass,
+  urgencyLabel,
+} from './constants';
 import './Transfers.css';
 
 function sectionColumns(controller) {
@@ -22,6 +29,13 @@ function sectionColumns(controller) {
       key: 'urgency',
       header: 'Urgencia',
       render: (row) => <span className={urgencyBadgeClass(row.urgency)}>{urgencyLabel(row.urgency)}</span>,
+    },
+    {
+      key: 'routePriority',
+      header: 'Prioridad de ruta',
+      render: (row) => (
+        <span className={routePriorityBadgeClass(row.routePriority)}>{routePriorityLabel(row.routePriority)}</span>
+      ),
     },
     {
       key: 'requestDate',
@@ -61,6 +75,16 @@ export default function TransfersPage() {
             Ver cumplimiento logístico
           </Link>
         )}
+      </div>
+
+      <div className="transfers-filter">
+        <SelectField
+          label="Filtrar por prioridad de ruta"
+          value={controller.routePriorityFilter.value}
+          onChange={controller.setRoutePriorityFilter}
+          options={ROUTE_PRIORITY_FILTER_OPTIONS}
+          placeholder={null}
+        />
       </div>
 
       {controller.form.visible.value && (

@@ -6,7 +6,7 @@ import { UiStore } from '@/stores/UiStore';
 import { toNumber, backendError } from '@/lib/format';
 import { PurchaseService } from '../services/PurchaseService';
 
-const EMPTY_ITEM = { productId: '', quantity: '', unitPrice: '', discountPercentage: '' };
+const EMPTY_ITEM = { productId: '', unitId: '', quantity: '', unitPrice: '', discountPercentage: '' };
 
 /** Formulario de orden de compra (modal sobre el listado): alta y edición de borrador. */
 export class PurchaseOrderFormController extends Controller {
@@ -17,6 +17,8 @@ export class PurchaseOrderFormController extends Controller {
 
   suppliers = signal([]);
   products = signal([]);
+  // { [productId]: ProductUnitResponse[] } — se llena bajo demanda al elegir un producto.
+  unitsByProductId = signal({});
 
   editingId = signal(null);
   supplierId = signal('');
@@ -54,6 +56,42 @@ export class PurchaseOrderFormController extends Controller {
     return (gross * toNumber(item.discountPercentage)) / 100;
   }
 
+  // Opciones de unidad para una línea: la unidad base del producto + las
+  // unidades marcadas como "de compra".
+  unitOptionsFor(item) {
+    const product = this.products.value.find((candidate) => String(candidate.id) === String(item.productId));
+    if (!product) return [];
+    const base = { value: '', label: `${product.baseUnitAbbreviation} (unidad base)`, factor: 1 };
+    const alternatives = (this.unitsByProductId.value[product.id] ?? [])
+      .filter((unit) => unit.isPurchaseUnit)
+      .map((unit) => ({
+        value: String(unit.unitId),
+        label: `${unit.unitAbbreviation} (× ${Number(unit.conversionFactor)})`,
+        factor: Number(unit.conversionFactor),
+      }));
+    return [base, ...alternatives];
+  }
+
+  // Equivalente en unidad base de la cantidad de una línea (para el hint).
+  baseEquivalentFor(item) {
+    if (!item.unitId) return null;
+    const unit = (this.unitsByProductId.value[item.productId] ?? []).find(
+      (candidate) => String(candidate.unitId) === String(item.unitId),
+    );
+    if (!unit) return null;
+    return toNumber(item.quantity) * Number(unit.conversionFactor);
+  }
+
+  async #loadUnitsFor(productId) {
+    if (!productId || this.unitsByProductId.value[productId]) return;
+    try {
+      const units = await PurchaseService.productUnits(productId);
+      this.unitsByProductId.value = { ...this.unitsByProductId.value, [productId]: units };
+    } catch {
+      this.unitsByProductId.value = { ...this.unitsByProductId.value, [productId]: [] };
+    }
+  }
+
   openCreate = () => {
     this.#resetToBlank();
     this.visible.value = true;
@@ -69,11 +107,13 @@ export class PurchaseOrderFormController extends Controller {
     // a número para que los campos no muestren ceros de más.
     this.items.value = (order.items ?? []).map((item) => ({
       productId: String(item.productId),
+      unitId: item.unitId ? String(item.unitId) : '',
       quantity: String(Number(item.quantity)),
       unitPrice: String(Number(item.unitPrice)),
       discountPercentage: String(Number(item.discountPercentage ?? 0)),
     }));
     if (this.items.value.length === 0) this.items.value = [{ ...EMPTY_ITEM }];
+    this.items.value.forEach((item) => this.#loadUnitsFor(item.productId));
     this.visible.value = true;
     this.#ensureReferenceData();
   };
@@ -137,9 +177,15 @@ export class PurchaseOrderFormController extends Controller {
   };
 
   updateItem = (index, field, value) => {
-    this.items.value = this.items.value.map((item, i) =>
-      i === index ? { ...item, [field]: value } : item,
-    );
+    this.items.value = this.items.value.map((item, i) => {
+      if (i !== index) return item;
+      // Al cambiar de producto se resetea la unidad (las alternativas son otras).
+      if (field === 'productId') {
+        this.#loadUnitsFor(value);
+        return { ...item, productId: value, unitId: '' };
+      }
+      return { ...item, [field]: value };
+    });
   };
 
   addItem = () => {
@@ -175,6 +221,7 @@ export class PurchaseOrderFormController extends Controller {
       paymentTerms: this.paymentTerms.value || null,
       items: this.items.value.map((item) => ({
         productId: Number(item.productId),
+        unitId: item.unitId ? Number(item.unitId) : null,
         quantity: toNumber(item.quantity),
         unitPrice: toNumber(item.unitPrice),
         discountPercentage: toNumber(item.discountPercentage),

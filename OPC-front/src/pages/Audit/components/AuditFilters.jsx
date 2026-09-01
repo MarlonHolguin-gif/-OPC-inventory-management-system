@@ -1,8 +1,5 @@
 import { SelectField, TextField } from '@/components/Field';
 import { FilterBar, FilterField } from '@/components/FilterBar';
-import { AUDITED_ENTITIES } from '../constants';
-
-const ENTITY_OPTIONS = AUDITED_ENTITIES.map((entity) => ({ value: entity.value, label: entity.label }));
 
 export function AuditFilters({ controller }) {
   const filters = controller.filters.value;
@@ -11,17 +8,8 @@ export function AuditFilters({ controller }) {
   return (
     <FilterBar onSubmit={controller.applyFilters}>
       <FilterField>
-        <SelectField
-          label="Entidad"
-          value={filters.entity}
-          onChange={(value) => controller.setFilter('entity', value)}
-          options={ENTITY_OPTIONS}
-          placeholder="Todas"
-        />
-      </FilterField>
-      <FilterField>
         <TextField
-          label="ID de la entidad"
+          label="ID del producto"
           type="number"
           value={filters.entityId}
           onChange={(value) => controller.setFilter('entityId', value)}

@@ -19,6 +19,11 @@ export class SaleService {
     return HttpClient.get('/api/products/catalog').then((r) => r.data);
   }
 
+  // Unidades alternativas de un producto (para vender en cajas, etc.).
+  static productUnits(productId) {
+    return HttpClient.get(`/api/products/${productId}/units`).then((r) => r.data);
+  }
+
   static priceLists() {
     return HttpClient.get('/api/price-lists').then((r) => r.data);
   }

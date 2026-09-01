@@ -29,6 +29,8 @@ export class TransfersController extends PollingController {
   transfers = signal(null);
   lastUpdated = signal(null);
   refreshing = signal(false);
+  // '' = sin filtro; si no, HIGH/MEDIUM/LOW (clasificación de ruta, 3.5).
+  routePriorityFilter = signal('');
 
   form = new TransferFormController(this);
 
@@ -47,11 +49,16 @@ export class TransfersController extends PollingController {
     return BranchDirectoryStore.nameOf(id) ?? id;
   }
 
+  setRoutePriorityFilter = (value) => {
+    this.routePriorityFilter.value = value;
+    this.tick();
+  };
+
   async tick() {
     this.refreshing.value = true;
     try {
       const [transfers] = await Promise.all([
-        TransferService.list(),
+        TransferService.list(this.routePriorityFilter.value || undefined),
         BranchDirectoryStore.ensureLoaded(),
       ]);
       this.transfers.value = transfers;

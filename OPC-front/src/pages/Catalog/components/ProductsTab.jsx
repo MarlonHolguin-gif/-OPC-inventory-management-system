@@ -3,6 +3,7 @@ import { CrudToolbar } from '@/components/CrudToolbar';
 import { FormPanel } from '@/components/FormPanel';
 import { Modal } from '@/components/Modal';
 import { TextField, SelectField } from '@/components/Field';
+import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { ProductUnitsPanel } from './ProductUnitsPanel';
 
 const COLUMNS = [
@@ -27,6 +28,10 @@ export function ProductsTab({ controller }) {
     value: unit.id,
     label: `${unit.name} (${unit.abbreviation})`,
   }));
+  const branchOptions = BranchDirectoryStore.all.value.map((branch) => ({
+    value: branch.id,
+    label: branch.name,
+  }));
 
   return (
     <section>
@@ -42,9 +47,13 @@ export function ProductsTab({ controller }) {
             <button type="button" onClick={() => controller.productUnits.open(product)}>
               Gestionar unidades
             </button>
-            {product.active && (
+            {product.active ? (
               <button type="button" onClick={() => form.deactivate(product.id)}>
                 Desactivar
+              </button>
+            ) : (
+              <button type="button" onClick={() => form.reactivate(product.id)}>
+                Reactivar
               </button>
             )}
           </>
@@ -94,11 +103,32 @@ export function ProductsTab({ controller }) {
           <TextField
             label="Precio referencial"
             type="number"
-            step="0.01"
+            step="1"
             min="0"
             value={values.referencePrice}
             onChange={(value) => form.setField('referencePrice', value)}
           />
+
+          {!form.isEditing && (
+            <>
+              <TextField
+                label="Stock inicial (opcional)"
+                type="number"
+                step="1"
+                min="0"
+                value={values.initialStock}
+                onChange={(value) => form.setField('initialStock', value)}
+              />
+              {Number(values.initialStock) > 0 && (
+                <SelectField
+                  label="Sucursal del stock inicial"
+                  value={values.initialStockBranchId}
+                  onChange={(value) => form.setField('initialStockBranchId', value)}
+                  options={branchOptions}
+                />
+              )}
+            </>
+          )}
           </FormPanel>
         </Modal>
       )}

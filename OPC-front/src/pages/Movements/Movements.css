@@ -1,0 +1,8 @@
+/* --- Estilos del módulo Movimientos --- */
+
+/* Nota de alcance del historial (todas las sucursales / solo las asignadas). */
+.movement-history-scope {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+}

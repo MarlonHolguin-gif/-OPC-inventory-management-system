@@ -1,5 +1,6 @@
 import { FormController } from '@/lib/FormController';
 import { UiStore } from '@/stores/UiStore';
+import { backendError } from '@/lib/format';
 import { CategoryService } from '../services/CategoryService';
 
 const EMPTY = { name: '', description: '' };
@@ -37,11 +38,25 @@ export class CategoryFormController extends FormController {
   }
 
   async deactivate(id) {
+    UiStore.clear();
     try {
       await CategoryService.deactivate(id);
       await this.catalog.loadAll();
-    } catch {
-      UiStore.fail('No se pudo desactivar la categoría.');
+      UiStore.notify('Categoría desactivada.');
+    } catch (error) {
+      // El backend explica el motivo (ej. tiene productos activos) — se muestra tal cual.
+      UiStore.fail(backendError(error, 'No se pudo desactivar la categoría.'));
+    }
+  }
+
+  async reactivate(id) {
+    UiStore.clear();
+    try {
+      await CategoryService.reactivate(id);
+      await this.catalog.loadAll();
+      UiStore.notify('Categoría reactivada.');
+    } catch (error) {
+      UiStore.fail(backendError(error, 'No se pudo reactivar la categoría.'));
     }
   }
 }

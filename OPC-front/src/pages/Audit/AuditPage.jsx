@@ -4,7 +4,7 @@ import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { AuditController } from './AuditController';
 import { AuditFilters } from './components/AuditFilters';
 import { AuditDiff } from './components/AuditDiff';
-import { auditActionBadgeClass, auditActionLabel, auditEntityLabel } from './constants';
+import { auditActionBadgeClass, auditActionLabel } from './constants';
 import './Audit.css';
 
 function formatDateTime(value) {
@@ -19,8 +19,8 @@ export default function AuditPage() {
 
   return (
     <main>
-      <h1>Auditoría</h1>
-      <p>Registro de altas, modificaciones y bajas de las entidades clave, y de los inicios de sesión.</p>
+      <h1>Auditoría de productos</h1>
+      <p>Registro de cada alta, modificación y baja del catálogo de productos: quién lo hizo, cuándo y qué cambió.</p>
 
       <AuditFilters controller={controller} />
 
@@ -33,8 +33,7 @@ export default function AuditPage() {
               <thead>
                 <tr>
                   <th>Fecha</th>
-                  <th>Entidad</th>
-                  <th>ID</th>
+                  <th>ID del producto</th>
                   <th>Acción</th>
                   <th>Responsable</th>
                   <th aria-label="Detalle" />
@@ -47,7 +46,6 @@ export default function AuditPage() {
                     <Fragment key={row.id}>
                       <tr>
                         <td>{formatDateTime(row.eventDate)}</td>
-                        <td>{auditEntityLabel(row.entity)}</td>
                         <td>{row.entityId}</td>
                         <td>
                           <span className={auditActionBadgeClass(row.action)}>
@@ -67,12 +65,8 @@ export default function AuditPage() {
                       </tr>
                       {isExpanded && (
                         <tr className="audit-detail-row">
-                          <td colSpan={6}>
-                            <AuditDiff
-                              action={row.action}
-                              oldValues={row.oldValues}
-                              newValues={row.newValues}
-                            />
+                          <td colSpan={5}>
+                            <AuditDiff oldValues={row.oldValues} newValues={row.newValues} />
                           </td>
                         </tr>
                       )}

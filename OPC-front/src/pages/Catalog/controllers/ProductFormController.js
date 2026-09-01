@@ -1,5 +1,6 @@
 import { FormController } from '@/lib/FormController';
 import { UiStore } from '@/stores/UiStore';
+import { backendError } from '@/lib/format';
 import { ProductService } from '../services/ProductService';
 
 const EMPTY = {
@@ -9,6 +10,9 @@ const EMPTY = {
   categoryId: '',
   baseUnitId: '',
   referencePrice: '',
+  // Solo se usan al crear: cargan stock inicial vía un ajuste positivo.
+  initialStock: '',
+  initialStockBranchId: '',
 };
 
 export class ProductFormController extends FormController {
@@ -30,7 +34,8 @@ export class ProductFormController extends FormController {
 
   async submit(event) {
     event.preventDefault();
-    const { sku, name, description, categoryId, baseUnitId, referencePrice } = this.form.value;
+    const { sku, name, description, categoryId, baseUnitId, referencePrice, initialStock, initialStockBranchId } =
+      this.form.value;
     const payload = {
       name,
       description: description || null,
@@ -43,7 +48,12 @@ export class ProductFormController extends FormController {
       () =>
         this.isEditing
           ? ProductService.update(this.editingId.value, payload)
-          : ProductService.create({ ...payload, sku }),
+          : ProductService.create({
+              ...payload,
+              sku,
+              initialStock: initialStock ? Number(initialStock) : null,
+              initialStockBranchId: initialStockBranchId ? Number(initialStockBranchId) : null,
+            }),
       'No se pudo guardar el producto.',
     );
 
@@ -54,11 +64,25 @@ export class ProductFormController extends FormController {
   }
 
   async deactivate(id) {
+    UiStore.clear();
     try {
       await ProductService.deactivate(id);
       await this.catalog.loadAll();
-    } catch {
-      UiStore.fail('No se pudo desactivar el producto.');
+      UiStore.notify('Producto desactivado.');
+    } catch (error) {
+      UiStore.fail(backendError(error, 'No se pudo desactivar el producto.'));
+    }
+  }
+
+  async reactivate(id) {
+    UiStore.clear();
+    try {
+      await ProductService.reactivate(id);
+      await this.catalog.loadAll();
+      UiStore.notify('Producto reactivado.');
+    } catch (error) {
+      // El backend explica el motivo (ej. su categoría está inactiva) — se muestra tal cual.
+      UiStore.fail(backendError(error, 'No se pudo reactivar el producto.'));
     }
   }
 }

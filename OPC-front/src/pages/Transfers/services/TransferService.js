@@ -1,8 +1,10 @@
 import { HttpClient } from '@/services/http/HttpClient';
 
 export class TransferService {
-  static list() {
-    return HttpClient.get('/api/transfers').then((r) => r.data);
+  // routePriority opcional: filtra el listado por prioridad de ruta (3.5).
+  static list(routePriority) {
+    const params = routePriority ? { routePriority } : {};
+    return HttpClient.get('/api/transfers', { params }).then((r) => r.data);
   }
 
   static get(id) {
@@ -17,8 +19,13 @@ export class TransferService {
     return HttpClient.post('/api/transfers', payload).then((r) => r.data);
   }
 
-  static prepare(id, items) {
-    return HttpClient.post(`/api/transfers/${id}/prepare`, { items });
+  static prepare(id, payload) {
+    return HttpClient.post(`/api/transfers/${id}/prepare`, payload);
+  }
+
+  // Clasifica la ruta de la transferencia por prioridad (HIGH/MEDIUM/LOW).
+  static updateRoutePriority(id, routePriority) {
+    return HttpClient.patch(`/api/transfers/${id}/route-priority`, { routePriority }).then((r) => r.data);
   }
 
   static dispatch(id, payload) {

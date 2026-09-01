@@ -29,3 +29,17 @@ export function monthLabel(month) {
 export function horizontalBarHeight(count) {
   return Math.max(160, count * 38 + 40);
 }
+
+// Etiquetas de los estados "activos" de una transferencia (los que puede
+// devolver el desglose de "Transferencias activas y su impacto" — nunca
+// FULLY_RECEIVED ni CANCELLED, que el backend excluye).
+const ACTIVE_TRANSFER_STATUS_LABELS = {
+  REQUESTED: 'Solicitada',
+  IN_PREPARATION: 'En preparación',
+  IN_TRANSIT: 'En tránsito',
+  PARTIALLY_RECEIVED: 'Recibida parcial',
+};
+
+export function transferStatusLabel(status) {
+  return ACTIVE_TRANSFER_STATUS_LABELS[status] ?? status;
+}

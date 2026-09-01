@@ -16,4 +16,8 @@ export class ProductService {
   static deactivate(id) {
     return HttpClient.patch(`/api/products/${id}/deactivate`);
   }
+
+  static reactivate(id) {
+    return HttpClient.patch(`/api/products/${id}/reactivate`);
+  }
 }

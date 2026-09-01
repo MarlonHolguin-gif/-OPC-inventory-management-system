@@ -126,6 +126,34 @@
   margin-top: 0;
 }
 
+/* 3.5 — clasificación de ruta por prioridad (detalle): selector + botón en
+   una fila. */
+.route-classification {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  max-width: none;
+}
+.route-classification button {
+  margin: 0;
+}
+
+/* 3.5 — tabla de tiempos estimados vs. reales (detalle). */
+.delivery-times {
+  margin: 0 0 22px;
+}
+.delivery-times h2 {
+  margin-bottom: 10px;
+}
+
+/* Filtro por prioridad de ruta del listado de transferencias. */
+.transfers-filter {
+  max-width: 320px;
+  margin-bottom: 18px;
+}
+
 /* Panel de transferencias activas: secciones por estado + indicador de
    refresco. */
 .panel-header {

@@ -1,7 +1,17 @@
 /**
- * Tabla editable de ítems de una orden de compra: producto, cantidad, precio
- * unitario, porcentaje de descuento y subtotal en vivo.
+ * Tabla editable de ítems de una orden de compra: producto, unidad de compra,
+ * cantidad, precio por unidad, porcentaje de descuento y subtotal en vivo.
  */
+// Equivalente en unidad base bajo la casilla de cantidad — bloque propio para
+// no ensanchar ni empujar el input.
+const UNIT_HINT_STYLE = {
+  marginTop: 2,
+  fontSize: 11,
+  fontFamily: 'var(--font-mono)',
+  color: 'var(--text-dim)',
+  whiteSpace: 'nowrap',
+};
+
 export function PurchaseItemsTable({ controller }) {
   const items = controller.items.value;
   const products = controller.products.value;
@@ -12,8 +22,9 @@ export function PurchaseItemsTable({ controller }) {
       <thead>
         <tr>
           <th>Producto</th>
+          <th>Unidad de compra</th>
           <th>Cantidad</th>
-          <th>Precio unitario</th>
+          <th>Precio (por unidad de compra)</th>
           <th>Descuento (%)</th>
           <th>Subtotal</th>
           <th aria-label="Acciones" />
@@ -36,6 +47,19 @@ export function PurchaseItemsTable({ controller }) {
               </select>
             </td>
             <td>
+              <select
+                value={item.unitId}
+                onChange={(event) => controller.updateItem(index, 'unitId', event.target.value)}
+                disabled={!item.productId}
+              >
+                {controller.unitOptionsFor(item).map((option) => (
+                  <option key={option.value || 'base'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </td>
+            <td>
               <input
                 type="number"
                 step="1"
@@ -43,6 +67,9 @@ export function PurchaseItemsTable({ controller }) {
                 value={item.quantity}
                 onChange={(event) => controller.updateItem(index, 'quantity', event.target.value)}
               />
+              {controller.baseEquivalentFor(item) ? (
+                <div style={UNIT_HINT_STYLE}>= {controller.baseEquivalentFor(item)} en unidad base</div>
+              ) : null}
             </td>
             <td>
               <input

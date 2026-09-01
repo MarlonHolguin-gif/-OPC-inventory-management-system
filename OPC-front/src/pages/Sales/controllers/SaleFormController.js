@@ -6,7 +6,7 @@ import { UiStore } from '@/stores/UiStore';
 import { toNumber, isCurrentlyValid, backendError } from '@/lib/format';
 import { SaleService } from '../services/SaleService';
 
-const EMPTY_ITEM = { productId: '', quantity: '', discountPct: '' };
+const EMPTY_ITEM = { productId: '', unitId: '', quantity: '', discountPct: '' };
 
 /**
  * Formulario de registro de venta: sucursal + lista de precios vigente +
@@ -23,6 +23,8 @@ export class SaleFormController extends Controller {
   priceLists = signal([]); // solo las vigentes
   customers = signal([]);
   inventoryByProductId = signal({});
+  // { [productId]: ProductUnitResponse[] } — se llena al elegir un producto.
+  unitsByProductId = signal({});
 
   branchId = signal('');
   priceListId = signal('');
@@ -53,28 +55,71 @@ export class SaleFormController extends Controller {
   lineDetails = computed(() =>
     this.items.value.map((item) => {
       const productId = Number(item.productId);
-      const unitPrice = this.priceByProductId.value[productId];
+      const listPrice = this.priceByProductId.value[productId];
+      const factor = this.#factorFor(item);
+      const hasPrice = listPrice !== undefined;
+      // El precio de la lista es por unidad base; si se vende en una unidad
+      // mayor (caja), el precio de la línea es precio_base * factor.
+      const unitPrice = hasPrice ? listPrice * factor : undefined;
       const quantity = toNumber(item.quantity);
       const discountPct = toNumber(item.discountPct);
-      const hasPrice = unitPrice !== undefined;
       const gross = hasPrice ? quantity * unitPrice : 0;
       return {
         unitPrice,
         hasPrice,
+        baseQuantity: quantity * factor,
         subtotal: gross - (gross * discountPct) / 100,
         availableStock: this.inventoryByProductId.value[productId],
       };
     }),
   );
 
-  // ¿Alguna línea pide más unidades de las que hay en stock en la sucursal?
+  // ¿Alguna línea pide más unidades (en unidad base) de las que hay en stock?
   // El backend igual lo rechaza, pero esto evita siquiera intentar confirmar.
   hasStockShortage = computed(() =>
     this.items.value.some((item, index) => {
-      const available = this.lineDetails.value[index]?.availableStock;
-      return available !== undefined && toNumber(item.quantity) > Number(available);
+      const detail = this.lineDetails.value[index];
+      return detail?.availableStock !== undefined && detail.baseQuantity > Number(detail.availableStock);
     }),
   );
+
+  // Factor de conversión a unidad base de una línea (1 = unidad base).
+  #factorFor(item) {
+    if (!item.unitId) return 1;
+    const unit = (this.unitsByProductId.value[item.productId] ?? []).find(
+      (candidate) => String(candidate.unitId) === String(item.unitId),
+    );
+    return unit ? Number(unit.conversionFactor) : 1;
+  }
+
+  // Opciones de unidad de una línea: unidad base + unidades marcadas de venta.
+  unitOptionsFor(item) {
+    const product = this.products.value.find((candidate) => String(candidate.id) === String(item.productId));
+    if (!product) return [];
+    const base = { value: '', label: `${product.baseUnitAbbreviation} (unidad base)` };
+    const alternatives = (this.unitsByProductId.value[product.id] ?? [])
+      .filter((unit) => unit.isSaleUnit)
+      .map((unit) => ({
+        value: String(unit.unitId),
+        label: `${unit.unitAbbreviation} (× ${Number(unit.conversionFactor)})`,
+      }));
+    return [base, ...alternatives];
+  }
+
+  baseEquivalentFor(item) {
+    if (!item.unitId) return null;
+    return toNumber(item.quantity) * this.#factorFor(item);
+  }
+
+  async #loadUnitsFor(productId) {
+    if (!productId || this.unitsByProductId.value[productId]) return;
+    try {
+      const units = await SaleService.productUnits(productId);
+      this.unitsByProductId.value = { ...this.unitsByProductId.value, [productId]: units };
+    } catch {
+      this.unitsByProductId.value = { ...this.unitsByProductId.value, [productId]: [] };
+    }
+  }
 
   totals = computed(() => {
     const details = this.lineDetails.value;
@@ -152,9 +197,14 @@ export class SaleFormController extends Controller {
   };
 
   updateItem = (index, field, value) => {
-    this.items.value = this.items.value.map((item, i) =>
-      i === index ? { ...item, [field]: value } : item,
-    );
+    this.items.value = this.items.value.map((item, i) => {
+      if (i !== index) return item;
+      if (field === 'productId') {
+        this.#loadUnitsFor(value);
+        return { ...item, productId: value, unitId: '' };
+      }
+      return { ...item, [field]: value };
+    });
   };
 
   addItem = () => {
@@ -202,6 +252,7 @@ export class SaleFormController extends Controller {
         customerId: this.customerId.value ? Number(this.customerId.value) : null,
         items: this.items.value.map((item) => ({
           productId: Number(item.productId),
+          unitId: item.unitId ? Number(item.unitId) : null,
           quantity: toNumber(item.quantity),
           discountPct: item.discountPct ? toNumber(item.discountPct) : null,
         })),

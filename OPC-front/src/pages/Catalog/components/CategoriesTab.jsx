@@ -25,9 +25,13 @@ export function CategoriesTab({ controller }) {
             <button type="button" onClick={() => form.startEdit(category)}>
               Editar
             </button>
-            {category.active && (
+            {category.active ? (
               <button type="button" onClick={() => form.deactivate(category.id)}>
                 Desactivar
+              </button>
+            ) : (
+              <button type="button" onClick={() => form.reactivate(category.id)}>
+                Reactivar
               </button>
             )}
           </>

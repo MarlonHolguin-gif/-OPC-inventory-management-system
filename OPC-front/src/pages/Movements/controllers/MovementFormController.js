@@ -4,10 +4,21 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { backendError } from '@/lib/format';
-import { MovementService } from './services/MovementService';
-import { MOVEMENT_TYPES } from './constants';
+import { MovementService } from '../services/MovementService';
+import { MOVEMENT_TYPES } from '../constants';
 
+/**
+ * Formulario de registro de un movimiento manual (devolución / ajuste), en
+ * modal sobre la página de Movimientos. Carga perezosa al abrir; tras un
+ * registro exitoso cierra y le pide al controller padre que recargue el
+ * historial.
+ */
 export class MovementFormController extends Controller {
+  constructor(parent) {
+    super();
+    this.parent = parent;
+  }
+
   products = signal([]);
   branchId = signal('');
   productId = signal('');
@@ -15,8 +26,11 @@ export class MovementFormController extends Controller {
   quantity = signal('');
   reason = signal('');
   fieldErrors = signal({});
-  submitting = signal(false);
+
+  visible = signal(false);
   loading = signal(true);
+  submitting = signal(false);
+  #loaded = false;
 
   availableBranches = computed(() => {
     const own = AuthStore.branches.value;
@@ -24,7 +38,19 @@ export class MovementFormController extends Controller {
     return Array.isArray(own) ? all.filter((branch) => own.includes(branch.id)) : all;
   });
 
-  async onMount() {
+  open = () => {
+    this.visible.value = true;
+    if (!this.#loaded) {
+      this.#loaded = true;
+      this.#load();
+    }
+  };
+
+  close = () => {
+    this.visible.value = false;
+  };
+
+  async #load() {
     if (!AuthStore.branches.value) await AuthStore.loadProfile();
     await BranchDirectoryStore.ensureLoaded();
     try {
@@ -91,6 +117,9 @@ export class MovementFormController extends Controller {
       UiStore.notify('Movimiento registrado correctamente.');
       this.quantity.value = '';
       this.reason.value = '';
+      this.fieldErrors.value = {};
+      this.close();
+      await this.parent.refresh();
     } catch (error) {
       UiStore.fail(backendError(error, 'No se pudo registrar el movimiento.'));
     } finally {

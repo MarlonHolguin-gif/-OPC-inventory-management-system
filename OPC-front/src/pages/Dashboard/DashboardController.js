@@ -9,7 +9,8 @@ import { DashboardService } from './services/DashboardService';
 /**
  * Panel gerencial: 4 KPIs por sucursal (tendencia de ventas, rotación,
  * impacto de transferencias activas, stock bajo) + comparativa entre
- * sucursales (solo admin).
+ * sucursales (solo admin). La rotación tiene sus propios filtros (alta/baja
+ * demanda y rango de fechas) que recargan solo ese card.
  */
 export class DashboardController extends Controller {
   branchId = signal('');
@@ -19,6 +20,11 @@ export class DashboardController extends Controller {
   lowStock = signal(null);
   comparison = signal(null);
   loading = signal(true);
+
+  // Filtros propios del card de rotación.
+  rotationOrder = signal('DESC'); // 'DESC' = alta demanda, 'ASC' = baja demanda
+  rotationFrom = signal('');
+  rotationTo = signal('');
 
   isAdmin = computed(() => AuthStore.role.value === GENERAL_ADMIN);
 
@@ -46,20 +52,48 @@ export class DashboardController extends Controller {
     const branchId = this.branchId.value;
     if (!branchId) return;
     try {
-      const [salesTrend, rotation, transfersImpact, lowStock] = await Promise.all([
+      const [salesTrend, transfersImpact, lowStock] = await Promise.all([
         DashboardService.salesTrend(branchId),
-        DashboardService.inventoryRotation(branchId),
         DashboardService.activeTransfersImpact(branchId),
         DashboardService.lowStock(branchId),
       ]);
       this.salesTrend.value = salesTrend;
-      this.rotation.value = rotation;
       this.transfersImpact.value = transfersImpact;
       this.lowStock.value = lowStock;
     } catch {
       UiStore.fail('No se pudo cargar el panel de esta sucursal.');
     }
+    this.loadRotation();
   }
+
+  async loadRotation() {
+    const branchId = this.branchId.value;
+    if (!branchId) return;
+    try {
+      this.rotation.value = await DashboardService.inventoryRotation(branchId, {
+        order: this.rotationOrder.value,
+        from: this.rotationFrom.value ? `${this.rotationFrom.value}T00:00:00` : undefined,
+        to: this.rotationTo.value ? `${this.rotationTo.value}T23:59:59` : undefined,
+      });
+    } catch {
+      UiStore.fail('No se pudo cargar la rotación de inventario.');
+    }
+  }
+
+  setRotationOrder = (value) => {
+    this.rotationOrder.value = value;
+    this.loadRotation();
+  };
+
+  setRotationFrom = (value) => {
+    this.rotationFrom.value = value;
+    this.loadRotation();
+  };
+
+  setRotationTo = (value) => {
+    this.rotationTo.value = value;
+    this.loadRotation();
+  };
 
   async loadComparison() {
     try {

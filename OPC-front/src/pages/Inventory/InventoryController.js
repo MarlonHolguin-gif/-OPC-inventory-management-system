@@ -4,10 +4,12 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { InventoryService } from './services/InventoryService';
+import { InventoryThresholdController } from './controllers/InventoryThresholdController';
 
 /**
- * Vista de inventario por sucursal: catálogo completo con stock actual y
- * estado de alerta de la sucursal elegida. Solo lectura.
+ * Vista de inventario por sucursal: catálogo completo con stock actual,
+ * umbrales y estado de alerta de la sucursal elegida. La configuración de
+ * umbrales (mínimo/máximo) va en un sub-controller de formulario.
  */
 export class InventoryController extends Controller {
   products = signal([]);
@@ -16,7 +18,17 @@ export class InventoryController extends Controller {
   search = signal('');
   loading = signal(true);
 
+  threshold = new InventoryThresholdController(this);
+
   allBranches = computed(() => BranchDirectoryStore.all.value);
+
+  // ¿El usuario puede editar los umbrales de la sucursal seleccionada?
+  // (admin = todas; el resto solo las asignadas). El backend igual lo valida.
+  canEditSelectedBranch = computed(() => {
+    const own = AuthStore.branches.value;
+    if (!Array.isArray(own)) return true;
+    return own.includes(Number(this.selectedBranchId.value));
+  });
 
   inventoryByProductId = computed(() =>
     Object.fromEntries(this.inventory.value.map((item) => [item.productId, item])),

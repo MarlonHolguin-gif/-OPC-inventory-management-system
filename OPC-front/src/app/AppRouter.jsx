@@ -5,7 +5,7 @@ import { ADMIN_ROLES, PATHS } from '@/app/routes';
 import LoginPage from '@/pages/Login/LoginPage';
 import DashboardPage from '@/pages/Dashboard/DashboardPage';
 import InventoryPage from '@/pages/Inventory/InventoryPage';
-import MovementFormPage from '@/pages/Movements/MovementFormPage';
+import MovementsPage from '@/pages/Movements/MovementsPage';
 import PurchasesPage from '@/pages/Purchases/PurchasesPage';
 import PurchaseOrderDetailPage from '@/pages/Purchases/PurchaseOrderDetailPage';
 import TransfersPage from '@/pages/Transfers/TransfersPage';
@@ -30,7 +30,7 @@ export default function AppRouter() {
         <Route element={<AppLayout />}>
           <Route path={PATHS.dashboard} element={<DashboardPage />} />
           <Route path={PATHS.inventory} element={<InventoryPage />} />
-          <Route path={PATHS.movements} element={<MovementFormPage />} />
+          <Route path={PATHS.movements} element={<MovementsPage />} />
           <Route path={PATHS.purchases} element={<PurchasesPage />} />
           <Route path={PATHS.purchaseDetail} element={<PurchaseOrderDetailPage />} />
           <Route path={PATHS.sales} element={<SalesPage />} />

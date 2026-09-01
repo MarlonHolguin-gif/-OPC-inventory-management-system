@@ -27,6 +27,20 @@ export const ROUTE_PRIORITY_LABELS = {
   HIGH: 'Alta',
 };
 
+// Opciones para el selector de prioridad de ruta (en el orden natural
+// Alta → Media → Baja, no el alfabético del objeto de arriba).
+export const ROUTE_PRIORITY_OPTIONS = [
+  { value: 'HIGH', label: 'Alta' },
+  { value: 'MEDIUM', label: 'Media' },
+  { value: 'LOW', label: 'Baja' },
+];
+
+// Filtro del listado: agrega la opción "todas" al principio.
+export const ROUTE_PRIORITY_FILTER_OPTIONS = [
+  { value: '', label: 'Todas las prioridades' },
+  ...ROUTE_PRIORITY_OPTIONS,
+];
+
 // Tratamiento del faltante de una recepción parcial (ShortageResolution).
 export const SHORTAGE_RESOLUTION_LABELS = {
   RESHIPMENT: 'Reenvío',
@@ -48,6 +62,23 @@ export function urgencyLabel(urgency) {
 
 export function routePriorityLabel(routePriority) {
   return ROUTE_PRIORITY_LABELS[routePriority] ?? routePriority;
+}
+
+export function routePriorityBadgeClass(routePriority) {
+  if (routePriority === 'HIGH') return 'badge badge-warn';
+  if (routePriority === 'LOW') return 'badge';
+  return 'badge';
+}
+
+// Desviación entre una fecha estimada y la real, en días redondeados.
+// Devuelve un texto legible ("A tiempo", "2 días de atraso", …) o '—'
+// cuando falta alguno de los dos datos.
+export function deliveryDeviationLabel(estimated, actual) {
+  if (!estimated || !actual) return '—';
+  const days = Math.round((new Date(actual) - new Date(estimated)) / 86400000);
+  if (days > 0) return `${days} ${days === 1 ? 'día' : 'días'} de atraso`;
+  if (days < 0) return `${-days} ${days === -1 ? 'día' : 'días'} de adelanto`;
+  return 'A tiempo';
 }
 
 export function statusBadgeClass(status) {

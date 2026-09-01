@@ -6,7 +6,11 @@ import { TextField, SelectField } from '@/components/Field';
 import { TransferDetailController } from './controllers/TransferDetailController';
 import { TransferTimeline } from './components/TransferTimeline';
 import {
+  ROUTE_PRIORITY_OPTIONS,
   SHORTAGE_RESOLUTION_LABELS,
+  deliveryDeviationLabel,
+  routePriorityBadgeClass,
+  routePriorityLabel,
   shortageResolutionLabel,
   statusBadgeClass,
   transferStatusLabel,
@@ -68,16 +72,22 @@ function TransferDetailBody({ controller, transfer }) {
       <h1>Transferencia {transfer.transferNumber}</h1>
       <p>
         <span className={statusBadgeClass(transfer.status)}>{transferStatusLabel(transfer.status)}</span>{' '}
-        <span className={urgencyBadgeClass(transfer.urgency)}>Urgencia: {urgencyLabel(transfer.urgency)}</span>
+        <span className={urgencyBadgeClass(transfer.urgency)}>Urgencia: {urgencyLabel(transfer.urgency)}</span>{' '}
+        <span className={routePriorityBadgeClass(transfer.routePriority)}>
+          Prioridad de ruta: {routePriorityLabel(transfer.routePriority)}
+        </span>
       </p>
       <p>
         Origen: <strong>{controller.branchName(transfer.originBranchId)}</strong> → Destino:{' '}
         <strong>{controller.branchName(transfer.destinationBranchId)}</strong>
       </p>
       {transfer.carrier && <p>Transportista: {transfer.carrier}</p>}
-      {transfer.estimatedArrivalDate && (
-        <p>Llegada estimada: {formatDateTime(transfer.estimatedArrivalDate)}</p>
+
+      {controller.canClassifyRoute.value && (
+        <RouteClassificationForm controller={controller} submitting={submitting} />
       )}
+
+      <DeliveryTimesTable milestones={controller.deliveryMilestones.value} />
 
       {controller.isCancelled.value ? (
         <p className="badge badge-bad">Esta transferencia fue cancelada.</p>
@@ -124,6 +134,12 @@ function TransferDetailBody({ controller, transfer }) {
               ))}
             </tbody>
           </table>
+          <TextField
+            label="Fecha estimada de despacho (opcional)"
+            type="datetime-local"
+            value={controller.estimatedDispatchDate.value}
+            onChange={controller.setEstimatedDispatchDate}
+          />
           <button type="submit" disabled={submitting}>
             {submitting ? 'Guardando…' : 'Confirmar preparación'}
           </button>
@@ -206,6 +222,55 @@ function TransferDetailBody({ controller, transfer }) {
         <p>Esta transferencia ya fue recibida por completo — no admite más acciones.</p>
       )}
     </>
+  );
+}
+
+// 3.5 — la sucursal origen clasifica la ruta por prioridad mientras la
+// transferencia siga viva.
+function RouteClassificationForm({ controller, submitting }) {
+  return (
+    <form className="route-classification" onSubmit={(event) => controller.saveRoutePriority(event)} noValidate>
+      <SelectField
+        label="Clasificar ruta por prioridad"
+        value={controller.routePriorityDraft.value}
+        onChange={controller.setRoutePriorityDraft}
+        options={ROUTE_PRIORITY_OPTIONS}
+        placeholder="— elegir —"
+      />
+      <button type="submit" disabled={submitting}>
+        {submitting ? 'Guardando…' : 'Guardar prioridad'}
+      </button>
+    </form>
+  );
+}
+
+// 3.5 — tiempos estimados vs. reales de cada hito del envío, con la
+// desviación en días.
+function DeliveryTimesTable({ milestones }) {
+  return (
+    <div className="delivery-times">
+      <h2>Tiempos de envío (estimado vs. real)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Hito</th>
+            <th>Estimado</th>
+            <th>Real</th>
+            <th>Desviación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {milestones.map((row) => (
+            <tr key={row.milestone}>
+              <td>{row.milestone}</td>
+              <td>{formatDateTime(row.estimated) ?? '—'}</td>
+              <td>{formatDateTime(row.actual) ?? '—'}</td>
+              <td>{deliveryDeviationLabel(row.estimated, row.actual)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

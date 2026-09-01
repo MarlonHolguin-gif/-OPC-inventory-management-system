@@ -16,4 +16,8 @@ export class CategoryService {
   static deactivate(id) {
     return HttpClient.patch(`/api/categories/${id}/deactivate`);
   }
+
+  static reactivate(id) {
+    return HttpClient.patch(`/api/categories/${id}/reactivate`);
+  }
 }

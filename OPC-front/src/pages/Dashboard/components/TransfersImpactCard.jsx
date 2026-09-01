@@ -1,7 +1,16 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardCard } from './DashboardCard';
 import { ChartTooltip } from './ChartTooltip';
-import { SERIES_1, SERIES_2, GRID, TEXT_DIM, axisTickStyle, formatNumber, horizontalBarHeight } from '../constants';
+import {
+  SERIES_1,
+  SERIES_2,
+  GRID,
+  TEXT_DIM,
+  axisTickStyle,
+  formatNumber,
+  horizontalBarHeight,
+  transferStatusLabel,
+} from '../constants';
 
 export function TransfersImpactCard({ transfersImpact }) {
   return (
@@ -18,6 +27,18 @@ export function TransfersImpactCard({ transfersImpact }) {
               <span className="stat-value">{transfersImpact.activeTransfersAsDestination}</span>
             </div>
           </div>
+
+          {transfersImpact.statusBreakdown.length > 0 && (
+            <ul className="transfer-status-breakdown">
+              {transfersImpact.statusBreakdown.map((entry) => (
+                <li key={entry.status}>
+                  <span>{transferStatusLabel(entry.status)}</span>
+                  <strong>{entry.count}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {transfersImpact.byProduct.length === 0 ? (
             <p>No hay transferencias activas que involucren esta sucursal.</p>
           ) : (

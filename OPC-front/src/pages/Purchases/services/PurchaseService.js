@@ -41,4 +41,9 @@ export class PurchaseService {
   static productCatalog() {
     return HttpClient.get('/api/products/catalog').then((r) => r.data);
   }
+
+  // Unidades alternativas de un producto (para comprar en cajas, etc.).
+  static productUnits(productId) {
+    return HttpClient.get(`/api/products/${productId}/units`).then((r) => r.data);
+  }
 }

@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
 import { UiStore } from '@/stores/UiStore';
+import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { CategoryService } from './services/CategoryService';
 import { UnitService } from './services/UnitService';
 import { ProductService } from './services/ProductService';
@@ -48,6 +49,7 @@ export class CatalogController extends Controller {
         CategoryService.list(),
         UnitService.list(),
         ProductService.list(),
+        BranchDirectoryStore.ensureLoaded(), // sucursales para el "stock inicial"
       ]);
       this.categories.value = categories;
       this.units.value = units;

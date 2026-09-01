@@ -4,7 +4,7 @@ import { UiStore } from '@/stores/UiStore';
 import { AuditService } from './services/AuditService';
 
 const PAGE_SIZE = 20;
-const EMPTY_FILTERS = { entity: '', entityId: '', userId: '', from: '', to: '' };
+const EMPTY_FILTERS = { entityId: '', userId: '', from: '', to: '' };
 
 /**
  * Vista de consulta de auditoría (solo ADMIN_GENERAL). Filtros +
@@ -60,7 +60,6 @@ export class AuditController extends Controller {
   #buildParams(pageNumber) {
     const f = this.filters.value;
     const params = { page: pageNumber, size: PAGE_SIZE };
-    if (f.entity) params.entity = f.entity;
     if (f.entityId) params.entityId = f.entityId;
     if (f.userId) params.userId = f.userId;
     if (f.from) params.from = `${f.from}T00:00:00`;

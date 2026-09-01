@@ -8,25 +8,29 @@ export function SalesTrendCard({ salesTrend }) {
 
   return (
     <DashboardCard title="Ventas: mes en curso vs. anteriores" loading={!salesTrend} bare>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data}>
-          <CartesianGrid stroke={GRID} vertical={false} />
-          <XAxis dataKey="label" tick={axisTickStyle} axisLine={{ stroke: GRID }} tickLine={false} />
-          <YAxis
-            tick={axisTickStyle}
-            axisLine={false}
-            tickLine={false}
-            width={64}
-            tickFormatter={formatNumber}
-          />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
-          <Bar dataKey="total" name="Ventas" radius={[4, 4, 0, 0]} maxBarSize={56}>
-            {data.map((entry, index) => (
-              <Cell key={entry.month} fill={index === data.length - 1 ? SERIES_1 : MUTED} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      {/* La gráfica ocupa toda la altura disponible del card (se estira para
+          igualar la altura de su vecino en la fila de la grilla). */}
+      <div className="dashboard-chart-fill">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid stroke={GRID} vertical={false} />
+            <XAxis dataKey="label" tick={axisTickStyle} axisLine={{ stroke: GRID }} tickLine={false} />
+            <YAxis
+              tick={axisTickStyle}
+              axisLine={false}
+              tickLine={false}
+              width={64}
+              tickFormatter={formatNumber}
+            />
+            <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
+            <Bar dataKey="total" name="Ventas" radius={[4, 4, 0, 0]} maxBarSize={56}>
+              {data.map((entry, index) => (
+                <Cell key={entry.month} fill={index === data.length - 1 ? SERIES_1 : MUTED} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </DashboardCard>
   );
 }

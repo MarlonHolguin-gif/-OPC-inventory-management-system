@@ -9,8 +9,24 @@ export class PurchaseService {
     return HttpClient.get(`/api/purchase-orders/${id}`).then((r) => r.data);
   }
 
+  static history(params) {
+    return HttpClient.get('/api/purchase-orders/history', { params }).then((r) => r.data);
+  }
+
   static create(payload) {
     return HttpClient.post('/api/purchase-orders', payload).then((r) => r.data);
+  }
+
+  static update(id, payload) {
+    return HttpClient.put(`/api/purchase-orders/${id}`, payload).then((r) => r.data);
+  }
+
+  static markAsSent(id) {
+    return HttpClient.patch(`/api/purchase-orders/${id}/send`).then((r) => r.data);
+  }
+
+  static cancel(id) {
+    return HttpClient.patch(`/api/purchase-orders/${id}/cancel`).then((r) => r.data);
   }
 
   static registerReceipt(id, payload) {

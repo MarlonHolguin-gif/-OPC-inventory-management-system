@@ -28,14 +28,12 @@ export default function DashboardPage() {
           style={{ maxWidth: 320, marginBottom: 22 }}
         />
 
-        <section className="panel-card dashboard-kpis">
-          <div className="dashboard-kpi-grid">
-            <SalesTrendCard salesTrend={controller.salesTrend.value} />
-            <RotationCard rotation={controller.rotation.value} />
-            <TransfersImpactCard transfersImpact={controller.transfersImpact.value} />
-            <LowStockCard lowStock={controller.lowStock.value} />
-          </div>
-        </section>
+        <div className="dashboard-kpi-grid">
+          <SalesTrendCard salesTrend={controller.salesTrend.value} />
+          <RotationCard rotation={controller.rotation.value} />
+          <TransfersImpactCard transfersImpact={controller.transfersImpact.value} />
+          <LowStockCard lowStock={controller.lowStock.value} />
+        </div>
 
         {controller.isAdmin.value && (
           <BranchComparisonCard comparison={controller.comparison.value} />

@@ -33,6 +33,10 @@ export class TransferService {
     return HttpClient.post(`/api/transfers/${id}/receive-partial`, { items });
   }
 
+  static resolveShortage(id, payload) {
+    return HttpClient.post(`/api/transfers/${id}/resolve-shortage`, payload).then((r) => r.data);
+  }
+
   static complianceReport(params) {
     return HttpClient.get('/api/transfers/reports/compliance', { params }).then((r) => r.data);
   }

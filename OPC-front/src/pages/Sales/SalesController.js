@@ -3,7 +3,7 @@ import { Controller } from '@/lib/Controller';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { SaleService } from './services/SaleService';
-import { SaleFormController } from './SaleFormController';
+import { SaleFormController } from './controllers/SaleFormController';
 
 const EMPTY_FILTERS = { saleNumber: '', branchId: '', customerId: '', from: '', to: '' };
 

@@ -51,8 +51,17 @@ export function SaleForm({ controller }) {
           </span>
         </div>
 
+        {controller.hasStockShortage.value && (
+          <p className="sale-form-warning">
+            Hay líneas con una cantidad mayor al stock disponible en la sucursal.
+          </p>
+        )}
+
         <div className="form-actions">
-          <button type="submit" disabled={controller.submitting.value}>
+          <button
+            type="submit"
+            disabled={controller.submitting.value || controller.hasStockShortage.value}
+          >
             {controller.submitting.value ? 'Registrando…' : 'Confirmar venta'}
           </button>
           <button type="button" onClick={controller.close}>

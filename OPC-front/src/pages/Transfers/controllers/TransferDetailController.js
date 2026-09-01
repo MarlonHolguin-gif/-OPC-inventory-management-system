@@ -5,8 +5,8 @@ import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { backendError } from '@/lib/format';
 import { GENERAL_ADMIN } from '@/constants/roles';
-import { TransferService } from './services/TransferService';
-import { timelineStepIndex } from './constants';
+import { TransferService } from '../services/TransferService';
+import { timelineStepIndex } from '../constants';
 
 const RECEIVED_STATUSES = ['FULLY_RECEIVED', 'PARTIALLY_RECEIVED'];
 
@@ -22,12 +22,28 @@ export class TransferDetailController extends Controller {
   receiveQuantities = signal({});
   carrier = signal('');
   estimatedArrivalDate = signal('');
+  shortageResolution = signal('');
+  shortageNotes = signal('');
   submitting = signal(false);
+  loadError = signal(null);
 
   isAdmin = computed(() => AuthStore.role.value === GENERAL_ADMIN);
   isCancelled = computed(() => this.transfer.value?.status === 'CANCELLED');
   isTerminal = computed(() => RECEIVED_STATUSES.includes(this.transfer.value?.status));
   currentStep = computed(() => timelineStepIndex(this.transfer.value?.status ?? ''));
+
+  // Paso 5: hay faltante (algún ítem con diferencia > 0) tras la recepción parcial.
+  hasShortage = computed(() =>
+    (this.transfer.value?.items ?? []).some((item) => Number(item.difference) > 0),
+  );
+  // Falta decidir el tratamiento del faltante.
+  needsShortageResolution = computed(
+    () =>
+      this.transfer.value?.status === 'PARTIALLY_RECEIVED' &&
+      this.hasShortage.value &&
+      !this.transfer.value?.shortageResolution,
+  );
+  shortageResolved = computed(() => Boolean(this.transfer.value?.shortageResolution));
 
   canActOnOrigin = computed(() => this.#canWrite(this.transfer.value?.originBranchId));
   canActOnDestination = computed(() => this.#canWrite(this.transfer.value?.destinationBranchId));
@@ -47,10 +63,22 @@ export class TransferDetailController extends Controller {
   }
 
   async load() {
-    const [transfer, events] = await Promise.all([
-      TransferService.get(this.transferId),
-      TransferService.events(this.transferId),
-    ]);
+    let transfer;
+    let events;
+    try {
+      [transfer, events] = await Promise.all([
+        TransferService.get(this.transferId),
+        TransferService.events(this.transferId),
+      ]);
+    } catch (error) {
+      // 403: la transferencia es de sucursales que no le competen al usuario.
+      this.loadError.value =
+        error?.response?.status === 403
+          ? 'No tienes acceso a esta transferencia: no participa ninguna de tus sucursales.'
+          : 'No se pudo cargar la transferencia.';
+      return;
+    }
+    this.loadError.value = null;
     this.transfer.value = transfer;
     this.events.value = events;
 
@@ -80,6 +108,14 @@ export class TransferDetailController extends Controller {
 
   setEstimatedArrivalDate = (value) => {
     this.estimatedArrivalDate.value = value;
+  };
+
+  setShortageResolution = (value) => {
+    this.shortageResolution.value = value;
+  };
+
+  setShortageNotes = (value) => {
+    this.shortageNotes.value = value;
   };
 
   async #run(action, successMessage) {
@@ -143,5 +179,35 @@ export class TransferDetailController extends Controller {
       () => TransferService.receivePartial(this.transferId, items),
       'Recepción parcial registrada.',
     );
+  }
+
+  // Paso 5 (cierre): registra el tratamiento del faltante. Si es reenvío,
+  // el backend genera una transferencia de seguimiento.
+  async resolveShortage(event) {
+    event.preventDefault();
+    if (!this.shortageResolution.value) {
+      UiStore.fail('Elige el tratamiento del faltante.');
+      return;
+    }
+    UiStore.clear();
+    this.submitting.value = true;
+    try {
+      const updated = await TransferService.resolveShortage(this.transferId, {
+        resolution: this.shortageResolution.value,
+        notes: this.shortageNotes.value.trim() || null,
+      });
+      await this.load();
+      this.shortageResolution.value = '';
+      this.shortageNotes.value = '';
+      UiStore.notify(
+        updated.reshipmentTransferId
+          ? 'Faltante tratado con reenvío. Se generó una transferencia de seguimiento.'
+          : 'Tratamiento del faltante registrado.',
+      );
+    } catch (error) {
+      UiStore.fail(backendError(error, 'No se pudo registrar el tratamiento del faltante.'));
+    } finally {
+      this.submitting.value = false;
+    }
   }
 }

@@ -1,17 +1,16 @@
 /* --- Estilos del módulo Panel (Dashboard) --- */
 
-/* Los 4 KPIs de arriba van todos en UNA sola tarjeta, con grilla interna. */
-.dashboard-kpis {
-  margin-bottom: 20px;
-}
-/* Rejilla fija de 2 columnas para que los 4 KPIs queden siempre alineados
-   2x2 (auto-fit dejaba a veces 3+1 con el cuarto suelto). minmax(0,1fr)
-   evita que el SVG de Recharts desborde su celda. */
+/* Los 4 KPIs de arriba: cada uno es su propia caja (.panel-card), del mismo
+   tamaño, repartidas en una rejilla fija de 2x2. Rejilla fija (no auto-fit,
+   que dejaba a veces 3+1 con el cuarto suelto); minmax(0,1fr) evita que el
+   SVG de Recharts desborde su celda; align-items:stretch iguala la altura de
+   las dos cajas de cada fila. */
 .dashboard-kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px 28px;
-  align-items: start;
+  gap: 28px;
+  align-items: stretch;
+  margin-bottom: 28px;
 }
 @media (max-width: 900px) {
   .dashboard-kpi-grid {
@@ -22,6 +21,9 @@
   /* El ResponsiveContainer de Recharts fija un width en px sobre su SVG
      hijo; sin min-width:0 el ítem se desborda de su columna. */
   min-width: 0;
+  /* El espaciado entre cajas lo da el `gap` de la grilla, no el margen que
+     .panel-card trae por defecto (si no, la separación vertical se duplica). */
+  margin-bottom: 0;
 }
 .dashboard-kpi h2 {
   margin-bottom: 12px;

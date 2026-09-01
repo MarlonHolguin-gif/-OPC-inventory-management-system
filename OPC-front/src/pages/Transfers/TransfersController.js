@@ -4,7 +4,7 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { GENERAL_ADMIN } from '@/constants/roles';
 import { TransferService } from './services/TransferService';
-import { TransferFormController } from './TransferFormController';
+import { TransferFormController } from './controllers/TransferFormController';
 import { TRANSFER_STATUS_LABELS } from './constants';
 
 // Orden de las secciones del panel: primero lo que todavía necesita acción,

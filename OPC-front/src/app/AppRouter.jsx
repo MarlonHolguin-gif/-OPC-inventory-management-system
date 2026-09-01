@@ -6,7 +6,7 @@ import LoginPage from '@/pages/Login/LoginPage';
 import DashboardPage from '@/pages/Dashboard/DashboardPage';
 import InventoryPage from '@/pages/Inventory/InventoryPage';
 import MovementFormPage from '@/pages/Movements/MovementFormPage';
-import PurchaseOrdersPage from '@/pages/Purchases/PurchaseOrdersPage';
+import PurchasesPage from '@/pages/Purchases/PurchasesPage';
 import PurchaseOrderDetailPage from '@/pages/Purchases/PurchaseOrderDetailPage';
 import TransfersPage from '@/pages/Transfers/TransfersPage';
 import TransferDetailPage from '@/pages/Transfers/TransferDetailPage';
@@ -16,6 +16,7 @@ import BranchesPage from '@/pages/Branches/BranchesPage';
 import SuppliersPage from '@/pages/Suppliers/SuppliersPage';
 import AuditPage from '@/pages/Audit/AuditPage';
 import SalesPage from '@/pages/Sales/SalesPage';
+import SaleDetailPage from '@/pages/Sales/SaleDetailPage';
 import PriceListsPage from '@/pages/PriceLists/PriceListsPage';
 import CatalogPage from '@/pages/Catalog/CatalogPage';
 import CustomersPage from '@/pages/Customers/CustomersPage';
@@ -30,9 +31,10 @@ export default function AppRouter() {
           <Route path={PATHS.dashboard} element={<DashboardPage />} />
           <Route path={PATHS.inventory} element={<InventoryPage />} />
           <Route path={PATHS.movements} element={<MovementFormPage />} />
-          <Route path={PATHS.purchases} element={<PurchaseOrdersPage />} />
+          <Route path={PATHS.purchases} element={<PurchasesPage />} />
           <Route path={PATHS.purchaseDetail} element={<PurchaseOrderDetailPage />} />
           <Route path={PATHS.sales} element={<SalesPage />} />
+          <Route path={PATHS.saleDetail} element={<SaleDetailPage />} />
           <Route path={PATHS.transfers} element={<TransfersPage />} />
           <Route path={PATHS.transferDetail} element={<TransferDetailPage />} />
 

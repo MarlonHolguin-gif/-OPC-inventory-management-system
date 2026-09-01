@@ -19,3 +19,28 @@ export function isCurrentlyValid(priceList) {
 export function backendError(error, fallback) {
   return error?.response?.data?.message ?? fallback;
 }
+
+// Formatea un valor monetario con dos decimales y separador de miles.
+// Devuelve un guion largo cuando no hay dato numérico.
+export function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '—';
+  return parsed.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Formatea una fecha y hora ISO en el formato local del navegador.
+// Devuelve un guion largo cuando no hay dato.
+export function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString() : '—';
+}
+
+// Formatea un porcentaje (el valor ya viene en base 100: 10 -> "10 %").
+// Devuelve un guion largo cuando no hay dato numérico.
+export function formatPercentage(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '—';
+  const rounded = Math.round(parsed * 100) / 100;
+  return `${rounded} %`;
+}

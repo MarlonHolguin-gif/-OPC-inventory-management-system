@@ -4,7 +4,7 @@ import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { TextField } from '@/components/Field';
 import { PATHS } from '@/app/routes';
-import { ComplianceReportController } from './ComplianceReportController';
+import { ComplianceReportController } from './controllers/ComplianceReportController';
 import { ComplianceBarChart } from './components/ComplianceBarChart';
 import { routePriorityLabel } from './constants';
 import './Transfers.css';

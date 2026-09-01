@@ -2,6 +2,7 @@ import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { SearchBar } from '@/components/SearchBar';
+import { formatCurrency } from '@/lib/format';
 import { InventoryController } from './InventoryController';
 import { alertLabel } from './constants';
 import './InventoryPage.css';
@@ -17,6 +18,12 @@ export default function InventoryPage() {
       key: 'stock',
       header: 'Stock actual',
       render: (product) => stockByProduct[product.id]?.currentQuantity ?? '—',
+    },
+    {
+      key: 'weightedAvgCost',
+      header: 'Costo promedio ponderado',
+      align: 'right',
+      render: (product) => formatCurrency(stockByProduct[product.id]?.weightedAvgCost),
     },
     {
       key: 'alert',

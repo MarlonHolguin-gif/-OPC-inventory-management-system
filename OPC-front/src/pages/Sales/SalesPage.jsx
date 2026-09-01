@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { CrudToolbar } from '@/components/CrudToolbar';
@@ -6,20 +7,27 @@ import { Modal } from '@/components/Modal';
 import { TextField, SelectField } from '@/components/Field';
 import { FilterBar, FilterField } from '@/components/FilterBar';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
+import { formatCurrency, formatDateTime } from '@/lib/format';
 import { SalesController } from './SalesController';
 import { SaleForm } from './components/SaleForm';
+import { saleStatusLabel } from './constants';
 import './Sales.css';
 
 const COLUMNS_FOR = (controller) => [
-  { key: 'saleNumber', header: 'Nº venta' },
-  { key: 'saleDate', header: 'Fecha', render: (r) => r.saleDate?.slice(0, 10) },
-  { key: 'branch', header: 'Sucursal', render: (r) => controller.branchName(r.branchId) },
-  { key: 'customer', header: 'Cliente', render: (r) => r.customerName ?? '— mostrador —' },
-  { key: 'product', header: 'Producto', render: (r) => `${r.productSku} — ${r.productName}` },
-  { key: 'quantity', header: 'Cantidad' },
-  { key: 'unitPrice', header: 'Precio unit.' },
-  { key: 'subtotal', header: 'Subtotal' },
-  { key: 'status', header: 'Estado' },
+  {
+    key: 'saleNumber',
+    header: 'Número de venta',
+    render: (row) => <Link to={`/ventas/${row.saleId}`}>{row.saleNumber}</Link>,
+  },
+  { key: 'saleDate', header: 'Fecha', render: (row) => formatDateTime(row.saleDate) },
+  { key: 'branch', header: 'Sucursal', render: (row) => controller.branchName(row.branchId) },
+  { key: 'customer', header: 'Cliente', render: (row) => row.customerName ?? 'Mostrador (sin cliente)' },
+  { key: 'seller', header: 'Responsable', render: (row) => row.sellerName ?? '—' },
+  { key: 'product', header: 'Producto', render: (row) => `${row.productSku} — ${row.productName}` },
+  { key: 'quantity', header: 'Cantidad', align: 'right' },
+  { key: 'unitPrice', header: 'Precio unitario', align: 'right', render: (row) => formatCurrency(row.unitPrice) },
+  { key: 'subtotal', header: 'Subtotal', align: 'right', render: (row) => formatCurrency(row.subtotal) },
+  { key: 'status', header: 'Estado', render: (row) => saleStatusLabel(row.status) },
 ];
 
 export default function SalesPage() {

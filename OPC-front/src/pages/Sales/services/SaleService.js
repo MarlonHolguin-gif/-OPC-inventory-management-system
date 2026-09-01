@@ -9,6 +9,10 @@ export class SaleService {
     return HttpClient.get('/api/sales/history', { params }).then((r) => r.data);
   }
 
+  static get(id) {
+    return HttpClient.get(`/api/sales/${id}`).then((r) => r.data);
+  }
+
   // Datos de referencia que el módulo de ventas necesita para los formularios
   // (endpoints compartidos; aquí solo lo que consume Ventas).
   static productCatalog() {

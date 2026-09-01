@@ -2,7 +2,7 @@ import { signal } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
 import { UiStore } from '@/stores/UiStore';
 import { PurchaseService } from './services/PurchaseService';
-import { PurchaseOrderFormController } from './PurchaseOrderFormController';
+import { PurchaseOrderFormController } from './controllers/PurchaseOrderFormController';
 
 export class PurchaseOrdersController extends Controller {
   orders = signal([]);

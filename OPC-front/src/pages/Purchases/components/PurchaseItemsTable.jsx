@@ -1,6 +1,6 @@
 /**
  * Tabla editable de ítems de una orden de compra: producto, cantidad, precio
- * unitario, descuento y subtotal en vivo.
+ * unitario, porcentaje de descuento y subtotal en vivo.
  */
 export function PurchaseItemsTable({ controller }) {
   const items = controller.items.value;
@@ -14,7 +14,7 @@ export function PurchaseItemsTable({ controller }) {
           <th>Producto</th>
           <th>Cantidad</th>
           <th>Precio unitario</th>
-          <th>Descuento</th>
+          <th>Descuento (%)</th>
           <th>Subtotal</th>
           <th aria-label="Acciones" />
         </tr>
@@ -47,7 +47,7 @@ export function PurchaseItemsTable({ controller }) {
             <td>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
                 value={item.unitPrice}
                 onChange={(event) => controller.updateItem(index, 'unitPrice', event.target.value)}
@@ -58,8 +58,9 @@ export function PurchaseItemsTable({ controller }) {
                 type="number"
                 step="1"
                 min="0"
-                value={item.discount}
-                onChange={(event) => controller.updateItem(index, 'discount', event.target.value)}
+                max="100"
+                value={item.discountPercentage}
+                onChange={(event) => controller.updateItem(index, 'discountPercentage', event.target.value)}
               />
             </td>
             <td>{subtotals[index].toFixed(2)}</td>

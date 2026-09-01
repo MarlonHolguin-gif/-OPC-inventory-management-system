@@ -1,0 +1,18 @@
+/* Separación entre los grupos del listado de órdenes (recibidas, pendientes
+   por recibir, pendientes por enviar, canceladas). */
+.purchase-order-group {
+  margin-top: 28px;
+}
+
+.purchase-order-group:first-of-type {
+  margin-top: 16px;
+}
+
+.purchase-order-group h2 {
+  margin-bottom: 10px;
+}
+
+.purchase-order-group-count {
+  color: var(--text-dim);
+  font-weight: 400;
+}

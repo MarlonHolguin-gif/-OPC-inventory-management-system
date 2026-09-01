@@ -2,6 +2,11 @@ import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { TextField, SelectField } from '@/components/Field';
 import { PurchaseItemsTable } from './PurchaseItemsTable';
 
+function submitLabel(controller) {
+  if (controller.submitting.value) return controller.editingId.value ? 'Guardando…' : 'Creando…';
+  return controller.editingId.value ? 'Guardar cambios' : 'Crear orden';
+}
+
 export function PurchaseOrderForm({ controller }) {
   const totals = controller.totals.value;
   const supplierOptions = controller.suppliers.value.map((s) => ({ value: s.id, label: s.name }));
@@ -50,7 +55,7 @@ export function PurchaseOrderForm({ controller }) {
 
         <div className="form-actions">
           <button type="submit" disabled={controller.submitting.value}>
-            {controller.submitting.value ? 'Creando…' : 'Crear orden'}
+            {submitLabel(controller)}
           </button>
           <button type="button" onClick={controller.close}>
             Cancelar

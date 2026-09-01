@@ -27,6 +27,17 @@ export const ROUTE_PRIORITY_LABELS = {
   HIGH: 'Alta',
 };
 
+// Tratamiento del faltante de una recepción parcial (ShortageResolution).
+export const SHORTAGE_RESOLUTION_LABELS = {
+  RESHIPMENT: 'Reenvío',
+  ADJUSTMENT: 'Ajuste',
+  CLAIM: 'Reclamación',
+};
+
+export function shortageResolutionLabel(resolution) {
+  return SHORTAGE_RESOLUTION_LABELS[resolution] ?? resolution;
+}
+
 export function transferStatusLabel(status) {
   return TRANSFER_STATUS_LABELS[status] ?? status;
 }

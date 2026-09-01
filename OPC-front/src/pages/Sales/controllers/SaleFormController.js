@@ -4,7 +4,7 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { toNumber, isCurrentlyValid, backendError } from '@/lib/format';
-import { SaleService } from './services/SaleService';
+import { SaleService } from '../services/SaleService';
 
 const EMPTY_ITEM = { productId: '', quantity: '', discountPct: '' };
 
@@ -64,6 +64,15 @@ export class SaleFormController extends Controller {
         subtotal: gross - (gross * discountPct) / 100,
         availableStock: this.inventoryByProductId.value[productId],
       };
+    }),
+  );
+
+  // ¿Alguna línea pide más unidades de las que hay en stock en la sucursal?
+  // El backend igual lo rechaza, pero esto evita siquiera intentar confirmar.
+  hasStockShortage = computed(() =>
+    this.items.value.some((item, index) => {
+      const available = this.lineDetails.value[index]?.availableStock;
+      return available !== undefined && toNumber(item.quantity) > Number(available);
     }),
   );
 
@@ -158,6 +167,9 @@ export class SaleFormController extends Controller {
 
   #validate() {
     if (!this.priceListId.value) return 'Selecciona una lista de precios vigente.';
+    if (this.hasStockShortage.value) {
+      return 'Hay líneas con una cantidad mayor al stock disponible en la sucursal.';
+    }
     for (const item of this.items.value) {
       if (!item.productId) return 'Cada ítem necesita un producto seleccionado.';
       const quantity = toNumber(item.quantity);

@@ -4,7 +4,7 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { backendError } from '@/lib/format';
-import { TransferService } from './services/TransferService';
+import { TransferService } from '../services/TransferService';
 
 const EMPTY_ITEM = { productId: '', quantity: '' };
 

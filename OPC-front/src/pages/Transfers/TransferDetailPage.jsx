@@ -1,14 +1,24 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
-import { TextField } from '@/components/Field';
-import { TransferDetailController } from './TransferDetailController';
+import { TextField, SelectField } from '@/components/Field';
+import { TransferDetailController } from './controllers/TransferDetailController';
 import { TransferTimeline } from './components/TransferTimeline';
-import { statusBadgeClass, transferStatusLabel, urgencyBadgeClass, urgencyLabel } from './constants';
+import {
+  SHORTAGE_RESOLUTION_LABELS,
+  shortageResolutionLabel,
+  statusBadgeClass,
+  transferStatusLabel,
+  urgencyBadgeClass,
+  urgencyLabel,
+} from './constants';
 import './Transfers.css';
 
-const RECEIVED_STATUSES = ['FULLY_RECEIVED', 'PARTIALLY_RECEIVED'];
+const SHORTAGE_RESOLUTION_OPTIONS = Object.entries(SHORTAGE_RESOLUTION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 function formatDateTime(value) {
   return value ? new Date(value).toLocaleString() : null;
@@ -32,12 +42,20 @@ export default function TransferDetailPage() {
 function TransferDetailView({ transferId }) {
   const controller = useController(TransferDetailController, transferId);
   const transfer = controller.transfer.value;
+  const loadError = controller.loadError.value;
 
   return (
     <main>
-      <AsyncBoundary loading={transfer === null}>
-        {transfer && <TransferDetailBody controller={controller} transfer={transfer} />}
-      </AsyncBoundary>
+      <p>
+        <Link to="/transferencias">← Volver a Transferencias</Link>
+      </p>
+      {loadError ? (
+        <p className="badge badge-bad">{loadError}</p>
+      ) : (
+        <AsyncBoundary loading={transfer === null}>
+          {transfer && <TransferDetailBody controller={controller} transfer={transfer} />}
+        </AsyncBoundary>
+      )}
     </main>
   );
 }
@@ -180,9 +198,73 @@ function TransferDetailBody({ controller, transfer }) {
         </div>
       )}
 
-      {RECEIVED_STATUSES.includes(transfer.status) && (
-        <p>Esta transferencia ya fue recibida — no admite más acciones.</p>
+      {transfer.status === 'PARTIALLY_RECEIVED' && (
+        <ShortageSection controller={controller} transfer={transfer} submitting={submitting} />
+      )}
+
+      {transfer.status === 'FULLY_RECEIVED' && (
+        <p>Esta transferencia ya fue recibida por completo — no admite más acciones.</p>
       )}
     </>
+  );
+}
+
+function ShortageSection({ controller, transfer, submitting }) {
+  if (controller.shortageResolved.value) {
+    return (
+      <div className="shortage-box">
+        <h2>Tratamiento del faltante</h2>
+        <p>
+          <span className="badge badge-ok">{shortageResolutionLabel(transfer.shortageResolution)}</span>
+        </p>
+        {transfer.shortageResolutionNotes && <p>{transfer.shortageResolutionNotes}</p>}
+        {transfer.reshipmentTransferId && (
+          <p>
+            Se generó una transferencia de reenvío:{' '}
+            <Link to={`/transferencias/${transfer.reshipmentTransferId}`}>ver transferencia de seguimiento</Link>
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (!controller.needsShortageResolution.value) {
+    return null;
+  }
+
+  if (!controller.canActOnDestination.value) {
+    return (
+      <div className="shortage-box">
+        <h2>Faltante pendiente de tratamiento</h2>
+        <p>La sucursal destino debe definir qué hacer con el faltante (reenvío, ajuste o reclamación).</p>
+      </div>
+    );
+  }
+
+  return (
+    <form className="shortage-box" onSubmit={(event) => controller.resolveShortage(event)} noValidate>
+      <h2>Definir tratamiento del faltante (sucursal destino)</h2>
+      <p>
+        Hubo diferencias en la recepción. Elige cómo se trata:{' '}
+        <strong>Reenvío</strong> genera automáticamente una nueva transferencia por lo que faltó;{' '}
+        <strong>Ajuste</strong> asume la merma; <strong>Reclamación</strong> deja registro para reclamar al
+        transportista.
+      </p>
+      <SelectField
+        label="Tratamiento"
+        value={controller.shortageResolution.value}
+        onChange={controller.setShortageResolution}
+        options={SHORTAGE_RESOLUTION_OPTIONS}
+        placeholder="— elegir —"
+      />
+      <TextField
+        label="Notas (opcional)"
+        value={controller.shortageNotes.value}
+        onChange={controller.setShortageNotes}
+      />
+      <button type="submit" disabled={submitting}>
+        {submitting ? 'Registrando…' : 'Registrar tratamiento'}
+      </button>
+    </form>
   );
 }

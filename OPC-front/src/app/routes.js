@@ -24,6 +24,7 @@ export const PATHS = {
   purchases: '/compras',
   purchaseDetail: '/compras/:orderId',
   sales: '/ventas',
+  saleDetail: '/ventas/:saleId',
   transfers: '/transferencias',
   transferDetail: '/transferencias/:transferId',
   logisticsCompliance: '/transferencias/cumplimiento',

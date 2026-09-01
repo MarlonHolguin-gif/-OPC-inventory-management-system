@@ -113,6 +113,19 @@
   }
 }
 
+/* Bloque de tratamiento del faltante (paso 5) en el detalle. */
+.shortage-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin: 22px 0;
+  background: var(--surface);
+  max-width: none;
+}
+.shortage-box h2 {
+  margin-top: 0;
+}
+
 /* Panel de transferencias activas: secciones por estado + indicador de
    refresco. */
 .panel-header {

@@ -2,7 +2,7 @@ import { signal, computed } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
-import { TransferService } from './services/TransferService';
+import { TransferService } from '../services/TransferService';
 
 const EMPTY_FILTERS = { from: '', to: '' };
 

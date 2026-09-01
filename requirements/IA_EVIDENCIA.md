@@ -248,6 +248,112 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
+### 2.24 Auditoría de completitud del módulo de Logística (sección 3.5) contra el enunciado — *Impacto: Medio*
+
+**Prompt (resumido):** mismo formato — revisar el módulo de Tiempos de Envío y Logística (3.5) contra sus cuatro puntos (tiempos estimados vs. reales; clasificar rutas por prioridad, costo o tiempo; visualizar el estado de cada transferencia en curso; reportes de cumplimiento logístico por sucursal y ruta) y decir qué faltaba antes de tocar código.
+
+**Resultado del diagnóstico:** dos puntos completos (visualizar el estado en curso — secciones por estado + línea de tiempo; reporte de cumplimiento por sucursal y prioridad de ruta). Dos huecos: **(A) clasificar rutas por prioridad estaba solo en el backend** — el endpoint `PATCH .../route-priority` y el filtro `?routePriority=` existían desde 2.18, pero el frontend no tenía ni el método en el service, ni control para fijar la prioridad, ni filtro en el listado, ni columna que la mostrara fuera del reporte; **(B) "registrar y consultar tiempos estimados vs. reales" estaba a medias** — el detalle solo mostraba "llegada estimada", sin fecha real de despacho/llegada ni desviación, y `estimated_dispatch_date` figuraba en el DER y la entidad pero **no se rellenaba en ningún flujo** (columna muerta). Un tercer punto ("clasificar por costo") se reportó como ausente pero opcional: `shipping_cost` existe sin captura ni uso, y el enunciado dice "prioridad, costo **o** tiempo".
+
+**Implementación (el usuario aprobó A y B, no C):** (A) `TransferService.updateRoutePriority` en el frontend, formulario de clasificación en el detalle visible para la sucursal origen mientras la transferencia no haya llegado ni se haya cancelado (mismo criterio que el guard del backend), filtro por prioridad en el listado (`TransfersController.routePriorityFilter` → `GET /transfers?routePriority=`) y columna de prioridad en la tabla; (B) `estimated_dispatch_date` ahora la registra la sucursal origen al preparar el envío (campo opcional en `TransferPrepareRequest` y en el formulario de preparación), `estimatedDispatchDate` añadido a `TransferResponse`, y una tabla "Tiempos de envío (estimado vs. real)" en el detalle con los dos hitos (despacho, llegada) y la desviación en días calculada por un helper (`deliveryDeviationLabel`). Dos tests nuevos en `TransferServiceTest` para `updateRoutePriority` (camino feliz + guard de estado terminal). Sin migración: la columna `estimated_dispatch_date` ya existía en `V1` sin usarse.
+
+**Verificación:** `./mvnw test` (27/27) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.25 Historial de movimientos de inventario en la página principal de Movimientos — *Impacto: Medio*
+
+**Prompt (resumido):** el usuario pidió, en dos iteraciones: primero que el historial de movimientos apareciera **en la misma página** del formulario de Movimientos (no en una vista aparte), con las columnas Sucursal, Responsable, Producto, Tipo de movimiento, Cantidad y Motivo, y que el administrador viera todas las sucursales mientras el gerente y el operador solo las de la suya; luego que el formulario de registro pasara a **modal**, que se agregara una **barra de filtros horizontal** para el historial, y que la carpeta del módulo quedara ordenada según la arquitectura por capas.
+
+**Resultado:** endpoint nuevo `GET /api/inventario/movimientos` (`InventoryMovementService.history`) que aplica el mismo criterio de lectura por sucursal que ya usan Transferencias y el listado de notificaciones (`BranchAccessService.isGeneralAdmin` + `getWritableBranchIds`) — ADMIN_GENERAL va por `findHistory(...)`, el resto por `findHistoryForBranches(branchIds, ...)`; el filtro opcional de sucursal se cruza con lo que el usuario puede ver (`resolveBranchScope`: pedir una sucursal ajena devuelve historial vacío sin tocar el repositorio). Filtros opcionales combinables (producto, tipo, rango de fechas) con el mismo patrón `:param is null or ...` de `SaleItemRepository.findHistory`. DTO `InventoryMovementHistoryResponse` con el nombre del responsable resuelto en bloque en el backend (`/api/users` es solo de administrador, igual que en el histórico de ventas). En el frontend, la carpeta quedó como Ventas/Compras: `MovementsController` (historial + filtros) + `controllers/MovementFormController` (modal, carga perezosa al abrir) + `components/MovementForm` + `MovementsPage` (delgada: `CrudToolbar` + `FilterBar` + `DataTable` + `Modal`). `MOVEMENT_TYPE_LABELS`/`..._FILTER_OPTIONS` en `constants.js` cubren los 7 tipos (en el historial sí aparecen `PURCHASE`, `SALE`, `TRANSFER_IN/OUT`, que el formulario no deja registrar a mano). Tres tests en `InventoryMovementServiceTest` (historial de administrador, historial acotado por sucursal, y filtro de sucursal ajena ignorado).
+
+**Verificación:** `./mvnw test` (30/30) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.26 Acotar la auditoría genérica hasta dejarla solo en productos — *Impacto: Medio*
+
+**Prompt (resumido):** en dos pasos. Primero, tras discutir que el requisito de la sección 3.1 ("registro de cada acción sobre el inventario: quién, cuándo y por qué") ya lo cumple el historial de movimientos, el usuario pidió que `sy_audit_log` **dejara de registrar los inicios de sesión y los cambios sobre transferencias**. Después: **"lo de orden de compra también, solo deja cuando se agrega un producto"** — reducirla a una sola entidad. Todo con la condición de que quedara "limpio" y sin eliminar el mecanismo.
+
+**Resultado (V9):** se quitó `implements Auditable` de `Transfer`; se eliminaron `recordLoginSuccess`/`recordLoginFailure` de `AuditLogService` y sus llamadas en `AuthService` (que ya no depende de auditoría); `AuditAction` pierde `LOGIN`. `V9__audit_log_drop_login.sql`: `DELETE` de las filas `entity IN ('Auth','Transfer')` y `MODIFY action ENUM('CREATE','UPDATE','DELETE')`.
+
+**Resultado (V10):** se quitó `implements Auditable` de `User`, `PriceList` y `PurchaseOrder` — queda solo `Product`. `EXCLUDED_PROPERTIES` (que ocultaba `User.passwordHash`) queda vacío, el mecanismo se conserva. `V10__audit_log_products_only.sql`: `DELETE FROM sy_audit_log WHERE entity <> 'Product'`. En el frontend: `AuditPage` pasa a "Auditoría de productos", se quita la columna Entidad y el filtro por entidad (con una sola entidad no aportaban nada), queda el filtro por id de producto + responsable + fechas; se borró el mapa de entidades y la rama `LOGIN` de `AuditDiff`. Javadoc y comentarios (`Auditable`, `AuditEntityListener`, `AuditLogService`, ADR) actualizados. El 401 genérico de login no cambia en nada.
+
+**Verificación:** `./mvnw test` (30/30, `V9` y `V10` se aplican de verdad contra MySQL en `OpcBackApplicationTests`) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.27 Catálogo: reactivar categorías/productos y alertas de error que explican el motivo — *Impacto: Medio*
+
+**Prompt (resumido):** el usuario pidió, sobre el módulo Catálogo: (1) explicar por qué la gestión de unidades de un producto muestra un factor de conversión (con el ejemplo de "Detergente en polvo 3kg" — unidad base UN factor 1, más Caja factor 12); (2) al desactivar una categoría o producto no aparecía forma de reactivarlo; (3) cuando una categoría con productos no se puede desactivar, la alerta decía solo "No se pudo desactivar" sin el motivo.
+
+**Resultado:** (1) solo explicación — el factor de conversión dice cuántas unidades base equivale una unidad; el stock siempre se lleva en la unidad base, y la fila de la unidad base (factor 1) tiene sentido cuando se la quiere marcar como unidad de compra o de venta. Sin cambios de código. (2) `reactivate` en `CategoryService`/`ProductService` + `PATCH /{id}/reactivate` en ambos controladores, con botón "Reactivar" en las pestañas cuando la fila está inactiva. El de producto lleva una guarda: no se reactiva si su categoría está inactiva (quedaría un producto activo en el catálogo de venta colgando de una categoría desactivada). (3) el frontend dejaba de mostrar el mensaje del backend — `CategoryFormController`/`ProductFormController` hacían `catch {}` genérico; ahora usan `backendError(error, fallback)`, y los mensajes del backend explican el motivo ("...porque tiene productos activos asociados. Desactiva o mueve esos productos a otra categoría primero."). Test nuevo `ProductServiceTest` (reactivar con categoría activa / bloqueado por categoría inactiva).
+
+**Verificación:** `./mvnw test` (32/32) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.28 Eliminar la conversión de unidades por producto y auto-cerrar las alertas — *Impacto: Medio*
+
+**Prompt (resumido):** tras la explicación del punto anterior, el usuario decidió **quitar la conversión de unidades**: eliminar el factor de conversión y la unidad "Caja", "para evitar hacer eso — si compran 12 productos, 12 se venden". Además: que las alertas de la UI se cierren solas al segundo.
+
+**Resultado:** se eliminó por completo `ma_product_units` — la tabla (migración `V11__drop_product_units.sql`: `DROP TABLE` + borrar la unidad `CJ` si no la usa ningún producto como unidad base), la entidad `ProductUnit`, su servicio, controlador, repositorio y DTOs (`ProductUnitRequest/Response`, `UnitConversionResponse`), y en el frontend el `ProductUnitsController`, `ProductUnitsPanel`, `ProductUnitService` y el botón "Gestionar unidades". `ma_units` y `ma_products.base_unit_id` se conservan: cada producto sigue teniendo **una** unidad de medida (UN, KG, LT…), sin factores. Esto descarta el RF-06 del análisis original ("múltiples unidades de medida por producto con factor de conversión") — anotado como decisión, no como olvido, en `Analisis_Requerimientos.md` §2.2/§9 y en el DER (§3.2, tabla baja de 26 a 25). Para las alertas: `UiStore` programa un `clear()` a `MESSAGE_TIMEOUT_MS` (1000 ms) tras cada `fail`/`notify`, reiniciando el temporizador con cada mensaje nuevo y cancelándolo en `clear()`.
+
+**Verificación:** `./mvnw test` (32/32, `V11` se aplica de verdad contra MySQL en `OpcBackApplicationTests` — incluido el caso de que `V4` primero siembra `ma_product_units` y la unidad CJ, y `V11` las quita) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.29 Auditoría de completitud del Dashboard contra el enunciado — *Impacto: Medio*
+
+**Prompt (resumido):** revisar el Dashboard contra los 5 indicadores mínimos del PDF y decir qué faltaba antes de tocar código; luego el usuario aprobó implementar los tres gaps, recordando mantener arquitectura por capas + clases + signals.
+
+**Resultado del diagnóstico:** tres indicadores completos (ventas del mes vs. anteriores; reabastecimiento; comparativa entre sucursales). Gaps: **(A)** "rotación / productos de alta y baja demanda" (RF-23) — el card solo mostraba los de mayor rotación (orden fijo `DESC`), sin forma de ver los de menor demanda, y los productos con **cero ventas** ni siquiera aparecían (el backend agrupaba solo movimientos existentes); **(B)** "**estado** de las transferencias activas" — el card mostraba el conteo y el impacto por producto, pero no en qué fase estaba cada una; **(C)** el card de rotación usaba "desde siempre", sin rango de fechas (el backend ya aceptaba `from`/`to`).
+
+**Implementación:** (A) `DashboardService.inventoryRotation` ahora parte de **todos los productos activos con inventario en la sucursal** (unión con los que tuvieron ventas), así los de rotación 0 aparecen; el frontend agrega un conmutador *Alta demanda / Baja demanda* (`order=DESC/ASC`) en el card. (B) `ActiveTransfersImpactResponse` gana `statusBreakdown` (`List<StatusCount>` ordenada por el ordinal del enum); el card lo pinta como una fila de píldoras ("En tránsito 2 · En preparación 1"). (C) selectores Desde/Hasta en el card de rotación que recargan solo ese KPI (`DashboardController.loadRotation` aparte de `loadBranchData`). Arquitectura: Dashboard sigue siendo un módulo de un solo controller; se añadieron signals (`rotationOrder`, `rotationFrom`, `rotationTo`) y `RotationCard` pasa a recibir el controller y leer/mutar esos signals. Test nuevo `DashboardServiceTest` (rotación incluye productos sin ventas y los ordena primero en baja demanda; desglose por estado). Además: el auto-cierre de alertas de `UiStore` subió de 1 s a 2 s.
+
+**Verificación:** `./mvnw test` (34/34) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.30 Auditoría de completitud del módulo de Inventario contra el enunciado — *Impacto: Medio*
+
+**Prompt (resumido):** revisar "Gestión de Inventario (CRUD Completo)" contra sus 6 puntos y decir qué faltaba antes de tocar código; luego el usuario aprobó **(A)** implementar la configuración de umbrales y **(B)** revertir `V11` (volver a la conversión de unidades).
+
+**Resultado del diagnóstico:** cuatro puntos completos (catálogo por sucursal propia; consulta de otras sucursales; ingreso/retiro vía Movimientos; generación de alertas). Gaps: **(A)** "controlar stock mínimo" — `min_stock`/`max_stock` solo existían por el seed de `V4` o quedaban en 0/0; **no había endpoint ni pantalla para configurarlos** (RF-05). **(B)** "gestionar múltiples unidades de medida por producto" — se había eliminado en `V11` (sección 2.28) y el enunciado lo pide explícitamente.
+
+**Implementación (A):** `PUT /api/inventario/sucursal/{branchId}/producto/{productId}/umbrales` (`InventoryService.updateThresholds`, autorizado contra la sucursal con `BranchAccessService`, crea la fila `tr_inventory` en 0 si no existe, valida que el máximo no sea menor que el mínimo). Frontend: columnas Mínimo/Máximo en la tabla de Inventario + acción "Editar umbrales" (modal) — visible solo en sucursales que el usuario puede escribir. Sub-controller `InventoryThresholdController` sobre `FormController`. Test nuevo `InventoryServiceTest` (fija umbrales de fila existente; rechaza máximo < mínimo; crea la fila en 0).
+
+**Implementación (B):** reversión de `V11`. Los 10 archivos borrados (backend `ProductUnit*` + frontend `ProductUnits*`) se restauraron con `git checkout HEAD --` (estaban borrados pero sin commitear); en `ProductsTab.jsx` y `CatalogController.js` se re-integró el panel "Gestionar unidades" conservando los botones de reactivar añadidos entretanto. Migración `V12__recreate_product_units.sql`: recrea la tabla con la misma DDL de `V1`/`V2`, repone la unidad "Caja" y los datos de demostración de `V4` (todo idempotente con `WHERE NOT EXISTS`). El resto de docs (README, DER, `Analisis_Requerimientos.md`) se revirtió al estado previo a 2.28. *Queda en el registro que esta funcionalidad se quitó y se volvió a poner — la decisión de negocio cambió a mitad de camino.*
+
+**Verificación:** `./mvnw test` (37/37 — `OpcBackApplicationTests` aplica `V1`→`V12` contra MySQL, incluido el ciclo `V11` borra / `V12` recrea) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.32 Cablear la conversión de unidades en Compras y Ventas + stock inicial al crear un producto — *Impacto: Alto*
+
+**Prompt (resumido):** el usuario notó que agregar factores de conversión en "Gestionar unidades" no se reflejaba en ningún lado (ni en compra ni en venta aparecía la unidad alternativa), y pidió **cablearlo en Compras y Ventas**. Además: al crear un producto no hay dónde poner la cantidad y no le gustó que entrara "sin existencias" — eligió agregar un **campo de stock inicial** en el formulario.
+
+**Diagnóstico:** `ma_product_units` + el panel + `GET /api/products/{id}/units/convert` existían aislados; ningún flujo transaccional (`PurchaseOrderService`, `PurchaseReceiptService`, `SaleService`, movimientos) aceptaba una unidad ni aplicaba el factor. El feature estaba modelado pero nunca conectado (por eso se había quitado en `V11`).
+
+**Implementación — conversión (`V13`):** columna `unit_id` NULL en `tr_purchase_order_items` y `tr_sale_items` (NULL = unidad base). `ProductUnitService` gana `purchaseFactor`/`saleFactor(productId, unitId)` — devuelven 1 para null/base y validan contra `is_purchase_unit`/`is_sale_unit`. En Compras: la línea se registra en la unidad elegida (cantidad y precio en esa unidad); al **recibir**, `PurchaseReceiptService` convierte `cantidad_recibida × factor` a unidad base y `precio / factor` a costo unitario base para el movimiento `PURCHASE` y el costo promedio ponderado. En Ventas: el precio de la lista (por unidad base) se multiplica por el factor, el subtotal va en la unidad de venta, y el descuento de stock (`SALE`) va en unidad base. Respuestas de ítem con `unitAbbreviation`/`unitId`. Frontend: selector de unidad por línea en ambos formularios (opciones = unidad base + unidades de compra/venta del producto, cargadas bajo demanda), con un hint "= N base"; el bloqueo de stock en Ventas compara la cantidad en unidad base. Tests nuevos en `PurchaseReceiptServiceTest` y `SaleServiceTest`.
+
+**Implementación — stock inicial:** `ProductCreateRequest` gana `initialStock` + `initialStockBranchId` opcionales; `ProductService.create` (ahora con `Authentication`) genera un `POSITIVE_ADJUSTMENT` con motivo "Carga inicial de inventario" vía `InventoryMovementService` — el stock inicial sigue pasando por la única puerta a `current_quantity`, no se escribe directo. El formulario de producto muestra "Stock inicial" + selector de sucursal solo al crear.
+
+**Verificación:** `./mvnw test` (40/40, `OpcBackApplicationTests` aplica `V1`→`V13`) y `lint` + `build` limpios. End-to-end contra Docker: producto creado con stock inicial 40 → fila `tr_inventory` en 40; compra de 3 cajas (factor 5) @ $500 → recepción sube el stock a 55 y el costo promedio queda en 100 ($500/5); venta de 2 cajas → precio de línea $1.500 (300 × 5), stock baja a 45.
+
+---
+
+### 2.31 Alertas Inteligentes: la notificación también se dispara al cambiar un umbral — *Impacto: Bajo*
+
+**Prompt (resumido):** revisar el módulo de Alertas Inteligentes contra el enunciado ("notificaciones automáticas cuando un producto supera o cae por debajo de umbrales configurables … por correo o en la interfaz"); el usuario aprobó implementar solo el arreglo del umbral (el correo se deja fuera — el enunciado lo hace opcional con "puede … o en la interfaz").
+
+**Resultado del diagnóstico:** el requisito estaba cumplido (notificación automática al cruzar el umbral en un movimiento; umbrales configurables desde 2.30; campana en la interfaz). El único hueco lo introdujo 2.30: `notifyStockThresholdCrossed` solo se llamaba desde `InventoryMovementService`, así que **subir el `min_stock` por encima del stock actual dejaba el producto en alerta sin generar una notificación nueva** hasta el siguiente movimiento.
+
+**Implementación:** `InventoryService.updateThresholds` evalúa el estado de alerta con los umbrales viejos y con los nuevos (mismo `InventoryAlertService`), y llama a `notificationService.notifyStockThresholdCrossed` con ese antes/después — el método ya ignora los no-cruces y los retornos a NORMAL, así que no hace falta lógica anti-duplicados nueva. Test nuevo en `InventoryServiceTest` (cambiar el mínimo por encima del stock genera la notificación `LOW_STOCK`).
+
+**Verificación:** `./mvnw test` (38/38) y `lint` + `build` del frontend limpios.
+
+---
+
 ## 3. Evaluación crítica
 
 ### Qué aportó la IA

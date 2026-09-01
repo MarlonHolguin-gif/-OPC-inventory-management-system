@@ -4,7 +4,7 @@
 > Convención de nombres: identificadores de tabla/columna en **inglés**, con prefijo de categoría — `ma_` (Master/maestro), `tr_` (Transactional/transaccional), `sy_` (System/sistema). El texto descriptivo de este documento está en español, consistente con el resto de `requirements/`.
 > Este documento es la referencia previa al script DDL (tarea siguiente del backlog) — el DDL debe ser coherente con lo que aquí se define, columna por columna.
 
-**26 tablas en total** — 20 del prototipo original, 6 nuevas (`sy_notifications`, `sy_audit_log`, `ma_user_branch`, `ma_customers`, `sy_refresh_tokens`, `ma_roles`).
+**26 tablas en total** — 20 del prototipo original, 6 nuevas (`sy_notifications`, `sy_audit_log`, `ma_user_branch`, `ma_customers`, `sy_refresh_tokens`, `ma_roles`). `ma_product_units` se eliminó en `V11` y se restauró en `V12` (ver §3.2).
 
 ---
 
@@ -141,7 +141,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `CATEGORIAS_PRODUCTO` | `ma_categories` | Renombrada + agrega `updated_at` |
 | `UNIDADES_MEDIDA` | `ma_units` | Renombrada, sin cambio de columnas |
 | `PRODUCTOS` | `ma_products` | Renombrada + agrega `updated_at` |
-| `PRODUCTO_UNIDADES` | `ma_product_units` | Renombrada, sin cambio de columnas |
+| `PRODUCTO_UNIDADES` | `ma_product_units` | Renombrada, sin cambio de columnas (eliminada en `V11`, restaurada en `V12`) |
 | `PROVEEDORES` | `ma_suppliers` | Renombrada + agrega `updated_at` |
 | `CLIENTES` | `ma_customers` | **Nueva** |
 | `LISTAS_PRECIOS` | `ma_price_lists` | Renombrada + agrega `updated_at` |
@@ -149,11 +149,11 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `INVENTARIO` | `tr_inventory` | Renombrada + agrega `max_stock` |
 | `INVENTARIO_MOVIMIENTOS` | `tr_inventory_movements` | Renombrada, sin cambio de columnas |
 | `ORDENES_COMPRA` | `tr_purchase_orders` | Renombrada, sin cambio de columnas |
-| `ORDENES_COMPRA_ITEMS` | `tr_purchase_order_items` | Renombrada, sin cambio de columnas |
+| `ORDENES_COMPRA_ITEMS` | `tr_purchase_order_items` | Renombrada + `discount_pct` (`V7`) + `unit_id` (`V13`) |
 | `RECEPCIONES_COMPRA` | `tr_purchase_receipts` | Renombrada, sin cambio de columnas |
 | `RECEPCIONES_COMPRA_ITEMS` | `tr_purchase_receipt_items` | Renombrada, sin cambio de columnas |
 | `VENTAS` | `tr_sales` | Renombrada + `customer_name` → `customer_id` (FK) |
-| `VENTAS_ITEMS` | `tr_sale_items` | Renombrada, sin cambio de columnas |
+| `VENTAS_ITEMS` | `tr_sale_items` | Renombrada + `discount_pct` + `unit_id` (`V13`) |
 | `TRANSFERENCIAS` | `tr_transfers` | Renombrada + `route_priority` de VARCHAR a ENUM |
 | `TRANSFERENCIAS_ITEMS` | `tr_transfer_items` | Renombrada, sin cambio de columnas |
 | `TRANSFERENCIAS_EVENTOS` | `tr_transfer_events` | Renombrada, sin cambio de columnas |
@@ -253,22 +253,22 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `name` | VARCHAR(150) | |
 | `description` | TEXT | |
 | `category_id` | BIGINT FK → `ma_categories` | |
-| `base_unit_id` | BIGINT FK → `ma_units` | |
+| `base_unit_id` | BIGINT FK → `ma_units` | Unidad de referencia del producto; los factores de conversión de `ma_product_units` son relativos a ella |
 | `reference_price` | DECIMAL(15,4) | Precio referencial, no autoritativo (ver `ma_price_lists`) |
 | `active` | BOOLEAN | |
 | `created_at` | DATETIME | |
 | `updated_at` | DATETIME | |
 
-**`ma_product_units`**
+**`ma_product_units`** — *(eliminada en `V11` y restaurada en `V12`: cubre el requisito del enunciado de "múltiples unidades de medida por producto")*
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `product_id` | BIGINT FK → `ma_products` | |
-| `unit_id` | BIGINT FK → `ma_units` | |
-| `conversion_factor` | DECIMAL(15,4) | |
-| `is_purchase_unit` | BOOLEAN | |
-| `is_sale_unit` | BOOLEAN | |
+| `product_id` | BIGINT FK → `ma_products` (`ON DELETE CASCADE`) | |
+| `unit_id` | BIGINT FK → `ma_units` (`ON DELETE RESTRICT`) | |
+| `conversion_factor` | DECIMAL(15,4) | Cuántas unidades base equivalen a 1 de esta unidad |
+| `is_purchase_unit` | BOOLEAN | Se puede comprar en esta unidad |
+| `is_sale_unit` | BOOLEAN | Se puede vender en esta unidad |
 
 ### 3.3 Inventario (`tr_`)
 
@@ -342,6 +342,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `id` | BIGINT PK | |
 | `purchase_order_id` | BIGINT FK → `tr_purchase_orders` | |
 | `product_id` | BIGINT FK → `ma_products` | |
+| `unit_id` | BIGINT FK → `ma_units`, NULL = unidad base | Unidad de compra de la línea (`V13`). `quantity` y `unit_price` están en esta unidad; al recibir, se convierten a unidad base con el factor de `ma_product_units` |
 | `quantity`, `unit_price`, `discount`, `subtotal` | DECIMAL(15,4) | `discount` = monto ya calculado a partir de `discount_pct` |
 | `discount_pct` | DECIMAL(7,4) | Porcentaje de descuento de la línea (0-100); agregado en `V7`. Mismo enfoque que `tr_price_list_items.discount_pct` |
 
@@ -423,6 +424,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `id` | BIGINT PK | |
 | `sale_id` | BIGINT FK → `tr_sales` | |
 | `product_id` | BIGINT FK → `ma_products` | |
+| `unit_id` | BIGINT FK → `ma_units`, NULL = unidad base | Unidad de venta de la línea (`V13`). `quantity` está en esta unidad; el stock se descuenta en unidad base con el factor. `unit_price` = precio de la lista (por unidad base) × factor |
 | `quantity`, `unit_price`, `subtotal` | DECIMAL(15,4) | |
 | `discount_pct` | DECIMAL(7,4) | |
 
@@ -439,7 +441,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `requested_by` | BIGINT FK → `ma_users` | |
 | `status` | ENUM(`REQUESTED`, `IN_PREPARATION`, `IN_TRANSIT`, `FULLY_RECEIVED`, `PARTIALLY_RECEIVED`, `CANCELLED`) | |
 | `urgency` | ENUM(`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) | |
-| `route_priority` | ENUM(`HIGH`, `MEDIUM`, `LOW`) | Antes VARCHAR libre |
+| `route_priority` | ENUM(`HIGH`, `MEDIUM`, `LOW`) | Antes VARCHAR libre. Clasificación de ruta (3.5): la fija la sucursal origen (`PATCH /api/transfers/{id}/route-priority`) mientras la transferencia no haya llegado ni se haya cancelado; el listado y el reporte de cumplimiento agrupan/filtran por ella |
 | `shortage_resolution` | ENUM(`RESHIPMENT`, `ADJUSTMENT`, `CLAIM`) | Tratamiento del faltante de una recepción parcial (paso 5); agregado en `V8` |
 | `shortage_resolution_notes` | VARCHAR(500) | |
 | `shortage_resolved_at` | DATETIME | |
@@ -447,7 +449,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `reshipment_transfer_id` | BIGINT FK → `tr_transfers` (auto-referencia, `ON DELETE SET NULL`) | Si el tratamiento fue reenvío: transferencia de seguimiento generada por lo faltante; `V8` |
 | `carrier` | VARCHAR(150) | |
 | `shipping_cost` | DECIMAL(15,4) | |
-| `request_date`, `estimated_dispatch_date`, `actual_dispatch_date`, `estimated_arrival_date`, `actual_arrival_date` | DATETIME | |
+| `request_date`, `estimated_dispatch_date`, `actual_dispatch_date`, `estimated_arrival_date`, `actual_arrival_date` | DATETIME | Tiempos estimados vs. reales (3.5): `estimated_dispatch_date` la registra la sucursal origen al preparar el envío, `actual_dispatch_date` se sella al despachar, `estimated_arrival_date` la da el transportista en el despacho y `actual_arrival_date` al confirmar la recepción; el detalle muestra la desviación en días |
 | `created_at` | DATETIME | |
 
 **`tr_transfer_items`**
@@ -492,10 +494,10 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | BIGINT PK | |
-| `entity` | VARCHAR(60) | |
-| `entity_id` | BIGINT | |
-| `action` | ENUM(`CREATE`, `UPDATE`, `DELETE`, `LOGIN`) | |
-| `user_id` | BIGINT FK → `ma_users` | |
+| `entity` | VARCHAR(60) | Siempre `Product` — la auditoría cubre solo el catálogo de productos (ver `Auditable.java`), que es lo que pide la sección 3.1 del PDF. El resto del dominio tiene su propia trazabilidad (`tr_inventory_movements`, `tr_transfer_events`) |
+| `entity_id` | BIGINT | Id del producto |
+| `action` | ENUM(`CREATE`, `UPDATE`, `DELETE`) | `LOGIN` retirado en `V9` |
+| `user_id` | BIGINT FK → `ma_users`, NULL permitido (`V6`) | Quién hizo el cambio; NULL si la escritura ocurre fuera de una petición HTTP autenticada |
 | `old_values`, `new_values` | JSON NULL | |
 | `event_date` | DATETIME | |
 
@@ -503,20 +505,20 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 
 ## 4. Estado de implementación
 
-- [x] Script DDL completo para MySQL — `database/queries/01-createSchema.sql`, `02-addForeignKeys.sql`, `03-indexes.sql`, `05-addSupplierTaxIdUnique.sql`, `06-auditLogNullableUser.sql`, `07-purchaseOrderItemDiscountPct.sql`, `08-transferShortageResolution.sql` (verificados corriendo contra MySQL 8 real: 26 tablas, 41 FKs).
-- [x] Migraciones versionadas con Flyway — `OPC-back/src/main/resources/db/migration/V1` a `V8` (mismo contenido que los scripts anteriores; ver ADR-007 en `requirements/Decisiones_Arquitectura.md` para la justificación).
+- [x] Script DDL completo para MySQL — `database/queries/01-createSchema.sql` … `13-orderAndSaleItemUnit.sql` (13 scripts, verificados corriendo contra MySQL 8 real).
+- [x] Migraciones versionadas con Flyway — `OPC-back/src/main/resources/db/migration/V1` a `V13` (mismo contenido que los scripts anteriores; ver ADR-007 en `requirements/Decisiones_Arquitectura.md` para la justificación).
 - [x] Datos mínimos de demostración — `V4__seed_demo_data.sql` (roles, sucursales, usuarios, catálogo, inventario inicial; credenciales en `README.md`).
 - [x] Entidades JPA / código de backend que efectivamente lea y escriba sobre este esquema — ya no está pendiente como bloque único; el detalle por dominio es el siguiente:
 
 | Dominio | Backend (entidades, servicios, endpoints) | Frontend | Notas |
 |---|---|---|---|
 | Identidad y acceso (`ma_users`, `ma_roles`, `ma_branches`, `ma_user_branch`, `sy_refresh_tokens`) | ✅ Login JWT (access token de 15 min), `GET /api/auth/me`, `POST /api/auth/refresh` (rotación de un solo uso, refresh token de 7 días guardado como hash SHA-256), `POST /api/auth/logout` (revoca el refresh token), CRUD de usuarios y sucursales, `BranchAccessService` (autorización por sucursal) | ✅ Login, refresh automático transparente en el cliente HTTP ante un 401, logout que revoca en el backend, rutas protegidas, gestión visual de usuarios (con asignación de sucursales) y sucursales | Ya no queda pendiente ninguna pieza de ADR-003 |
-| Catálogo de producto (`ma_categories`, `ma_units`, `ma_products`) | ✅ CRUD completo | ✅ CRUD completo | |
-| Inventario (`tr_inventory`, `tr_inventory_movements`) | ✅ Consulta por sucursal, registro de movimientos con validación de stock suficiente y recálculo de costo promedio ponderado (`InventoryMovementService`), evaluación de estado de alerta (`InventoryAlertService`) | ✅ Catálogo con stock y alertas, formulario de ingreso/retiro | Cada movimiento que cruza un umbral persiste ahora una notificación en `sy_notifications` (ver fila "alertas y auditoría" abajo) |
-| Compras (`ma_suppliers`, `tr_purchase_orders`, `tr_purchase_order_items`, `tr_purchase_receipts`, `tr_purchase_receipt_items`) | ✅ CRUD de proveedores; crear y editar orden (mientras está en borrador) con descuento por línea en **porcentaje** (`discount_pct`, `V7`); transiciones de estado (enviar al proveedor, cancelar); registro de recepción parcial/total con generación automática de movimiento `PURCHASE` y recálculo de costo promedio ponderado; histórico filtrable por proveedor, producto y rango de fechas | ✅ Completo: proveedores, pestaña de órdenes (agrupadas por estado: recibidas, pendientes por recibir, pendientes por enviar, canceladas) con crear/editar/enviar/cancelar/recibir, y pestaña de histórico con filtros | Con tests unitarios (`InventoryMovementServiceTest`, `PurchaseOrderServiceTest`, `PurchaseReceiptServiceTest`) |
-| Ventas (`ma_customers`, `ma_price_lists`, `ma_price_list_items`, `tr_sales`, `tr_sale_items`) | ✅ CRUD de clientes y listas de precios (con vigencia por fecha), registro de venta con descuento por línea en porcentaje, validación de stock y generación automática de movimiento `SALE`, histórico filtrable (con el nombre del responsable resuelto en la respuesta, ya que `/api/users` es solo de administrador), `GET /api/sales/{id}` para el comprobante completo | ✅ Registrar venta (con stock visible y confirmación bloqueada si una línea lo supera), gestión visual de listas de precios, CRUD de clientes, histórico con los 5 filtros y columna de responsable, y página de comprobante por venta (`/ventas/{id}`) | La relación entre lista de precios y sucursal quedó deliberadamente sin resolver — hoy cualquier sucursal puede usar cualquier lista vigente; ver evaluación crítica en `IA_EVIDENCIA.md` |
-| Transferencias (`tr_transfers`, `tr_transfer_items`, `tr_transfer_events`) | ✅ Solicitud, preparación, despacho, recepción completa/parcial, eventos automáticos; tratamiento del faltante de una recepción parcial (`POST /transfers/{id}/resolve-shortage`: reenvío / ajuste / reclamación — el reenvío crea una transferencia de seguimiento `REQUESTED` por lo faltante); filtro/clasificación por `route_priority` y reporte de cumplimiento logístico (`% a tiempo` por sucursal origen y prioridad) | ✅ Panel de transferencias activas (auto-refresco cada 20s sin recargar la página), solicitud, preparar/despachar, recibir completa/parcial con línea de tiempo visual del historial completo, formulario de tratamiento del faltante en el detalle, y visualización del reporte de cumplimiento (gráfica de barras + tabla) | Con tests unitarios (`TransferServiceTest`). Lectura acotada por sucursal: el listado y el detalle solo muestran transferencias donde alguna sucursal del usuario es origen o destino (ADMIN_GENERAL ve todas) — mismo criterio de lectura que el listado de notificaciones. `route_priority` se fija con `PATCH /transfers/{id}/route-priority` (autorizado contra la sucursal origen, bloqueado una vez la transferencia ya llegó) |
-| Dashboard / KPIs operativos (agregación sobre `tr_sales`, `tr_inventory_movements`, `tr_transfers`, `tr_inventory`) | ✅ 5 endpoints en `opcback.dashboard`: ventas del mes vs. 3 anteriores (serie temporal por sucursal), rotación de inventario (ordenable), impacto proyectado de transferencias activas, productos por reabastecer (reusa `InventoryService.listAlertsByBranch`, sin duplicar el criterio de alerta) y comparativa entre sucursales (`ADMIN_GENERAL` únicamente) | ✅ Página "Panel" con las 5 secciones del PDF usando Recharts, selector de sucursal, y la comparativa visible solo para administrador general | No es un dominio con tablas propias — agrega sobre datos que ya escriben Ventas, Inventario y Transferencias, de solo lectura |
-| Sistema — alertas y auditoría (`sy_notifications`, `sy_audit_log`) | ✅ `NotificationService` (único escritor de `sy_notifications`): notifica `LOW_STOCK`/`HIGH_STOCK` solo cuando un movimiento cruza el umbral, y `TRANSFER_SHORTAGE` por ítem con diferencia real. `AuditEntityListener` (registrado en el `EventListenerRegistry` de Hibernate por `AuditListenerConfig`): audita `POST_INSERT`/`UPDATE`/`DELETE` de toda entidad que implemente `Auditable` (User, Product, PriceList, PurchaseOrder, Transfer) sin que ningún servicio de negocio lo sepa; `AuthService` registra los eventos de LOGIN. Escritura por JDBC directo, lectura por JPA | ✅ Campana de notificaciones (polling 20s, marcado de leídas) y vista de consulta de auditoría (`GET /api/auditoria`, solo `ADMIN_GENERAL`) con filtros y diff antes/después | `V6` hace `sy_audit_log.user_id` nullable para poder registrar un login fallido con un email que no corresponde a ninguna cuenta |
+| Catálogo de producto (`ma_categories`, `ma_units`, `ma_products`, `ma_product_units`) | ✅ CRUD completo, con desactivar/reactivar de categorías y productos. Guardas: no se desactiva una categoría con productos activos; no se reactiva un producto si su categoría está inactiva — el mensaje de error explica el motivo concreto. Unidades alternativas por producto con factor de conversión y flags compra/venta (`ma_product_units`), **usadas en Compras y Ventas**. Al crear un producto, `initialStock` + `initialStockBranchId` opcionales generan un movimiento `POSITIVE_ADJUSTMENT` ("Carga inicial de inventario") | ✅ CRUD completo; botón "Reactivar" cuando la fila está inactiva y las alertas de error muestran el motivo del backend; panel "Gestionar unidades" por producto; campo "Stock inicial" + sucursal al crear | |
+| Inventario (`tr_inventory`, `tr_inventory_movements`) | ✅ Consulta por sucursal, registro de movimientos con validación de stock suficiente y recálculo de costo promedio ponderado (`InventoryMovementService`), evaluación de estado de alerta (`InventoryAlertService`), configuración de `min_stock`/`max_stock` por producto y sucursal (`PUT /api/inventario/sucursal/{branchId}/producto/{productId}/umbrales`, autorizado contra la sucursal — crea la fila `tr_inventory` en 0 si no existe; si al cambiar el umbral el stock actual entra en alerta se dispara la misma notificación que un movimiento), historial de movimientos (`GET /api/inventario/movimientos`) acotado por sucursal según el rol (ADMIN_GENERAL todos, gerente/operador solo sus sucursales asignadas — mismo criterio que Transferencias), con filtros opcionales combinables (sucursal, producto, tipo, rango de fechas) | ✅ Página de Inventario con stock, costo promedio, umbrales y estado de alerta, con acción "Editar umbrales" por fila (solo en sucursales que el usuario puede escribir); página de Movimientos con el registro de ingreso/retiro en modal y, debajo, el historial (fecha, sucursal, responsable, producto, tipo, cantidad, motivo) con barra de filtros en fila | Cada movimiento que cruza un umbral persiste ahora una notificación en `sy_notifications` (ver fila "alertas y auditoría" abajo). El nombre del responsable se resuelve en el backend (`/api/users` es solo de administrador). Con `InventoryServiceTest` |
+| Compras (`ma_suppliers`, `tr_purchase_orders`, `tr_purchase_order_items`, `tr_purchase_receipts`, `tr_purchase_receipt_items`) | ✅ CRUD de proveedores; crear y editar orden (mientras está en borrador) con **unidad de compra por línea** (`unit_id`, `V13` — se valida contra `ma_product_units.is_purchase_unit`) y descuento por línea en **porcentaje** (`discount_pct`, `V7`); transiciones de estado (enviar al proveedor, cancelar); registro de recepción parcial/total que **convierte cantidad y costo a unidad base** con el factor, genera el movimiento `PURCHASE` y recalcula el costo promedio ponderado; histórico filtrable por proveedor, producto y rango de fechas | ✅ Completo: proveedores, pestaña de órdenes (agrupadas por estado: recibidas, pendientes por recibir, pendientes por enviar, canceladas) con crear/editar/enviar/cancelar/recibir, y pestaña de histórico con filtros | Con tests unitarios (`InventoryMovementServiceTest`, `PurchaseOrderServiceTest`, `PurchaseReceiptServiceTest`) |
+| Ventas (`ma_customers`, `ma_price_lists`, `ma_price_list_items`, `tr_sales`, `tr_sale_items`) | ✅ CRUD de clientes y listas de precios (con vigencia por fecha), registro de venta con **unidad de venta por línea** (`unit_id`, `V13` — se valida contra `ma_product_units.is_sale_unit`; el precio de la lista es por unidad base y se multiplica por el factor), descuento por línea en porcentaje, validación de stock **en unidad base** y generación automática de movimiento `SALE`, histórico filtrable (con el nombre del responsable resuelto en la respuesta, ya que `/api/users` es solo de administrador), `GET /api/sales/{id}` para el comprobante completo | ✅ Registrar venta (con stock visible y confirmación bloqueada si una línea lo supera), gestión visual de listas de precios, CRUD de clientes, histórico con los 5 filtros y columna de responsable, y página de comprobante por venta (`/ventas/{id}`) | La relación entre lista de precios y sucursal quedó deliberadamente sin resolver — hoy cualquier sucursal puede usar cualquier lista vigente; ver evaluación crítica en `IA_EVIDENCIA.md` |
+| Transferencias (`tr_transfers`, `tr_transfer_items`, `tr_transfer_events`) | ✅ Solicitud, preparación, despacho, recepción completa/parcial, eventos automáticos; tratamiento del faltante de una recepción parcial (`POST /transfers/{id}/resolve-shortage`: reenvío / ajuste / reclamación — el reenvío crea una transferencia de seguimiento `REQUESTED` por lo faltante); filtro/clasificación por `route_priority` y reporte de cumplimiento logístico (`% a tiempo` por sucursal origen y prioridad) | ✅ Panel de transferencias activas (auto-refresco cada 20s sin recargar la página) con filtro por prioridad de ruta y columna de prioridad, solicitud, preparar/despachar, recibir completa/parcial con línea de tiempo visual del historial completo, formulario de tratamiento del faltante en el detalle, control para clasificar la ruta por prioridad (sucursal origen), tabla de tiempos estimados vs. reales (despacho y llegada, con desviación en días) y visualización del reporte de cumplimiento (gráfica de barras + tabla) | Con tests unitarios (`TransferServiceTest`). Lectura acotada por sucursal: el listado y el detalle solo muestran transferencias donde alguna sucursal del usuario es origen o destino (ADMIN_GENERAL ve todas) — mismo criterio de lectura que el listado de notificaciones. `route_priority` se fija con `PATCH /transfers/{id}/route-priority` (autorizado contra la sucursal origen, bloqueado una vez la transferencia ya llegó); `estimated_dispatch_date` se registra al preparar el envío (sección 3.5) |
+| Dashboard / KPIs operativos (agregación sobre `tr_sales`, `tr_inventory_movements`, `tr_transfers`, `tr_inventory`) | ✅ 5 endpoints en `opcback.dashboard`: ventas del mes vs. 3 anteriores (serie temporal por sucursal); rotación de inventario ordenable (`order=ASC/DESC`, con rango de fechas) que lista **todos** los productos activos con inventario en la sucursal — los de rotación 0 son la "baja demanda"; impacto proyectado de transferencias activas **con desglose por estado**; productos por reabastecer (reusa `InventoryService.listAlertsByBranch`, sin duplicar el criterio de alerta); comparativa entre sucursales (`ADMIN_GENERAL` únicamente) | ✅ Página "Panel" con las 5 secciones del PDF usando Recharts, selector de sucursal, conmutador alta/baja demanda + fechas en el card de rotación, desglose por estado en el de transferencias, y la comparativa visible solo para administrador general | No es un dominio con tablas propias — agrega sobre datos que ya escriben Ventas, Inventario y Transferencias, de solo lectura. Con `DashboardServiceTest` |
+| Sistema — alertas y auditoría (`sy_notifications`, `sy_audit_log`) | ✅ `NotificationService` (único escritor de `sy_notifications`): notifica `LOW_STOCK`/`HIGH_STOCK` cuando un movimiento **o un cambio de umbral** cruza la condición (mismo `notifyStockThresholdCrossed`, con estado antes/después, sin duplicar), y `TRANSFER_SHORTAGE` por ítem con diferencia real. Canal `IN_APP` (el `EMAIL` del ENUM queda reservado, sin envío real). `AuditEntityListener` (registrado en el `EventListenerRegistry` de Hibernate por `AuditListenerConfig`): audita `POST_INSERT`/`UPDATE`/`DELETE` de toda entidad que implemente `Auditable` — hoy solo `Product` — sin que ningún servicio de negocio lo sepa. Escritura por JDBC directo, lectura por JPA | ✅ Campana de notificaciones (polling 20s, marcado de leídas) y vista de consulta de auditoría de productos (`GET /api/auditoria`, solo `ADMIN_GENERAL`) con filtros (id de producto, responsable, fechas) y diff antes/después | `V6` deja `sy_audit_log.user_id` nullable. `V9` retira `LOGIN` del ENUM y limpia login + transferencias. `V10` deja la auditoría solo en productos (borra el resto) |
 
 **Nota sobre duplicación intencional:** `database/queries/` y `OPC-back/src/main/resources/db/migration/` tienen el mismo SQL. La copia de Flyway es la que se ejecuta automáticamente y es la fuente de verdad real; `database/queries/` queda como copia de referencia para consulta manual (DBeaver, etc.). Cualquier cambio de esquema futuro se hace primero como una migración Flyway nueva (`V7__...`), nunca editando las ya aplicadas.

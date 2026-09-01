@@ -2,6 +2,7 @@ package opcback.inventory.service;
 
 import opcback.auth.entity.User;
 import opcback.auth.repository.UserRepository;
+import opcback.inventory.dto.InventoryMovementHistoryResponse;
 import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.dto.InventoryMovementResponse;
 import opcback.inventory.entity.Inventory;
@@ -21,11 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -71,14 +75,34 @@ class InventoryMovementServiceTest {
 
         when(authentication.getName()).thenReturn(EMAIL);
 
+        // lenient: los tests del historial no resuelven el usuario ni el
+        // producto por estas vías (el historial va por otro camino).
         User user = new User();
         user.setId(4L);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        lenient().when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
         Product product = new Product();
         product.setId(PRODUCT_ID);
         product.setSku("TEST-001");
-        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        lenient().when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+    }
+
+    private InventoryMovement historyRow(Long branchId) {
+        Product product = new Product();
+        product.setId(PRODUCT_ID);
+        product.setSku("TEST-001");
+        product.setName("Producto de prueba");
+
+        InventoryMovement movement = new InventoryMovement();
+        movement.setId(1L);
+        movement.setBranchId(branchId);
+        movement.setProduct(product);
+        movement.setMovementType(MovementType.POSITIVE_ADJUSTMENT);
+        movement.setQuantity(new BigDecimal("5"));
+        movement.setReason("conteo físico");
+        movement.setResponsibleUserId(4L);
+        movement.setMovementDate(LocalDateTime.now());
+        return movement;
     }
 
     /**
@@ -150,6 +174,54 @@ class InventoryMovementServiceTest {
 
         assertThat(inventory.getWeightedAvgCost()).isEqualByComparingTo("1800");
         assertThat(inventory.getCurrentQuantity()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    void elHistorialParaElAdministradorGeneralTraeTodasLasSucursales() {
+        when(branchAccessService.isGeneralAdmin(EMAIL)).thenReturn(true);
+        when(inventoryMovementRepository.findHistory(null, null, null, null))
+                .thenReturn(List.of(historyRow(1L), historyRow(2L)));
+        User responsible = new User();
+        responsible.setId(4L);
+        responsible.setName("Operador Bogotá");
+        when(userRepository.findAllById(any())).thenReturn(List.of(responsible));
+
+        List<InventoryMovementHistoryResponse> history = inventoryMovementService.history(
+                null, null, null, null, null, authentication);
+
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).responsibleName()).isEqualTo("Operador Bogotá");
+        verify(inventoryMovementRepository, never()).findHistoryForBranches(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void elHistorialParaUnGerenteOperadorSoloTraeSusSucursalesAsignadas() {
+        when(branchAccessService.isGeneralAdmin(EMAIL)).thenReturn(false);
+        when(branchAccessService.getWritableBranchIds(EMAIL)).thenReturn(List.of(BRANCH_ID));
+        when(inventoryMovementRepository.findHistoryForBranches(List.of(BRANCH_ID), null, null, null, null))
+                .thenReturn(List.of(historyRow(BRANCH_ID)));
+        when(userRepository.findAllById(any())).thenReturn(List.of());
+
+        List<InventoryMovementHistoryResponse> history = inventoryMovementService.history(
+                null, null, null, null, null, authentication);
+
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).branchId()).isEqualTo(BRANCH_ID);
+        verify(inventoryMovementRepository, never()).findHistory(any(), any(), any(), any());
+    }
+
+    @Test
+    void elHistorialIgnoraElFiltroDeSucursalQueNoLeCorrespondeAlUsuario() {
+        when(branchAccessService.isGeneralAdmin(EMAIL)).thenReturn(false);
+        when(branchAccessService.getWritableBranchIds(EMAIL)).thenReturn(List.of(BRANCH_ID));
+
+        // pide la sucursal 99, que no tiene asignada -> historial vacío, sin tocar el repositorio
+        List<InventoryMovementHistoryResponse> history = inventoryMovementService.history(
+                99L, null, null, null, null, authentication);
+
+        assertThat(history).isEmpty();
+        verify(inventoryMovementRepository, never()).findHistory(any(), any(), any(), any());
+        verify(inventoryMovementRepository, never()).findHistoryForBranches(any(), any(), any(), any(), any());
     }
 
     @Test

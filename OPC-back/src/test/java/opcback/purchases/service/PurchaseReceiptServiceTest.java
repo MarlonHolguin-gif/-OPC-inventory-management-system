@@ -9,6 +9,7 @@ import opcback.inventory.service.InventoryAlertService;
 import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
+import opcback.products.service.ProductUnitService;
 import opcback.purchases.dto.PurchaseReceiptCreateRequest;
 import opcback.purchases.dto.PurchaseReceiptItemRequest;
 import opcback.purchases.dto.PurchaseReceiptResponse;
@@ -78,6 +79,8 @@ class PurchaseReceiptServiceTest {
     @Mock
     private NotificationService notificationService;
     @Mock
+    private ProductUnitService productUnitService;
+    @Mock
     private Authentication authentication;
 
     private PurchaseReceiptService purchaseReceiptService;
@@ -94,7 +97,8 @@ class PurchaseReceiptServiceTest {
 
         purchaseReceiptService = new PurchaseReceiptService(
                 purchaseOrderRepository, purchaseOrderItemRepository, purchaseReceiptRepository,
-                purchaseReceiptItemRepository, userRepository, branchAccessService, inventoryMovementService);
+                purchaseReceiptItemRepository, userRepository, branchAccessService, inventoryMovementService,
+                productUnitService);
 
         when(authentication.getName()).thenReturn(EMAIL);
 
@@ -147,6 +151,7 @@ class PurchaseReceiptServiceTest {
      * el test de rechazo por exceso nunca llega ahí (falla antes).
      */
     private void stubHappyPath() {
+        when(productUnitService.purchaseFactor(PRODUCT_ID, null)).thenReturn(BigDecimal.ONE);
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
         when(inventoryRepository.findByBranchIdAndProductId(BRANCH_ID, PRODUCT_ID)).thenReturn(Optional.of(inventory));
         when(purchaseReceiptRepository.save(any(PurchaseReceipt.class))).thenAnswer(invocation -> {
@@ -174,6 +179,39 @@ class PurchaseReceiptServiceTest {
         assertThat(inventory.getCurrentQuantity()).isEqualByComparingTo("60");
         assertThat(inventory.getWeightedAvgCost()).isEqualByComparingTo("116.6666667");
         assertThat(order.getStatus()).isEqualTo(PurchaseOrderStatus.FULLY_RECEIVED);
+    }
+
+    @Test
+    void recepcionEnUnidadAlternativaConvierteCantidadYCostoAUnidadBase() {
+        Long cajaUnitId = 99L;
+        opcback.products.entity.Unit caja = new opcback.products.entity.Unit();
+        caja.setId(cajaUnitId);
+        caja.setAbbreviation("CJ");
+        orderItem.setUnit(caja);
+        orderItem.setUnitPrice(new BigDecimal("1000")); // $1000 por caja
+        orderItem.setQuantity(new BigDecimal("4"));      // orden: 4 cajas
+
+        when(productUnitService.purchaseFactor(PRODUCT_ID, cajaUnitId)).thenReturn(new BigDecimal("5")); // 1 caja = 5 unidades
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByBranchIdAndProductId(BRANCH_ID, PRODUCT_ID)).thenReturn(Optional.of(inventory));
+        when(purchaseReceiptRepository.save(any(PurchaseReceipt.class))).thenAnswer(invocation -> {
+            PurchaseReceipt receipt = invocation.getArgument(0);
+            receipt.setId(500L);
+            return receipt;
+        });
+        when(inventoryMovementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(inventoryRepository.save(any(Inventory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // recibo 2 cajas -> 10 unidades base a costo 1000/5 = 200 c/u
+        // inventario previo 50 @ 100 -> (50*100 + 10*200) / 60 = 116.6666667
+        PurchaseReceiptCreateRequest request = new PurchaseReceiptCreateRequest(
+                null, java.util.List.of(new PurchaseReceiptItemRequest(ORDER_ITEM_ID, new BigDecimal("2"))));
+
+        purchaseReceiptService.register(ORDER_ID, request, authentication);
+
+        assertThat(inventory.getCurrentQuantity()).isEqualByComparingTo("60");
+        assertThat(inventory.getWeightedAvgCost()).isEqualByComparingTo("116.6666667");
     }
 
     @Test

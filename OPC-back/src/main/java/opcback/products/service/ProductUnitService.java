@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Maneja las unidades alternativas de un producto (ma_product_units) y la
@@ -86,6 +87,41 @@ public class ProductUnitService {
                 .map(ProductUnit::getConversionFactor)
                 .orElseThrow(() -> new IllegalStateException(
                         "El producto " + product.getId() + " no tiene definida la unidad " + unitId));
+    }
+
+    /**
+     * Factor de conversión a unidad base para registrar una COMPRA en la
+     * unidad `unitId`. `null` o la unidad base -> factor 1. Rechaza una
+     * unidad que el producto no tenga marcada como unidad de compra.
+     */
+    public BigDecimal purchaseFactor(Long productId, Long unitId) {
+        return flowFactor(productId, unitId, ProductUnit::isPurchaseUnit, "comprar");
+    }
+
+    /**
+     * Igual que {@link #purchaseFactor} pero para VENTAS — rechaza una unidad
+     * que el producto no tenga marcada como unidad de venta.
+     */
+    public BigDecimal saleFactor(Long productId, Long unitId) {
+        return flowFactor(productId, unitId, ProductUnit::isSaleUnit, "vender");
+    }
+
+    private BigDecimal flowFactor(Long productId, Long unitId, Predicate<ProductUnit> enabledForFlow, String verb) {
+        if (unitId == null) {
+            return BigDecimal.ONE;
+        }
+        Product product = findProductOrThrow(productId);
+        if (unitId.equals(product.getBaseUnit().getId())) {
+            return BigDecimal.ONE;
+        }
+        ProductUnit productUnit = productUnitRepository.findByProductIdAndUnitId(productId, unitId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El producto «" + product.getName() + "» no tiene definida esa unidad de medida."));
+        if (!enabledForFlow.test(productUnit)) {
+            throw new IllegalArgumentException("La unidad «" + productUnit.getUnit().getAbbreviation()
+                    + "» no está habilitada para " + verb + " «" + product.getName() + "».");
+        }
+        return productUnit.getConversionFactor();
     }
 
     private void assertProductExists(Long productId) {

@@ -11,8 +11,10 @@ import opcback.dashboard.dto.TransferImpactRow;
 import opcback.inventory.dto.InventoryResponse;
 import opcback.inventory.entity.AlertStatus;
 import opcback.inventory.entity.InventoryMovement;
+import opcback.inventory.entity.Inventory;
 import opcback.inventory.entity.MovementType;
 import opcback.inventory.repository.InventoryMovementRepository;
+import opcback.inventory.repository.InventoryRepository;
 import opcback.inventory.service.InventoryService;
 import opcback.products.entity.Product;
 import opcback.sales.entity.Sale;
@@ -60,6 +62,7 @@ public class DashboardService {
 
     private final SaleRepository saleRepository;
     private final InventoryMovementRepository inventoryMovementRepository;
+    private final InventoryRepository inventoryRepository;
     private final TransferRepository transferRepository;
     private final InventoryService inventoryService;
     private final BranchRepository branchRepository;
@@ -90,27 +93,47 @@ public class DashboardService {
     }
 
     /**
-     * Card 2 — rotación por producto (suma de cantidad vendida) en un
-     * rango de fechas, filtrado por sucursal. ascending=false (default)
-     * ordena de mayor a menor rotación.
+     * Card 2 — rotación por producto (suma de cantidad vendida) en un rango
+     * de fechas, filtrada por sucursal. Incluye TODOS los productos activos
+     * con inventario en la sucursal, no solo los que se vendieron: los de
+     * rotación 0 son justamente los de "baja demanda" que el enunciado pide
+     * poder ver. ascending=false (default) ordena de mayor a menor rotación
+     * (alta demanda arriba); ascending=true muestra primero la baja demanda.
      */
     public List<ProductRotationRow> inventoryRotation(Long branchId, LocalDateTime from, LocalDateTime to, boolean ascending) {
         Map<Long, List<InventoryMovement>> movementsByProduct = inventoryMovementRepository
                 .findByOptionalBranchAndTypeAndDateRange(branchId, MovementType.SALE, from, to).stream()
                 .collect(Collectors.groupingBy(movement -> movement.getProduct().getId()));
 
-        Comparator<ProductRotationRow> comparator = Comparator.comparing(ProductRotationRow::quantitySold);
+        // Universo de productos: los que tienen inventario en la sucursal +
+        // (por si acaso) los que se movieron sin fila de inventario. Solo activos.
+        Map<Long, Product> productsById = new LinkedHashMap<>();
+        inventoryRepository.findByBranchId(branchId).stream()
+                .map(Inventory::getProduct)
+                .filter(Product::isActive)
+                .forEach(product -> productsById.putIfAbsent(product.getId(), product));
+        movementsByProduct.values().forEach(movements -> {
+            Product product = movements.get(0).getProduct();
+            if (product.isActive()) {
+                productsById.putIfAbsent(product.getId(), product);
+            }
+        });
+
+        Comparator<ProductRotationRow> comparator = Comparator
+                .comparing(ProductRotationRow::quantitySold)
+                .thenComparing(ProductRotationRow::productSku);
         if (!ascending) {
             comparator = comparator.reversed();
         }
 
-        return movementsByProduct.values().stream()
-                .map(movements -> {
-                    Product product = movements.get(0).getProduct();
+        return productsById.values().stream()
+                .map(product -> {
+                    List<InventoryMovement> movements = movementsByProduct.getOrDefault(product.getId(), List.of());
                     BigDecimal quantitySold = movements.stream()
                             .map(InventoryMovement::getQuantity)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    return new ProductRotationRow(product.getId(), product.getSku(), product.getName(), quantitySold, movements.size());
+                    return new ProductRotationRow(
+                            product.getId(), product.getSku(), product.getName(), quantitySold, movements.size());
                 })
                 .sorted(comparator)
                 .toList();
@@ -125,6 +148,15 @@ public class DashboardService {
 
         long asOrigin = transfers.stream().filter(t -> t.getOriginBranchId().equals(branchId)).count();
         long asDestination = transfers.stream().filter(t -> t.getDestinationBranchId().equals(branchId)).count();
+
+        // "Estado de las transferencias activas": cuántas hay en cada fase,
+        // en el orden natural del flujo (ordinal del enum).
+        List<ActiveTransfersImpactResponse.StatusCount> statusBreakdown = transfers.stream()
+                .collect(Collectors.groupingBy(Transfer::getStatus, Collectors.counting()))
+                .entrySet().stream()
+                .map(entry -> new ActiveTransfersImpactResponse.StatusCount(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparingInt(statusCount -> statusCount.status().ordinal()))
+                .toList();
 
         Map<Long, Product> productsById = new LinkedHashMap<>();
         Map<Long, BigDecimal> outboundByProduct = new LinkedHashMap<>();
@@ -156,7 +188,7 @@ public class DashboardService {
                 .sorted(Comparator.comparing(TransferImpactRow::productSku))
                 .toList();
 
-        return new ActiveTransfersImpactResponse(asOrigin, asDestination, rows);
+        return new ActiveTransfersImpactResponse(asOrigin, asDestination, statusBreakdown, rows);
     }
 
     /**

@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 
 public record PurchaseOrderItemRequest(
         @NotNull Long productId,
+        // Unidad en la que se compra (null = unidad base del producto). La
+        // cantidad y el precio unitario van expresados en esta unidad.
+        Long unitId,
         @NotNull @DecimalMin(value = "0.0001", message = "La cantidad debe ser mayor que cero") BigDecimal quantity,
         @NotNull @DecimalMin(value = "0", message = "El precio unitario no puede ser negativo") BigDecimal unitPrice,
         @DecimalMin(value = "0", message = "El porcentaje de descuento no puede ser negativo")

@@ -1,13 +1,16 @@
 package opcback.inventory.service;
 
 import lombok.RequiredArgsConstructor;
+import opcback.auth.entity.User;
 import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
+import opcback.inventory.dto.InventoryMovementHistoryResponse;
 import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.dto.InventoryMovementResponse;
 import opcback.inventory.entity.AlertStatus;
 import opcback.inventory.entity.Inventory;
 import opcback.inventory.entity.InventoryMovement;
+import opcback.inventory.entity.MovementType;
 import opcback.inventory.repository.InventoryMovementRepository;
 import opcback.inventory.repository.InventoryRepository;
 import opcback.products.entity.Product;
@@ -21,6 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Única puerta de entrada para modificar tr_inventory.current_quantity.
@@ -49,6 +56,65 @@ public class InventoryMovementService {
     private final InventoryMovementRepository inventoryMovementRepository;
     private final InventoryAlertService inventoryAlertService;
     private final NotificationService notificationService;
+
+    /**
+     * Historial de movimientos (sección 3.1 del PDF): ADMIN_GENERAL ve los de
+     * todas las sucursales; el gerente y el operador solo los de la(s)
+     * sucursal(es) que tienen asignada(s) — mismo criterio de lectura por
+     * sucursal que ya usan Transferencias y el listado de notificaciones.
+     * Filtros opcionales combinables: sucursal (dentro de las que el usuario
+     * puede ver), producto, tipo de movimiento y rango de fechas.
+     */
+    @Transactional(readOnly = true)
+    public List<InventoryMovementHistoryResponse> history(Long branchId, Long productId, MovementType movementType,
+            LocalDateTime from, LocalDateTime to, Authentication authentication) {
+        List<Long> branchScope = resolveBranchScope(authentication.getName(), branchId);
+
+        List<InventoryMovement> movements;
+        if (branchScope == null) {
+            movements = inventoryMovementRepository.findHistory(productId, movementType, from, to);
+        } else if (branchScope.isEmpty()) {
+            movements = List.of();
+        } else {
+            movements = inventoryMovementRepository.findHistoryForBranches(branchScope, productId, movementType, from, to);
+        }
+
+        // Nombre del responsable resuelto en bloque: /api/users es solo para
+        // administradores, así que el frontend no puede resolverlo por su cuenta.
+        Map<Long, String> responsibleNames = responsibleNamesById(
+                movements.stream().map(InventoryMovement::getResponsibleUserId).collect(Collectors.toSet()));
+
+        return movements.stream()
+                .map(movement -> InventoryMovementHistoryResponse.from(
+                        movement, responsibleNames.get(movement.getResponsibleUserId())))
+                .toList();
+    }
+
+    /**
+     * Resuelve el conjunto de sucursales que el usuario puede consultar,
+     * cruzado con el filtro opcional de sucursal:
+     *   null  -> sin restricción (ADMIN_GENERAL sin filtro: todas)
+     *   []    -> ninguna (pidió una sucursal que no le corresponde)
+     *   lista -> exactamente esas
+     */
+    private List<Long> resolveBranchScope(String email, Long branchFilter) {
+        if (branchAccessService.isGeneralAdmin(email)) {
+            return branchFilter != null ? List.of(branchFilter) : null;
+        }
+        List<Long> assigned = branchAccessService.getWritableBranchIds(email);
+        if (branchFilter == null) {
+            return assigned;
+        }
+        return assigned.contains(branchFilter) ? List.of(branchFilter) : List.of();
+    }
+
+    private Map<Long, String> responsibleNamesById(Set<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
+    }
 
     @Transactional
     public InventoryMovementResponse register(InventoryMovementRequest request, Authentication authentication) {

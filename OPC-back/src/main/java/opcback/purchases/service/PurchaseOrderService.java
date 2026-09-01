@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.products.entity.Product;
+import opcback.products.entity.Unit;
 import opcback.products.repository.ProductRepository;
+import opcback.products.repository.UnitRepository;
+import opcback.products.service.ProductUnitService;
 import opcback.purchases.dto.PurchaseHistoryItemResponse;
 import opcback.purchases.dto.PurchaseOrderCreateRequest;
 import opcback.purchases.dto.PurchaseOrderItemRequest;
@@ -38,8 +41,10 @@ public class PurchaseOrderService {
     private final PurchaseReceiptItemRepository purchaseReceiptItemRepository;
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
+    private final UnitRepository unitRepository;
     private final UserRepository userRepository;
     private final BranchAccessService branchAccessService;
+    private final ProductUnitService productUnitService;
 
     public List<PurchaseOrderResponse> listAll() {
         return purchaseOrderRepository.findAll().stream().map(this::toResponse).toList();
@@ -169,6 +174,13 @@ public class PurchaseOrderService {
             Product product = productRepository.findById(itemRequest.productId())
                     .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + itemRequest.productId()));
 
+            // Valida que la unidad elegida sea de compra para el producto (o la base).
+            productUnitService.purchaseFactor(product.getId(), itemRequest.unitId());
+            Unit unit = itemRequest.unitId() != null && !itemRequest.unitId().equals(product.getBaseUnit().getId())
+                    ? unitRepository.findById(itemRequest.unitId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Unidad no encontrada: " + itemRequest.unitId()))
+                    : null;
+
             BigDecimal lineGross = itemRequest.quantity().multiply(itemRequest.unitPrice());
             BigDecimal discountPercentage = itemRequest.discountPercentage() != null
                     ? itemRequest.discountPercentage() : BigDecimal.ZERO;
@@ -178,6 +190,7 @@ public class PurchaseOrderService {
             PurchaseOrderItem item = new PurchaseOrderItem();
             item.setPurchaseOrder(order);
             item.setProduct(product);
+            item.setUnit(unit);
             item.setQuantity(itemRequest.quantity());
             item.setUnitPrice(itemRequest.unitPrice());
             item.setDiscountPercentage(discountPercentage);

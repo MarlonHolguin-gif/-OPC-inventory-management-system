@@ -2,6 +2,9 @@ package opcback.purchases.service;
 
 import opcback.auth.entity.User;
 import opcback.products.entity.Product;
+import opcback.products.entity.Unit;
+import opcback.products.repository.UnitRepository;
+import opcback.products.service.ProductUnitService;
 import opcback.purchases.dto.PurchaseOrderCreateRequest;
 import opcback.purchases.dto.PurchaseOrderItemRequest;
 import opcback.purchases.dto.PurchaseOrderResponse;
@@ -58,7 +61,11 @@ class PurchaseOrderServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private UnitRepository unitRepository;
+    @Mock
     private BranchAccessService branchAccessService;
+    @Mock
+    private ProductUnitService productUnitService;
     @Mock
     private Authentication authentication;
 
@@ -69,7 +76,8 @@ class PurchaseOrderServiceTest {
     void setUp() {
         purchaseOrderService = new PurchaseOrderService(
                 purchaseOrderRepository, purchaseOrderItemRepository, purchaseReceiptItemRepository,
-                supplierRepository, productRepository, userRepository, branchAccessService);
+                supplierRepository, productRepository, unitRepository, userRepository, branchAccessService,
+                productUnitService);
 
         Supplier supplier = new Supplier();
         supplier.setId(1L);
@@ -141,9 +149,13 @@ class PurchaseOrderServiceTest {
         user.setId(7L);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
+        Unit baseUnit = new Unit();
+        baseUnit.setId(1L);
+        baseUnit.setAbbreviation("UN");
         Product product = new Product();
         product.setId(10L);
         product.setSku("X-001");
+        product.setBaseUnit(baseUnit);
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
 
         when(purchaseOrderRepository.count()).thenReturn(0L);
@@ -153,7 +165,7 @@ class PurchaseOrderServiceTest {
         // 4 unidades a 1000 = 4000 bruto; 10 % de descuento = 400; subtotal de línea 3600.
         PurchaseOrderCreateRequest request = new PurchaseOrderCreateRequest(
                 1L, BRANCH_ID, "30 dias",
-                List.of(new PurchaseOrderItemRequest(10L, new BigDecimal("4"), new BigDecimal("1000"), new BigDecimal("10"))));
+                List.of(new PurchaseOrderItemRequest(10L, null, new BigDecimal("4"), new BigDecimal("1000"), new BigDecimal("10"))));
 
         PurchaseOrderResponse response = purchaseOrderService.create(request, authentication);
 

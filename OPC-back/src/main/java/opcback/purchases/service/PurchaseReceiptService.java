@@ -6,6 +6,7 @@ import opcback.exception.ResourceNotFoundException;
 import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.entity.MovementType;
 import opcback.inventory.service.InventoryMovementService;
+import opcback.products.service.ProductUnitService;
 import opcback.purchases.dto.PurchaseReceiptCreateRequest;
 import opcback.purchases.dto.PurchaseReceiptItemRequest;
 import opcback.purchases.dto.PurchaseReceiptResponse;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -47,6 +49,7 @@ public class PurchaseReceiptService {
     private final UserRepository userRepository;
     private final BranchAccessService branchAccessService;
     private final InventoryMovementService inventoryMovementService;
+    private final ProductUnitService productUnitService;
 
     @Transactional
     public PurchaseReceiptResponse register(Long orderId, PurchaseReceiptCreateRequest request, Authentication authentication) {
@@ -110,12 +113,20 @@ public class PurchaseReceiptService {
 
         for (PurchaseReceiptItem receiptItem : savedReceipt.getItems()) {
             PurchaseOrderItem orderItem = receiptItem.getPurchaseOrderItem();
+
+            // La línea de la orden puede estar en cajas; el inventario se lleva
+            // en unidad base -> se convierte la cantidad y se prorratea el costo.
+            Long unitId = orderItem.getUnit() != null ? orderItem.getUnit().getId() : null;
+            BigDecimal factor = productUnitService.purchaseFactor(orderItem.getProduct().getId(), unitId);
+            BigDecimal baseQuantity = receiptItem.getReceivedQuantity().multiply(factor);
+            BigDecimal baseUnitCost = orderItem.getUnitPrice().divide(factor, new MathContext(10));
+
             InventoryMovementRequest movementRequest = new InventoryMovementRequest(
                     order.getBranchId(),
                     orderItem.getProduct().getId(),
                     MovementType.PURCHASE,
-                    receiptItem.getReceivedQuantity(),
-                    orderItem.getUnitPrice(),
+                    baseQuantity,
+                    baseUnitCost,
                     "Recepción de orden de compra " + order.getOrderNumber(),
                     "PURCHASE_RECEIPT",
                     savedReceipt.getId(),

@@ -1,7 +1,6 @@
 package opcback.system.audit.service;
 
 import lombok.RequiredArgsConstructor;
-import opcback.auth.entity.User;
 import opcback.system.audit.Auditable;
 import opcback.system.audit.entity.AuditAction;
 import org.hibernate.Hibernate;
@@ -30,9 +29,8 @@ import java.util.stream.IntStream;
  * de auditoría"): un único listener de bajo nivel de Hibernate, registrado
  * una sola vez en {@link opcback.system.audit.config.AuditListenerConfig},
  * que intercepta cada INSERT/UPDATE/DELETE que hace Hibernate sobre CUALQUIER
- * entidad que implemente {@link Auditable} — ningún servicio de negocio
- * (ProductService, UserService, PriceListService, PurchaseOrderService,
- * TransferService, ...) llama a esto ni sabe que existe.
+ * entidad que implemente {@link Auditable} — hoy solo {@code Product} —
+ * sin que el servicio de negocio (ProductService) lo sepa.
  *
  * Se registra como PostInsertEventListener/PostUpdateEventListener/
  * PostDeleteEventListener (no como @EntityListeners de JPA) porque solo el
@@ -45,9 +43,13 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class AuditEntityListener implements PostInsertEventListener, PostUpdateEventListener, PostDeleteEventListener {
 
-    /** Nunca debe aparecer en un valor auditado, ni como "anterior" ni como "nuevo". */
-    private static final Map<Class<?>, Set<String>> EXCLUDED_PROPERTIES = Map.of(
-            User.class, Set.of("passwordHash"));
+    /**
+     * Propiedades que nunca deben aparecer en un valor auditado (ni como
+     * "anterior" ni como "nuevo"), por entidad. Hoy vacío — {@code Product}
+     * no tiene ninguna propiedad sensible; el mecanismo se conserva porque
+     * es genérico.
+     */
+    private static final Map<Class<?>, Set<String>> EXCLUDED_PROPERTIES = Map.of();
 
     /** Distingue "el valor es null" de "esta propiedad no se audita" (colecciones de líneas). */
     private static final Object SKIP = new Object();
@@ -130,11 +132,9 @@ public class AuditEntityListener implements PostInsertEventListener, PostUpdateE
     /**
      * Reduce cada valor de propiedad a algo serializable en JSON de forma
      * segura:
-     * - Colecciones (@OneToMany, ej. items de una orden/transferencia/lista
-     *   de precios) se excluyen — auditarlas requeriría serializar cada fila
-     *   hija completa, con el riesgo real de referencias circulares hacia el
-     *   padre (ej. TransferItem.transfer) y de payloads enormes; no son
-     *   "entidades clave" pedidas por la tarjeta.
+     * - Colecciones (@OneToMany) se excluyen — auditarlas requeriría
+     *   serializar cada fila hija completa, con el riesgo real de
+     *   referencias circulares hacia el padre y de payloads enormes.
      * - Asociaciones (@ManyToOne, ej. Product.category) se reducen a su id:
      *   Hibernate.getClass() evita inicializar el proxy solo para saber su
      *   tipo real, y llamar a getId() sobre un proxy Hibernate no lo

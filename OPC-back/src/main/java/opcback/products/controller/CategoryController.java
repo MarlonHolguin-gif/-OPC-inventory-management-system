@@ -53,4 +53,10 @@ public class CategoryController {
     public CategoryResponse deactivate(@PathVariable Long id) {
         return categoryService.deactivate(id);
     }
+
+    @PreAuthorize("hasRole('GENERAL_ADMIN')")
+    @PatchMapping("/{id}/reactivate")
+    public CategoryResponse reactivate(@PathVariable Long id) {
+        return categoryService.reactivate(id);
+    }
 }

@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import opcback.products.entity.Product;
+import opcback.products.entity.Unit;
 
 import java.math.BigDecimal;
 
@@ -34,6 +35,12 @@ public class PurchaseOrderItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
+
+    // Unidad en la que se registró la línea. Nula = unidad base del producto
+    // (factor 1). quantity y unitPrice están expresados en esta unidad.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id")
+    private Unit unit;
 
     @Column(nullable = false, precision = 15, scale = 4)
     private BigDecimal quantity;

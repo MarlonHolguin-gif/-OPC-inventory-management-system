@@ -270,6 +270,7 @@ public class TransferService {
             item.setShippedQuantity(itemRequest.shippedQuantity());
         }
 
+        transfer.setEstimatedDispatchDate(request.estimatedDispatchDate());
         transfer.setStatus(TransferStatus.IN_PREPARATION);
         Transfer saved = transferRepository.save(transfer);
         recordEvent(saved, TransferStatus.IN_PREPARATION, "Envío preparado", resolveUserId(authentication));

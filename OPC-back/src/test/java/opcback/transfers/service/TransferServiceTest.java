@@ -9,6 +9,7 @@ import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
 import opcback.system.alerts.service.NotificationService;
 import opcback.transfers.dto.TransferResponse;
+import opcback.transfers.dto.TransferRoutePriorityRequest;
 import opcback.transfers.dto.TransferShortageResolutionRequest;
 import opcback.transfers.entity.ShortageResolution;
 import opcback.transfers.entity.Transfer;
@@ -194,6 +195,28 @@ class TransferServiceTest {
 
         assertThat(transferService.listAll(null, authentication)).hasSize(1);
         verify(transferRepository, never()).findAllFiltered(any());
+    }
+
+    @Test
+    void laSucursalOrigenPuedeClasificarLaRutaMientrasLaTransferenciaSigaViva() {
+        transfer.setStatus(TransferStatus.IN_PREPARATION);
+
+        TransferResponse response = transferService.updateRoutePriority(
+                TRANSFER_ID, new TransferRoutePriorityRequest(TransferRoutePriority.HIGH), authentication);
+
+        assertThat(response.routePriority()).isEqualTo(TransferRoutePriority.HIGH);
+        assertThat(transfer.getRoutePriority()).isEqualTo(TransferRoutePriority.HIGH);
+    }
+
+    @Test
+    void noSePuedeCambiarLaPrioridadDeRutaDeUnaTransferenciaYaFinalizada() {
+        // el setUp deja la transferencia en PARTIALLY_RECEIVED (estado terminal)
+        assertThatThrownBy(() -> transferService.updateRoutePriority(
+                TRANSFER_ID, new TransferRoutePriorityRequest(TransferRoutePriority.LOW), authentication))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ya está finalizada");
+
+        verify(transferRepository, never()).save(any());
     }
 
     @Test

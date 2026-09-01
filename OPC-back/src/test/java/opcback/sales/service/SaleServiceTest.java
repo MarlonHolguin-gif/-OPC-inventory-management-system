@@ -8,7 +8,10 @@ import opcback.inventory.repository.InventoryRepository;
 import opcback.inventory.service.InventoryAlertService;
 import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
+import opcback.products.entity.Unit;
 import opcback.products.repository.ProductRepository;
+import opcback.products.repository.UnitRepository;
+import opcback.products.service.ProductUnitService;
 import opcback.sales.dto.SaleCreateRequest;
 import opcback.sales.dto.SaleItemRequest;
 import opcback.sales.dto.SaleResponse;
@@ -35,6 +38,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -80,7 +84,11 @@ class SaleServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private UnitRepository unitRepository;
+    @Mock
     private BranchAccessService branchAccessService;
+    @Mock
+    private ProductUnitService productUnitService;
     @Mock
     private InventoryRepository inventoryRepository;
     @Mock
@@ -100,9 +108,12 @@ class SaleServiceTest {
 
         saleService = new SaleService(
                 saleRepository, saleItemRepository, priceListRepository, priceListItemRepository,
-                customerRepository, productRepository, userRepository, branchAccessService, inventoryMovementService);
+                customerRepository, productRepository, unitRepository, userRepository, branchAccessService,
+                inventoryMovementService, productUnitService);
 
         when(authentication.getName()).thenReturn(EMAIL);
+        // Todas las líneas de estos tests van en unidad base -> factor 1.
+        lenient().when(productUnitService.saleFactor(any(), isNull())).thenReturn(BigDecimal.ONE);
     }
 
     private void stubSeller() {
@@ -131,10 +142,14 @@ class SaleServiceTest {
     }
 
     private void stubProduct(Long id, String sku, String name) {
+        Unit baseUnit = new Unit();
+        baseUnit.setId(100L);
+        baseUnit.setAbbreviation("UN");
         Product product = new Product();
         product.setId(id);
         product.setSku(sku);
         product.setName(name);
+        product.setBaseUnit(baseUnit);
         when(productRepository.findById(id)).thenReturn(Optional.of(product));
     }
 
@@ -170,7 +185,7 @@ class SaleServiceTest {
     }
 
     private SaleItemRequest item(Long productId, String quantity, String discountPct) {
-        return new SaleItemRequest(productId, new BigDecimal(quantity),
+        return new SaleItemRequest(productId, null, new BigDecimal(quantity),
                 discountPct != null ? new BigDecimal(discountPct) : null);
     }
 
@@ -243,6 +258,41 @@ class SaleServiceTest {
         assertThat(response.items().get(0).subtotal()).isEqualByComparingTo("150000"); // Pastel, sin descuento
         assertThat(response.items().get(1).subtotal()).isEqualByComparingTo("15750");  // Chocorramo, 10%
         assertThat(response.items().get(2).subtotal()).isEqualByComparingTo("64800");  // Leche, 10%
+    }
+
+    @Test
+    void ventaEnUnidadAlternativaMultiplicaPrecioYDescuentaEnUnidadBase() {
+        stubSeller();
+        stubVigentPriceList();
+        Long cajaUnitId = 55L;
+        Unit caja = new Unit();
+        caja.setId(cajaUnitId);
+        caja.setAbbreviation("CJ");
+        Unit baseUnit = new Unit();
+        baseUnit.setId(100L);
+        baseUnit.setAbbreviation("UN");
+        Product product = new Product();
+        product.setId(CHOCORRAMO_ID);
+        product.setSku("CHO-001");
+        product.setName("Chocorramo");
+        product.setBaseUnit(baseUnit);
+        when(productRepository.findById(CHOCORRAMO_ID)).thenReturn(Optional.of(product));
+        when(unitRepository.findById(cajaUnitId)).thenReturn(Optional.of(caja));
+        when(productUnitService.saleFactor(CHOCORRAMO_ID, cajaUnitId)).thenReturn(new BigDecimal("6")); // 1 caja = 6 unidades
+        stubPrice(VIGENT_LIST_ID, CHOCORRAMO_ID, "3500"); // precio por unidad base
+        stubInventory(CHOCORRAMO_ID, "100");
+        stubSaves();
+
+        // 2 cajas -> precio 3500*6 = 21000 por caja; subtotal 2*21000 = 42000
+        SaleResponse response = saleService.register(
+                request(VIGENT_LIST_ID, null, new SaleItemRequest(CHOCORRAMO_ID, cajaUnitId, new BigDecimal("2"), null)),
+                authentication);
+
+        assertThat(response.total()).isEqualByComparingTo("42000");
+        assertThat(response.items().get(0).unitAbbreviation()).isEqualTo("CJ");
+        // el descuento de stock va en unidad base: 2 cajas * 6 = 12 unidades
+        assertThat(inventoryRepository.findByBranchIdAndProductId(BRANCH_ID, CHOCORRAMO_ID).orElseThrow()
+                .getCurrentQuantity()).isEqualByComparingTo("88");
     }
 
     @Test

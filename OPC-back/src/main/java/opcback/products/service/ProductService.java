@@ -2,6 +2,9 @@ package opcback.products.service;
 
 import lombok.RequiredArgsConstructor;
 import opcback.exception.ResourceNotFoundException;
+import opcback.inventory.dto.InventoryMovementRequest;
+import opcback.inventory.entity.MovementType;
+import opcback.inventory.service.InventoryMovementService;
 import opcback.products.dto.ProductCreateRequest;
 import opcback.products.dto.ProductResponse;
 import opcback.products.dto.ProductUpdateRequest;
@@ -11,6 +14,7 @@ import opcback.products.entity.Unit;
 import opcback.products.repository.CategoryRepository;
 import opcback.products.repository.ProductRepository;
 import opcback.products.repository.UnitRepository;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final UnitRepository unitRepository;
+    private final InventoryMovementService inventoryMovementService;
 
     /**
      * Listado completo (incluye inactivos) — es el que debe usarse para
@@ -48,7 +53,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse create(ProductCreateRequest request) {
+    public ProductResponse create(ProductCreateRequest request, Authentication authentication) {
         if (productRepository.existsBySku(request.sku())) {
             throw new IllegalStateException("Ya existe un producto con el SKU: " + request.sku());
         }
@@ -66,7 +71,36 @@ public class ProductService {
         product.setCreatedAt(now);
         product.setUpdatedAt(now);
 
-        return ProductResponse.from(productRepository.save(product));
+        Product saved = productRepository.save(product);
+
+        registerInitialStock(saved, request, authentication);
+
+        return ProductResponse.from(saved);
+    }
+
+    /**
+     * Stock inicial opcional: si viene una cantidad y una sucursal, se
+     * genera un ajuste positivo por esa cantidad — el stock inicial sigue
+     * pasando por InventoryMovementService (única puerta a current_quantity),
+     * no se escribe directo en tr_inventory.
+     */
+    private void registerInitialStock(Product product, ProductCreateRequest request, Authentication authentication) {
+        BigDecimal initialStock = request.initialStock();
+        if (initialStock == null || initialStock.compareTo(BigDecimal.ZERO) <= 0 || request.initialStockBranchId() == null) {
+            return;
+        }
+
+        InventoryMovementRequest movementRequest = new InventoryMovementRequest(
+                request.initialStockBranchId(),
+                product.getId(),
+                MovementType.POSITIVE_ADJUSTMENT,
+                initialStock,
+                product.getReferencePrice().compareTo(BigDecimal.ZERO) > 0 ? product.getReferencePrice() : null,
+                "Carga inicial de inventario",
+                "MANUAL_ADJUSTMENT",
+                0L,
+                LocalDateTime.now());
+        inventoryMovementService.register(movementRequest, authentication);
     }
 
     @Transactional
@@ -86,6 +120,26 @@ public class ProductService {
     public ProductResponse deactivate(Long id) {
         Product product = findProductOrThrow(id);
         product.setActive(false);
+        product.setUpdatedAt(LocalDateTime.now());
+        return ProductResponse.from(productRepository.save(product));
+    }
+
+    /**
+     * No se puede reactivar un producto si su categoría está inactiva —
+     * quedaría un producto activo colgando de una categoría desactivada, y
+     * aparecería en el catálogo de venta. El mensaje dice el motivo concreto.
+     */
+    @Transactional
+    public ProductResponse reactivate(Long id) {
+        Product product = findProductOrThrow(id);
+
+        if (!product.getCategory().isActive()) {
+            throw new IllegalStateException(
+                    "No se puede reactivar el producto «" + product.getName() + "» porque su categoría «"
+                            + product.getCategory().getName() + "» está inactiva. Reactiva la categoría primero.");
+        }
+
+        product.setActive(true);
         product.setUpdatedAt(LocalDateTime.now());
         return ProductResponse.from(productRepository.save(product));
     }

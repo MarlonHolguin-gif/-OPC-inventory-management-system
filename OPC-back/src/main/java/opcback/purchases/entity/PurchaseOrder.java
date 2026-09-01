@@ -16,7 +16,6 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import opcback.system.audit.Auditable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,7 +27,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseOrder implements Auditable {
+public class PurchaseOrder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

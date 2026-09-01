@@ -50,7 +50,8 @@ public class CategoryService {
 
     /**
      * Criterio de aceptación: no se puede desactivar una categoría con
-     * productos activos asociados.
+     * productos activos asociados. El mensaje explica el motivo concreto
+     * para que el frontend lo muestre tal cual.
      */
     @Transactional
     public CategoryResponse deactivate(Long id) {
@@ -58,10 +59,19 @@ public class CategoryService {
 
         if (productRepository.existsByCategoryIdAndActiveTrue(id)) {
             throw new IllegalStateException(
-                    "No se puede desactivar la categoría " + id + ": tiene productos activos asociados");
+                    "No se puede desactivar la categoría «" + category.getName() + "» porque tiene productos "
+                            + "activos asociados. Desactiva o mueve esos productos a otra categoría primero.");
         }
 
         category.setActive(false);
+        category.setUpdatedAt(LocalDateTime.now());
+        return CategoryResponse.from(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public CategoryResponse reactivate(Long id) {
+        Category category = findCategoryOrThrow(id);
+        category.setActive(true);
         category.setUpdatedAt(LocalDateTime.now());
         return CategoryResponse.from(categoryRepository.save(category));
     }

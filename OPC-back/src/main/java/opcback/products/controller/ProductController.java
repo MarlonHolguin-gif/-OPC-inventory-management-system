@@ -9,6 +9,7 @@ import opcback.products.service.ProductService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,8 +50,9 @@ public class ProductController {
 
     @PreAuthorize("hasRole('GENERAL_ADMIN')")
     @PostMapping
-    public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productService.create(request));
+    public ResponseEntity<ProductResponse> create(
+            @Valid @RequestBody ProductCreateRequest request, Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productService.create(request, authentication));
     }
 
     @PreAuthorize("hasRole('GENERAL_ADMIN')")
@@ -63,5 +65,11 @@ public class ProductController {
     @PatchMapping("/{id}/deactivate")
     public ProductResponse deactivate(@PathVariable Long id) {
         return productService.deactivate(id);
+    }
+
+    @PreAuthorize("hasRole('GENERAL_ADMIN')")
+    @PatchMapping("/{id}/reactivate")
+    public ProductResponse reactivate(@PathVariable Long id) {
+        return productService.reactivate(id);
     }
 }

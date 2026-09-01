@@ -2,7 +2,6 @@ package opcback.system.audit.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import opcback.auth.entity.User;
 import opcback.system.audit.dto.AuditLogResponse;
 import opcback.system.audit.entity.AuditAction;
 import opcback.system.audit.entity.AuditLog;
@@ -13,7 +12,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -35,13 +33,11 @@ import java.util.Map;
  * DataSourceTransactionManager), así que igual queda atómico con el cambio
  * que lo originó, pero sin reentrar la sesión de Hibernate.
  *
- * record(...) NO declara @Transactional propia: para CREATE/UPDATE/DELETE
- * corre dentro de la transacción de negocio que originó el cambio (la del
- * flush de Hibernate que disparó el listener) a propósito — si esa
- * transacción hace rollback, el registro de auditoría de ese cambio
- * también debe desaparecer, no tendría sentido auditar un cambio que nunca
- * ocurrió. Los eventos de LOGIN son la excepción — ver
- * recordLoginSuccess/recordLoginFailure.
+ * record(...) NO declara @Transactional propia: corre dentro de la
+ * transacción de negocio que originó el cambio (la del flush de Hibernate
+ * que disparó el listener) a propósito — si esa transacción hace rollback,
+ * el registro de auditoría de ese cambio también debe desaparecer, no
+ * tendría sentido auditar un cambio que nunca ocurrió.
  */
 @Service
 @RequiredArgsConstructor
@@ -62,9 +58,9 @@ public class AuditLogService {
     /**
      * Nunca propaga una excepción hacia quien la llama: un fallo al
      * registrar auditoría (ej. un problema pasajero de serialización JSON)
-     * no debe tumbar la operación de negocio que la originó — ni el login,
-     * ni un alta/edición/baja de producto, usuario, precio, orden de
-     * compra o transferencia.
+     * no debe tumbar la operación de negocio que la originó — un
+     * alta/edición/baja de producto, usuario, lista de precios u orden de
+     * compra.
      */
     public void record(String entity, long entityId, AuditAction action, Long userId,
                         Map<String, Object> oldValues, Map<String, Object> newValues) {
@@ -94,6 +90,10 @@ public class AuditLogService {
      * propia entidad que se está insertando/actualizando. Se descubrió así,
      * probando en vivo: la primera versión usaba UserRepository y tumbaba
      * con 500 cualquier alta de producto.
+     *
+     * Devuelve null si no hay usuario autenticado en el contexto (una
+     * escritura fuera de una petición HTTP) o si el email no corresponde a
+     * ninguna cuenta — de ahí que sy_audit_log.user_id admita NULL (V6).
      */
     public Long resolveUserId(String email) {
         if (email == null) return null;
@@ -102,39 +102,6 @@ public class AuditLogService {
         } catch (EmptyResultDataAccessException ex) {
             return null;
         }
-    }
-
-    /**
-     * REQUIRES_NEW a propósito, a diferencia de record(): AuthService.login()
-     * vuelve a lanzar la excepción de autenticación después de llamar a
-     * recordLoginFailure (para que el cliente siga recibiendo el mismo 401
-     * de siempre), y eso deja la transacción de login() marcada
-     * rollback-only. Si este registro corriera en esa misma transacción,
-     * el rollback se llevaría puesto el propio registro del intento
-     * fallido — justo el caso que el criterio de aceptación pide conservar.
-     * Una transacción nueva e independiente lo protege de ese rollback.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordLoginSuccess(User user) {
-        record("Auth", user.getId(), AuditAction.LOGIN, user.getId(), null,
-                Map.of("email", user.getEmail(), "result", "SUCCESS"));
-    }
-
-    /**
-     * entity_id es NOT NULL en sy_audit_log; si el email intentado no
-     * corresponde a ningún usuario no hay un id real que asociarle. Se usa
-     * 0 como centinela ("sin usuario identificado") — nunca es un id real
-     * (AUTO_INCREMENT arranca en 1) — y el email intentado igual queda en
-     * new_values para el registro interno, sin exponerlo nunca en la
-     * respuesta HTTP (eso lo resuelve el 401 genérico de
-     * GlobalExceptionHandler, sin relación con este método). Ver el
-     * javadoc de recordLoginSuccess sobre por qué REQUIRES_NEW.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordLoginFailure(String attemptedEmail, Long matchedUserId) {
-        long entityId = matchedUserId != null ? matchedUserId : 0L;
-        record("Auth", entityId, AuditAction.LOGIN, matchedUserId, null,
-                Map.of("email", attemptedEmail, "result", "FAILURE"));
     }
 
     @Transactional(readOnly = true)

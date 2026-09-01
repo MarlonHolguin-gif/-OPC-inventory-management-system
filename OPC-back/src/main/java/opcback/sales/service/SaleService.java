@@ -8,7 +8,10 @@ import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.entity.MovementType;
 import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
+import opcback.products.entity.Unit;
 import opcback.products.repository.ProductRepository;
+import opcback.products.repository.UnitRepository;
+import opcback.products.service.ProductUnitService;
 import opcback.sales.dto.SaleCreateRequest;
 import opcback.sales.dto.SaleHistoryItemResponse;
 import opcback.sales.dto.SaleItemRequest;
@@ -60,9 +63,11 @@ public class SaleService {
     private final PriceListItemRepository priceListItemRepository;
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
+    private final UnitRepository unitRepository;
     private final UserRepository userRepository;
     private final BranchAccessService branchAccessService;
     private final InventoryMovementService inventoryMovementService;
+    private final ProductUnitService productUnitService;
 
     public List<SaleResponse> listAll() {
         return saleRepository.findAll().stream().map(this::toResponse).toList();
@@ -127,8 +132,16 @@ public class SaleService {
                     .orElseThrow(() -> new IllegalStateException("No hay precio definido para el producto "
                             + product.getName() + " en la lista " + priceList.getName()));
 
+            // La lista de precios está por unidad base; si se vende en cajas,
+            // el precio de la línea es precio_base * factor.
+            BigDecimal factor = productUnitService.saleFactor(product.getId(), itemRequest.unitId());
+            Unit unit = itemRequest.unitId() != null && !itemRequest.unitId().equals(product.getBaseUnit().getId())
+                    ? unitRepository.findById(itemRequest.unitId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Unidad no encontrada: " + itemRequest.unitId()))
+                    : null;
+
             BigDecimal discountPct = itemRequest.discountPct() != null ? itemRequest.discountPct() : BigDecimal.ZERO;
-            BigDecimal unitPrice = priceEntry.getPrice();
+            BigDecimal unitPrice = priceEntry.getPrice().multiply(factor);
             BigDecimal gross = itemRequest.quantity().multiply(unitPrice);
             BigDecimal discountAmount = gross.multiply(discountPct).divide(HUNDRED, new MathContext(10));
             BigDecimal lineSubtotal = gross.subtract(discountAmount);
@@ -136,6 +149,7 @@ public class SaleService {
             SaleItem item = new SaleItem();
             item.setSale(sale);
             item.setProduct(product);
+            item.setUnit(unit);
             item.setQuantity(itemRequest.quantity());
             item.setUnitPrice(unitPrice);
             item.setDiscountPct(discountPct);
@@ -153,11 +167,15 @@ public class SaleService {
         Sale savedSale = saleRepository.save(sale);
 
         for (SaleItem item : savedSale.getItems()) {
+            Long unitId = item.getUnit() != null ? item.getUnit().getId() : null;
+            BigDecimal baseQuantity = item.getQuantity()
+                    .multiply(productUnitService.saleFactor(item.getProduct().getId(), unitId));
+
             InventoryMovementRequest movementRequest = new InventoryMovementRequest(
                     savedSale.getBranchId(),
                     item.getProduct().getId(),
                     MovementType.SALE,
-                    item.getQuantity(),
+                    baseQuantity,
                     null,
                     "Venta " + savedSale.getSaleNumber(),
                     "SALE",

@@ -115,7 +115,7 @@ flowchart TB
             Controllers["Controllers<br/>REST API"]
             Services["Services<br/>Lógica de negocio"]
             Repositories["Repositories<br/>Spring Data JPA"]
-            Flyway["Flyway<br/>Migraciones V1-V5"]
+            Flyway["Flyway<br/>Migraciones V1-V8"]
 
             Security --> Controllers --> Services --> Repositories
         end

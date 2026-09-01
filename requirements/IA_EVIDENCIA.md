@@ -208,6 +208,46 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
+### 2.21 Auditoría de completitud del módulo de Compras contra el enunciado — *Impacto: Alto*
+
+**Prompt (resumido):** el usuario pidió revisar el módulo de Compras contra los cuatro puntos del enunciado (crear/gestionar órdenes; registrar precio unitario, descuentos y plazo de pago; actualizar inventario al recibir; histórico por proveedor y producto; costo promedio ponderado) y, antes de tocar código, decir qué faltaba.
+
+**Resultado del diagnóstico:** de los cuatro puntos, dos estaban completos (condiciones de compra; actualización de inventario y costo promedio ponderado al recibir) y tres tenían huecos: (A) el endpoint de histórico existía en el backend pero **no había ninguna vista** que lo consumiera; (B) el costo promedio ponderado se calculaba y se devolvía en `InventoryResponse` pero **no se mostraba en ninguna pantalla**; (C) "gestionar órdenes" estaba a medias — el ENUM tenía `SENT` y `CANCELLED` pero ningún endpoint hacía esas transiciones, y no se podía editar un borrador.
+
+**Implementación:** (A) pestaña de histórico en el módulo de Compras con filtros en fila (proveedor, producto, desde/hasta) reusando `FilterBar`; (B) columna "Costo promedio ponderado" en la vista de Inventario más un helper `formatCurrency` compartido; (C) endpoints `PUT /{id}`, `PATCH /{id}/send` y `PATCH /{id}/cancel` con sus guardas de estado (solo se edita/envía un borrador; no se cancela una orden ya recibida; no se recibe mercancía de un borrador), botones en la vista de detalle y un `PurchaseOrderServiceTest` nuevo. También se pidió **dejar de usar abreviaturas en el texto visible** ("Costo promedio ponderado", no "Costo prom."; etiquetas legibles de estado en vez del valor crudo del ENUM), por lo que se añadió `PURCHASE_ORDER_STATUS_LABELS` en `constants.js`.
+
+**Ajustes de seguimiento del mismo usuario:** el descuento por línea pasó de monto directo a **porcentaje** — migración Flyway `V7` que agrega `tr_purchase_order_items.discount_pct` (se conserva `discount` como el monto ya calculado, igual que `tr_price_list_items`), y el backend calcula el monto a partir del porcentaje. Además el listado de órdenes dejó de ser una sola tabla: ahora agrupa por estado en el orden que pidió el usuario — primero las recibidas, luego las pendientes por recibir mercancía, luego las pendientes por enviar al proveedor, y las canceladas al final.
+
+**Verificación:** `./mvnw test` (18/18, incluye la aplicación real de `V7` contra MySQL) y `lint` + `build` del frontend limpios; luego el usuario probó en `http://localhost:3000` tras reconstruir los contenedores.
+
+---
+
+### 2.22 Auditoría de completitud del módulo de Ventas contra el enunciado — *Impacto: Alto*
+
+**Prompt (resumido):** mismo formato que Compras — revisar Ventas contra los cinco puntos del enunciado (registrar venta por producto/cantidad/precio; asociar a sucursal, fecha y responsable; validar stock antes de confirmar; aplicar descuentos y gestionar listas de precios; generar comprobantes para consulta posterior) y decir qué faltaba antes de tocar código.
+
+**Resultado del diagnóstico:** tres puntos completos (registro, descuentos y listas de precios, validación de stock en el backend) y tres huecos: (A) el `seller_id` se guardaba pero **ningún endpoint devolvía el nombre del responsable**, así que no se veía en ninguna parte — y el frontend no puede resolverlo porque `/api/users` es solo de administrador; (B) **no existía comprobante ni vista de una venta individual** — el histórico son filas sueltas por producto, y `GET /api/sales/{id}` no lo consumía nadie; (C) el formulario mostraba el stock disponible pero dejaba confirmar aunque la cantidad lo superara (el backend igual lo rechazaba con un 409).
+
+**Implementación:** (A) `sellerName` resuelto en el backend y añadido a `SaleResponse` y `SaleHistoryItemResponse` (en bloque para el histórico con `findAllById`), columna "Responsable" en el histórico; (B) página `/ventas/{id}` (`SaleDetailController` + `SaleDetailPage`) que consume `GET /api/sales/{id}` y muestra el comprobante completo — número, fecha, sucursal, responsable, cliente, lista de precios, ítems y totales — enlazada desde el número de venta en el histórico; (C) `hasStockShortage` computado que deshabilita "Confirmar venta" y muestra un aviso, con el backend como validación real. De paso se aplicó la regla de no-abreviaturas al histórico ("Número de venta", "Precio unitario", etiquetas de estado).
+
+**Verificación:** `./mvnw test` (18/18) y `lint` + `build` del frontend limpios; luego el usuario probó en `http://localhost:3000` tras reconstruir los contenedores.
+
+---
+
+### 2.23 Auditoría de completitud del módulo de Transferencias contra el enunciado — *Impacto: Alto*
+
+**Prompt (resumido):** mismo formato — revisar los 5 pasos del flujo de transferencias del PDF (solicitud; preparación; registro de envío; recepción completa; recepción parcial con faltantes, alerta y **tratamiento**) y decir qué faltaba antes de tocar código.
+
+**Resultado del diagnóstico:** pasos 1 a 4 completos (backend + frontend). Del paso 5, dos de tres partes hechas: se registra la diferencia (`tr_transfer_items.difference`) y se dispara la alerta (`notifyTransferShortage`), pero **"definir el tratamiento (reenvío, ajuste o reclamación)" no existía** — sin campo, ENUM, endpoint ni pantalla; tras la recepción parcial la transferencia quedaba en `PARTIALLY_RECEIVED` y "no admite más acciones". El texto estaba en el PDF pero nunca se diseñó en el DER ni en los RF (RF-18 solo pide "generar alerta cuando hay faltantes").
+
+**Implementación:** migración Flyway `V8` (`shortage_resolution` ENUM + notas + `shortage_resolved_at/by` + `reshipment_transfer_id`, con FK a `ma_users` y auto-FK `ON DELETE SET NULL`); enum `ShortageResolution`; `POST /api/transfers/{id}/resolve-shortage` con guardas de estado (solo `PARTIALLY_RECEIVED`, con faltante real, no resuelto ya). Por decisión del usuario, el tratamiento **reenvío genera automáticamente** una transferencia de seguimiento en estado `REQUESTED` por las cantidades faltantes (mismo origen/destino, misma urgencia) y deja el enlace en `reshipment_transfer_id`. Frontend: formulario de tratamiento en el detalle cuando el estado es `PARTIALLY_RECEIVED` y lo acciona la sucursal destino; cuando ya está resuelto muestra la decisión y, si hubo reenvío, un enlace a la transferencia de seguimiento. Test nuevo `TransferServiceTest` (el módulo no tenía ninguno). El ENUM `CANCELLED` se dejó como está (sin endpoint de cancelación) por decisión del usuario.
+
+**Verificación:** `./mvnw test` (22/22, incluye la aplicación real de `V8` contra MySQL) y `lint` + `build` del frontend limpios; luego el usuario probó en `http://localhost:3000` tras reconstruir los contenedores.
+
+**Ajuste de seguimiento (encontrado por el usuario probando la app):** el listado de transferencias no filtraba por sucursal — Bogotá veía una transferencia Medellín→Cali con la que no tiene nada que ver. Se acotó la lectura (`listAll`, `getById`, `events`) a las transferencias donde alguna sucursal del usuario es origen o destino (ADMIN_GENERAL ve todas), reutilizando el mismo criterio (`BranchAccessService.isGeneralAdmin` + `getWritableBranchIds`) que ya usaba el listado de notificaciones — nueva query `TransferRepository.findForBranches`. Tests: 25/25.
+
+---
+
 ## 3. Evaluación crítica
 
 ### Qué aportó la IA

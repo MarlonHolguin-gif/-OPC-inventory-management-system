@@ -15,14 +15,16 @@ public record SaleHistoryItemResponse(
         Long customerId,
         String customerName,
         Long sellerId,
+        String sellerName,
         Long productId,
         String productSku,
         String productName,
         BigDecimal quantity,
         BigDecimal unitPrice,
+        BigDecimal discountPct,
         BigDecimal subtotal
 ) {
-    public static SaleHistoryItemResponse from(SaleItem item) {
+    public static SaleHistoryItemResponse from(SaleItem item, String sellerName) {
         return new SaleHistoryItemResponse(
                 item.getSale().getId(),
                 item.getSale().getSaleNumber(),
@@ -32,11 +34,13 @@ public record SaleHistoryItemResponse(
                 item.getSale().getCustomer() != null ? item.getSale().getCustomer().getId() : null,
                 item.getSale().getCustomer() != null ? item.getSale().getCustomer().getName() : null,
                 item.getSale().getSellerId(),
+                sellerName,
                 item.getProduct().getId(),
                 item.getProduct().getSku(),
                 item.getProduct().getName(),
                 item.getQuantity(),
                 item.getUnitPrice(),
+                item.getDiscountPct(),
                 item.getSubtotal());
     }
 }

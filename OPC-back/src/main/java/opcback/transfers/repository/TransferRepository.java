@@ -16,9 +16,9 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     boolean existsByTransferNumber(String transferNumber);
 
     /**
-     * Listado general, con filtro opcional por prioridad de ruta (si llega
-     * null, no se aplica esa condición — mismo patrón que
-     * SaleItemRepository.findHistory).
+     * Listado general (para ADMIN_GENERAL, que ve todas), con filtro opcional
+     * por prioridad de ruta (si llega null, no se aplica esa condición —
+     * mismo patrón que SaleItemRepository.findHistory).
      */
     @Query("""
             select t from Transfer t
@@ -26,6 +26,22 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
             order by t.requestDate desc
             """)
     List<Transfer> findAllFiltered(@Param("routePriority") TransferRoutePriority routePriority);
+
+    /**
+     * Listado acotado a las sucursales del usuario: solo las transferencias en
+     * las que alguna de sus sucursales es el origen O el destino — una
+     * sucursal que no participa no tiene nada que hacer con esa transferencia
+     * y no debería verla.
+     */
+    @Query("""
+            select t from Transfer t
+            where (:routePriority is null or t.routePriority = :routePriority)
+              and (t.originBranchId in :branchIds or t.destinationBranchId in :branchIds)
+            order by t.requestDate desc
+            """)
+    List<Transfer> findForBranches(
+            @Param("routePriority") TransferRoutePriority routePriority,
+            @Param("branchIds") Collection<Long> branchIds);
 
     /**
      * Base del reporte de cumplimiento logístico: solo transferencias que ya

@@ -11,6 +11,7 @@ public record PurchaseHistoryItemResponse(
         String orderNumber,
         LocalDateTime orderDate,
         PurchaseOrderStatus status,
+        String paymentTerms,
         Long supplierId,
         String supplierName,
         Long productId,
@@ -18,6 +19,8 @@ public record PurchaseHistoryItemResponse(
         String productName,
         BigDecimal quantity,
         BigDecimal unitPrice,
+        BigDecimal discountPercentage,
+        BigDecimal discount,
         BigDecimal subtotal
 ) {
     public static PurchaseHistoryItemResponse from(PurchaseOrderItem item) {
@@ -26,6 +29,7 @@ public record PurchaseHistoryItemResponse(
                 item.getPurchaseOrder().getOrderNumber(),
                 item.getPurchaseOrder().getOrderDate(),
                 item.getPurchaseOrder().getStatus(),
+                item.getPurchaseOrder().getPaymentTerms(),
                 item.getPurchaseOrder().getSupplier().getId(),
                 item.getPurchaseOrder().getSupplier().getName(),
                 item.getProduct().getId(),
@@ -33,6 +37,8 @@ public record PurchaseHistoryItemResponse(
                 item.getProduct().getName(),
                 item.getQuantity(),
                 item.getUnitPrice(),
+                item.getDiscountPercentage(),
+                item.getDiscount(),
                 item.getSubtotal());
     }
 }

@@ -55,6 +55,10 @@ public class PurchaseReceiptService {
 
         branchAccessService.assertCanWrite(authentication.getName(), order.getBranchId());
 
+        if (order.getStatus() == PurchaseOrderStatus.DRAFT) {
+            throw new IllegalStateException("La orden " + order.getOrderNumber() + " todavía está en borrador; "
+                    + "envíala al proveedor antes de registrar una recepción de mercancía.");
+        }
         if (order.getStatus() == PurchaseOrderStatus.CANCELLED || order.getStatus() == PurchaseOrderStatus.FULLY_RECEIVED) {
             throw new IllegalStateException(
                     "La orden " + order.getOrderNumber() + " no admite más recepciones (estado: " + order.getStatus() + ")");

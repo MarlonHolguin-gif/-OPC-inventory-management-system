@@ -1,5 +1,6 @@
 package opcback.transfers.dto;
 
+import opcback.transfers.entity.ShortageResolution;
 import opcback.transfers.entity.Transfer;
 import opcback.transfers.entity.TransferRoutePriority;
 import opcback.transfers.entity.TransferStatus;
@@ -24,6 +25,10 @@ public record TransferResponse(
         LocalDateTime actualDispatchDate,
         LocalDateTime estimatedArrivalDate,
         LocalDateTime actualArrivalDate,
+        ShortageResolution shortageResolution,
+        String shortageResolutionNotes,
+        LocalDateTime shortageResolvedAt,
+        Long reshipmentTransferId,
         List<TransferItemResponse> items
 ) {
     public static TransferResponse from(Transfer transfer, List<TransferItemResponse> items) {
@@ -42,6 +47,10 @@ public record TransferResponse(
                 transfer.getActualDispatchDate(),
                 transfer.getEstimatedArrivalDate(),
                 transfer.getActualArrivalDate(),
+                transfer.getShortageResolution(),
+                transfer.getShortageResolutionNotes(),
+                transfer.getShortageResolvedAt(),
+                transfer.getReshipmentTransferId(),
                 items);
     }
 }

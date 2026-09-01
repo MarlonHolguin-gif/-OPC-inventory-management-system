@@ -1,6 +1,7 @@
 package opcback.sales.service;
 
 import lombok.RequiredArgsConstructor;
+import opcback.auth.entity.User;
 import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.inventory.dto.InventoryMovementRequest;
@@ -34,6 +35,9 @@ import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Registra la venta y sus ítems y, en la MISMA transacción, delega en
@@ -70,8 +74,16 @@ public class SaleService {
 
     public List<SaleHistoryItemResponse> history(Long branchId, Long productId, Long customerId, Long sellerId,
             LocalDateTime from, LocalDateTime to) {
-        return saleItemRepository.findHistory(branchId, productId, customerId, sellerId, from, to).stream()
-                .map(SaleHistoryItemResponse::from)
+        List<SaleItem> items = saleItemRepository.findHistory(branchId, productId, customerId, sellerId, from, to);
+
+        // Nombre del responsable resuelto en bloque: /api/users es solo para
+        // administradores, así que el frontend no puede resolverlo por su
+        // cuenta y necesita el nombre ya incluido en cada fila.
+        Map<Long, String> sellerNames = sellerNamesById(
+                items.stream().map(item -> item.getSale().getSellerId()).collect(Collectors.toSet()));
+
+        return items.stream()
+                .map(item -> SaleHistoryItemResponse.from(item, sellerNames.get(item.getSale().getSellerId())))
                 .toList();
     }
 
@@ -179,7 +191,16 @@ public class SaleService {
 
     private SaleResponse toResponse(Sale sale) {
         List<SaleItemResponse> items = sale.getItems().stream().map(SaleItemResponse::from).toList();
-        return SaleResponse.from(sale, items);
+        String sellerName = userRepository.findById(sale.getSellerId()).map(User::getName).orElse(null);
+        return SaleResponse.from(sale, sellerName, items);
+    }
+
+    private Map<Long, String> sellerNamesById(Set<Long> sellerIds) {
+        if (sellerIds.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(sellerIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
     }
 
     private Sale findSaleOrThrow(Long id) {

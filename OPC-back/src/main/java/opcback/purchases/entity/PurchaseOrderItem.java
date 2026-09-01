@@ -41,6 +41,11 @@ public class PurchaseOrderItem {
     @Column(name = "unit_price", nullable = false, precision = 15, scale = 4)
     private BigDecimal unitPrice;
 
+    // Porcentaje de descuento aplicado a la línea (0-100).
+    @Column(name = "discount_pct", nullable = false, precision = 7, scale = 4)
+    private BigDecimal discountPercentage;
+
+    // Monto de descuento ya calculado a partir de discountPercentage.
     @Column(nullable = false, precision = 15, scale = 4)
     private BigDecimal discount;
 

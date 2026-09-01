@@ -55,6 +55,26 @@ public class Transfer implements Auditable {
     @Column(name = "route_priority", nullable = false)
     private TransferRoutePriority routePriority;
 
+    // Tratamiento del faltante de una recepción parcial (paso 5). Nulo
+    // mientras la transferencia no haya tenido faltante o esté sin resolver.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shortage_resolution")
+    private ShortageResolution shortageResolution;
+
+    @Column(name = "shortage_resolution_notes", length = 500)
+    private String shortageResolutionNotes;
+
+    @Column(name = "shortage_resolved_at")
+    private LocalDateTime shortageResolvedAt;
+
+    @Column(name = "shortage_resolved_by")
+    private Long shortageResolvedBy;
+
+    // Si el tratamiento fue reenvío: id de la transferencia de seguimiento
+    // que se generó por las cantidades faltantes.
+    @Column(name = "reshipment_transfer_id")
+    private Long reshipmentTransferId;
+
     @Column(length = 150)
     private String carrier;
 

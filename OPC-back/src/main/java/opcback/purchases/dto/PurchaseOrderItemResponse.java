@@ -11,6 +11,7 @@ public record PurchaseOrderItemResponse(
         String productName,
         BigDecimal quantity,
         BigDecimal unitPrice,
+        BigDecimal discountPercentage,
         BigDecimal discount,
         BigDecimal subtotal,
         BigDecimal receivedQuantity
@@ -23,6 +24,7 @@ public record PurchaseOrderItemResponse(
                 item.getProduct().getName(),
                 item.getQuantity(),
                 item.getUnitPrice(),
+                item.getDiscountPercentage(),
                 item.getDiscount(),
                 item.getSubtotal(),
                 receivedQuantity);

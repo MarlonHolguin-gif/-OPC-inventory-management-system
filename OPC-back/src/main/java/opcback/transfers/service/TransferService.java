@@ -23,6 +23,8 @@ import opcback.transfers.dto.TransferPrepareRequest;
 import opcback.transfers.dto.TransferReceivePartialRequest;
 import opcback.transfers.dto.TransferResponse;
 import opcback.transfers.dto.TransferRoutePriorityRequest;
+import opcback.transfers.dto.TransferShortageResolutionRequest;
+import opcback.transfers.entity.ShortageResolution;
 import opcback.transfers.entity.Transfer;
 import opcback.transfers.entity.TransferEvent;
 import opcback.transfers.entity.TransferItem;
@@ -30,6 +32,7 @@ import opcback.transfers.entity.TransferRoutePriority;
 import opcback.transfers.entity.TransferStatus;
 import opcback.transfers.repository.TransferEventRepository;
 import opcback.transfers.repository.TransferRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,8 +74,40 @@ public class TransferService {
     private final InventoryMovementService inventoryMovementService;
     private final NotificationService notificationService;
 
-    public List<TransferResponse> listAll(TransferRoutePriority routePriority) {
-        return transferRepository.findAllFiltered(routePriority).stream().map(this::toResponse).toList();
+    /**
+     * ADMIN_GENERAL ve todas las transferencias; el resto solo las que
+     * involucran alguna de sus sucursales asignadas (como origen o destino).
+     * Mismo criterio de lectura por sucursal que usa el listado de
+     * notificaciones.
+     */
+    public List<TransferResponse> listAll(TransferRoutePriority routePriority, Authentication authentication) {
+        String email = authentication.getName();
+        List<Transfer> transfers;
+        if (branchAccessService.isGeneralAdmin(email)) {
+            transfers = transferRepository.findAllFiltered(routePriority);
+        } else {
+            List<Long> ownBranchIds = branchAccessService.getWritableBranchIds(email);
+            transfers = ownBranchIds.isEmpty()
+                    ? List.of()
+                    : transferRepository.findForBranches(routePriority, ownBranchIds);
+        }
+        return transfers.stream().map(this::toResponse).toList();
+    }
+
+    /**
+     * Una transferencia solo la puede consultar ADMIN_GENERAL o una sucursal
+     * que participe en ella (origen o destino) — mismo criterio que el
+     * listado.
+     */
+    private void assertCanView(String email, Transfer transfer) {
+        if (branchAccessService.isGeneralAdmin(email)) {
+            return;
+        }
+        List<Long> ownBranchIds = branchAccessService.getWritableBranchIds(email);
+        if (!ownBranchIds.contains(transfer.getOriginBranchId())
+                && !ownBranchIds.contains(transfer.getDestinationBranchId())) {
+            throw new AccessDeniedException("No tiene acceso a la transferencia " + transfer.getTransferNumber());
+        }
     }
 
     /**
@@ -108,11 +143,14 @@ public class TransferService {
     private record GroupKey(Long originBranchId, TransferRoutePriority routePriority) {
     }
 
-    public TransferResponse getById(Long id) {
-        return toResponse(findTransferOrThrow(id));
+    public TransferResponse getById(Long id, Authentication authentication) {
+        Transfer transfer = findTransferOrThrow(id);
+        assertCanView(authentication.getName(), transfer);
+        return toResponse(transfer);
     }
 
-    public List<TransferEventResponse> events(Long transferId) {
+    public List<TransferEventResponse> events(Long transferId, Authentication authentication) {
+        assertCanView(authentication.getName(), findTransferOrThrow(transferId));
         return transferEventRepository.findByTransferIdOrderByEventDateAsc(transferId).stream()
                 .map(TransferEventResponse::from)
                 .toList();
@@ -372,6 +410,95 @@ public class TransferService {
                 resolveUserId(authentication));
 
         return toResponse(saved);
+    }
+
+    /**
+     * Paso 5 (cierre) — define el tratamiento del faltante de una recepción
+     * parcial: reenvío, ajuste o reclamación. Lo decide la sucursal destino
+     * (la que recibió de menos). Si el tratamiento es reenvío, se genera
+     * automáticamente una transferencia de seguimiento en estado SOLICITADA
+     * por las cantidades faltantes (mismo origen y destino) y se guarda el
+     * enlace en reshipment_transfer_id.
+     */
+    @Transactional
+    public TransferResponse resolveShortage(
+            Long transferId, TransferShortageResolutionRequest request, Authentication authentication) {
+        Transfer transfer = findTransferOrThrow(transferId);
+        branchAccessService.assertCanWrite(authentication.getName(), transfer.getDestinationBranchId());
+
+        if (transfer.getStatus() != TransferStatus.PARTIALLY_RECEIVED) {
+            throw new IllegalStateException("La transferencia " + transfer.getTransferNumber()
+                    + " no está en recepción parcial (estado actual: " + transfer.getStatus() + ")");
+        }
+        if (transfer.getShortageResolution() != null) {
+            throw new IllegalStateException("El faltante de la transferencia " + transfer.getTransferNumber()
+                    + " ya tiene un tratamiento registrado (" + transfer.getShortageResolution() + ")");
+        }
+
+        List<TransferItem> itemsWithShortage = transfer.getItems().stream()
+                .filter(item -> item.getDifference() != null && item.getDifference().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+        if (itemsWithShortage.isEmpty()) {
+            throw new IllegalStateException(
+                    "La transferencia " + transfer.getTransferNumber() + " no tiene faltantes que tratar");
+        }
+
+        Long userId = resolveUserId(authentication);
+        transfer.setShortageResolution(request.resolution());
+        transfer.setShortageResolutionNotes(request.notes());
+        transfer.setShortageResolvedAt(LocalDateTime.now());
+        transfer.setShortageResolvedBy(userId);
+
+        String eventNote;
+        if (request.resolution() == ShortageResolution.RESHIPMENT) {
+            Transfer reshipment = createReshipment(transfer, itemsWithShortage, userId);
+            transfer.setReshipmentTransferId(reshipment.getId());
+            eventNote = "Faltante tratado con reenvío — nueva transferencia " + reshipment.getTransferNumber();
+        } else {
+            eventNote = "Faltante tratado: " + resolutionLabel(request.resolution());
+        }
+        if (request.notes() != null && !request.notes().isBlank()) {
+            eventNote += " — " + request.notes();
+        }
+
+        Transfer saved = transferRepository.save(transfer);
+        recordEvent(saved, saved.getStatus(), eventNote, userId);
+
+        return toResponse(saved);
+    }
+
+    private Transfer createReshipment(Transfer original, List<TransferItem> itemsWithShortage, Long userId) {
+        Transfer reshipment = new Transfer();
+        reshipment.setOriginBranchId(original.getOriginBranchId());
+        reshipment.setDestinationBranchId(original.getDestinationBranchId());
+        reshipment.setRequestedBy(userId);
+        reshipment.setStatus(TransferStatus.REQUESTED);
+        reshipment.setUrgency(original.getUrgency());
+        reshipment.setRoutePriority(TransferRoutePriority.MEDIUM);
+        reshipment.setRequestDate(LocalDateTime.now());
+        reshipment.setCreatedAt(LocalDateTime.now());
+        reshipment.setTransferNumber(generateTransferNumber());
+
+        for (TransferItem shortItem : itemsWithShortage) {
+            TransferItem item = new TransferItem();
+            item.setTransfer(reshipment);
+            item.setProduct(shortItem.getProduct());
+            item.setRequestedQuantity(shortItem.getDifference());
+            reshipment.getItems().add(item);
+        }
+
+        Transfer saved = transferRepository.save(reshipment);
+        recordEvent(saved, TransferStatus.REQUESTED,
+                "Solicitud creada por reenvío del faltante de " + original.getTransferNumber(), userId);
+        return saved;
+    }
+
+    private static String resolutionLabel(ShortageResolution resolution) {
+        return switch (resolution) {
+            case RESHIPMENT -> "reenvío";
+            case ADJUSTMENT -> "ajuste";
+            case CLAIM -> "reclamación";
+        };
     }
 
     private void registerInboundMovement(Transfer transfer, TransferItem item, BigDecimal quantity, Authentication authentication) {

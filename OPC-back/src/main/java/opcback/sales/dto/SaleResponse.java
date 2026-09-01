@@ -12,7 +12,9 @@ public record SaleResponse(
         String saleNumber,
         Long branchId,
         Long priceListId,
+        String priceListName,
         Long sellerId,
+        String sellerName,
         Long customerId,
         String customerName,
         LocalDateTime saleDate,
@@ -22,13 +24,15 @@ public record SaleResponse(
         SaleStatus status,
         List<SaleItemResponse> items
 ) {
-    public static SaleResponse from(Sale sale, List<SaleItemResponse> items) {
+    public static SaleResponse from(Sale sale, String sellerName, List<SaleItemResponse> items) {
         return new SaleResponse(
                 sale.getId(),
                 sale.getSaleNumber(),
                 sale.getBranchId(),
                 sale.getPriceList().getId(),
+                sale.getPriceList().getName(),
                 sale.getSellerId(),
+                sellerName,
                 sale.getCustomer() != null ? sale.getCustomer().getId() : null,
                 sale.getCustomer() != null ? sale.getCustomer().getName() : null,
                 sale.getSaleDate(),

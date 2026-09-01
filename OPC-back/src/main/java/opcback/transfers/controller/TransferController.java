@@ -10,6 +10,7 @@ import opcback.transfers.dto.TransferPrepareRequest;
 import opcback.transfers.dto.TransferReceivePartialRequest;
 import opcback.transfers.dto.TransferResponse;
 import opcback.transfers.dto.TransferRoutePriorityRequest;
+import opcback.transfers.dto.TransferShortageResolutionRequest;
 import opcback.transfers.entity.TransferRoutePriority;
 import opcback.transfers.service.TransferService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -42,8 +43,9 @@ public class TransferController {
     private final TransferService transferService;
 
     @GetMapping
-    public List<TransferResponse> listAll(@RequestParam(required = false) TransferRoutePriority routePriority) {
-        return transferService.listAll(routePriority);
+    public List<TransferResponse> listAll(
+            @RequestParam(required = false) TransferRoutePriority routePriority, Authentication authentication) {
+        return transferService.listAll(routePriority, authentication);
     }
 
     /**
@@ -60,13 +62,13 @@ public class TransferController {
     }
 
     @GetMapping("/{id}")
-    public TransferResponse getById(@PathVariable Long id) {
-        return transferService.getById(id);
+    public TransferResponse getById(@PathVariable Long id, Authentication authentication) {
+        return transferService.getById(id, authentication);
     }
 
     @GetMapping("/{id}/events")
-    public List<TransferEventResponse> events(@PathVariable Long id) {
-        return transferService.events(id);
+    public List<TransferEventResponse> events(@PathVariable Long id, Authentication authentication) {
+        return transferService.events(id, authentication);
     }
 
     @PostMapping
@@ -102,5 +104,12 @@ public class TransferController {
     public TransferResponse receivePartial(
             @PathVariable Long id, @Valid @RequestBody TransferReceivePartialRequest request, Authentication authentication) {
         return transferService.receivePartial(id, request, authentication);
+    }
+
+    @PostMapping("/{id}/resolve-shortage")
+    public TransferResponse resolveShortage(
+            @PathVariable Long id, @Valid @RequestBody TransferShortageResolutionRequest request,
+            Authentication authentication) {
+        return transferService.resolveShortage(id, request, authentication);
     }
 }

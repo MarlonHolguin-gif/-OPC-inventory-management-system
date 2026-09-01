@@ -35,6 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -107,7 +108,10 @@ class SaleServiceTest {
     private void stubSeller() {
         User user = new User();
         user.setId(7L);
+        user.setName("Operador Bogotá");
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        // lenient: los casos de rechazo fallan antes de construir la respuesta.
+        lenient().when(userRepository.findById(7L)).thenReturn(Optional.of(user));
     }
 
     private void stubVigentPriceList() {
@@ -190,6 +194,7 @@ class SaleServiceTest {
         assertThat(response.totalDiscount()).isEqualByComparingTo("0");
         assertThat(response.total()).isEqualByComparingTo("35000");
         assertThat(response.items().get(0).subtotal()).isEqualByComparingTo("35000");
+        assertThat(response.sellerName()).isEqualTo("Operador Bogotá");
     }
 
     @Test

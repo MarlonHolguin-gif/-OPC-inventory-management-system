@@ -8,6 +8,8 @@ import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
 import opcback.system.alerts.service.NotificationService;
+import opcback.transfers.dto.TransferCreateRequest;
+import opcback.transfers.dto.TransferItemRequest;
 import opcback.transfers.dto.TransferResponse;
 import opcback.transfers.dto.TransferRoutePriorityRequest;
 import opcback.transfers.dto.TransferShortageResolutionRequest;
@@ -118,6 +120,26 @@ class TransferServiceTest {
             }
             return saved;
         });
+    }
+
+    @Test
+    void noSePuedeSolicitarUnaTransferenciaSiElOrigenNoTieneExistenciasSuficientes() {
+        Product alpin = new Product();
+        alpin.setId(10L);
+        alpin.setName("Alpin 1L");
+        when(productRepository.findById(10L)).thenReturn(Optional.of(alpin));
+        // el origen no tiene inventario de este producto
+        when(inventoryRepository.findByBranchIdAndProductId(ORIGIN_BRANCH, 10L)).thenReturn(Optional.empty());
+
+        TransferCreateRequest request = new TransferCreateRequest(
+                ORIGIN_BRANCH, DESTINATION_BRANCH, TransferUrgency.MEDIUM,
+                List.of(new TransferItemRequest(10L, new BigDecimal("5"))));
+
+        assertThatThrownBy(() -> transferService.create(request, authentication))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no tiene existencias suficientes");
+
+        verify(transferRepository, never()).save(any());
     }
 
     @Test

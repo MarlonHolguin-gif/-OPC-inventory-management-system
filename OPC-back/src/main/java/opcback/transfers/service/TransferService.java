@@ -187,6 +187,20 @@ public class TransferService {
             Product product = productRepository.findById(itemRequest.productId())
                     .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado: " + itemRequest.productId()));
 
+            // El inventario es compartido y visible entre sucursales: no tiene
+            // sentido solicitar una transferencia de algo que la sucursal de
+            // origen no tiene. Se valida ya en la solicitud (además de en la
+            // preparación, donde el stock pudo cambiar).
+            BigDecimal available = inventoryRepository
+                    .findByBranchIdAndProductId(request.originBranchId(), product.getId())
+                    .map(inv -> inv.getCurrentQuantity())
+                    .orElse(BigDecimal.ZERO);
+            if (itemRequest.quantity().compareTo(available) > 0) {
+                throw new IllegalStateException("La sucursal de origen no tiene existencias suficientes de «"
+                        + product.getName() + "»: disponible " + formatQuantity(available)
+                        + ", solicitado " + formatQuantity(itemRequest.quantity()));
+            }
+
             TransferItem item = new TransferItem();
             item.setTransfer(transfer);
             item.setProduct(product);

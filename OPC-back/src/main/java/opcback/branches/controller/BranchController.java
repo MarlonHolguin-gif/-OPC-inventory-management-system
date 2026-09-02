@@ -25,8 +25,9 @@ import java.util.List;
  * saber qué sucursales existen para consultar/registrar inventario en otra
  * (sección 2.1 del PDF). Escritura (crear/editar/desactivar) sigue siendo
  * solo del Administrador general, según la tabla de actores. "Desactivar"
- * es borrado lógico (active = false vía BranchService.deactivate); no hay
- * DELETE físico. El código único de sucursal se valida vía la restricción
+ * es borrado lógico (active = false vía BranchService.deactivate) y
+ * "reactivar" lo revierte; no hay DELETE físico. El código único de
+ * sucursal se valida vía la restricción
  * UNIQUE de ma_branches.code — un código repetido termina en 409.
  */
 @RestController
@@ -62,5 +63,11 @@ public class BranchController {
     @PatchMapping("/{id}/deactivate")
     public BranchResponse deactivate(@PathVariable Long id) {
         return branchService.deactivate(id);
+    }
+
+    @PreAuthorize("hasRole('GENERAL_ADMIN')")
+    @PatchMapping("/{id}/reactivate")
+    public BranchResponse reactivate(@PathVariable Long id) {
+        return branchService.reactivate(id);
     }
 }

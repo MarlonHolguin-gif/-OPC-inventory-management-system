@@ -68,6 +68,15 @@ public class BranchService {
         return BranchResponse.from(branchRepository.save(branch));
     }
 
+    @Transactional
+    public BranchResponse reactivate(Long id) {
+        Branch branch = findBranchOrThrow(id);
+        branch.setActive(true);
+        branch.setUpdatedAt(LocalDateTime.now());
+
+        return BranchResponse.from(branchRepository.save(branch));
+    }
+
     private Branch findBranchOrThrow(Long id) {
         return branchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada: " + id));

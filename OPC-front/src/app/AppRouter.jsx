@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '@/routes/ProtectedRoute';
 import AppLayout from '@/layout/AppLayout';
-import { ADMIN_ROLES, PATHS } from '@/app/routes';
+import { AuthStore } from '@/stores/AuthStore';
+import { ADMIN_ROLES, DASHBOARD_ROLES, PATHS, homePathFor } from '@/app/routes';
 import LoginPage from '@/pages/Login/LoginPage';
 import DashboardPage from '@/pages/Dashboard/DashboardPage';
 import InventoryPage from '@/pages/Inventory/InventoryPage';
@@ -21,6 +22,13 @@ import PriceListsPage from '@/pages/PriceLists/PriceListsPage';
 import CatalogPage from '@/pages/Catalog/CatalogPage';
 import CustomersPage from '@/pages/Customers/CustomersPage';
 
+// Redirección de inicio ("/", rutas desconocidas): a la pantalla de inicio
+// del rol (el operador de inventario no tiene Panel). Sin sesión, dashboard
+// -> el ProtectedRoute de abajo manda a /login.
+function HomeRedirect() {
+  return <Navigate to={homePathFor(AuthStore.role.value)} replace />;
+}
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -28,7 +36,9 @@ export default function AppRouter() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path={PATHS.dashboard} element={<DashboardPage />} />
+          <Route element={<ProtectedRoute roles={DASHBOARD_ROLES} />}>
+            <Route path={PATHS.dashboard} element={<DashboardPage />} />
+          </Route>
           <Route path={PATHS.inventory} element={<InventoryPage />} />
           <Route path={PATHS.movements} element={<MovementsPage />} />
           <Route path={PATHS.purchases} element={<PurchasesPage />} />
@@ -51,8 +61,8 @@ export default function AppRouter() {
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to={PATHS.dashboard} replace />} />
-      <Route path="*" element={<Navigate to={PATHS.dashboard} replace />} />
+      <Route path="/" element={<HomeRedirect />} />
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   );
 }

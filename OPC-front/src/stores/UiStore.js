@@ -8,7 +8,7 @@ import { signal } from '@preact/signals-react';
  * Cada mensaje (éxito o error) se borra solo tras MESSAGE_TIMEOUT_MS; el
  * temporizador se reinicia con cada mensaje nuevo y se cancela con clear().
  */
-const MESSAGE_TIMEOUT_MS = 2000;
+const MESSAGE_TIMEOUT_MS = 3000;
 
 let autoClearTimer = null;
 

@@ -17,4 +17,9 @@ export class BranchesController extends CrudListController {
     await super.deactivate(id);
     BranchDirectoryStore.reset();
   }
+
+  async reactivate(id) {
+    await super.reactivate(id);
+    BranchDirectoryStore.reset();
+  }
 }

@@ -40,9 +40,13 @@ export default function BranchesPage() {
               <button type="button" onClick={() => form.startEdit(branch)}>
                 Editar
               </button>
-              {branch.active && (
+              {branch.active ? (
                 <button type="button" onClick={() => controller.deactivate(branch.id)}>
                   Desactivar
+                </button>
+              ) : (
+                <button type="button" onClick={() => controller.reactivate(branch.id)}>
+                  Reactivar
                 </button>
               )}
             </>

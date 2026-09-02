@@ -36,7 +36,10 @@ export default function AppLayout() {
   const isAdmin = role === GENERAL_ADMIN;
   const initials = (name ?? email) ? (name ?? email).slice(0, 2).toUpperCase() : '··';
 
-  const sections = NAV_SECTIONS.filter((section) => !section.adminOnly || isAdmin);
+  const sections = NAV_SECTIONS.filter((section) => !section.adminOnly || isAdmin).map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.notRoles || !item.notRoles.includes(role)),
+  }));
 
   return (
     <div className="app-shell">

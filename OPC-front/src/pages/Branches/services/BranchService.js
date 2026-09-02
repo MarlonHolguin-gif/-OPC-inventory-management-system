@@ -16,4 +16,8 @@ export class BranchService {
   static deactivate(id) {
     return HttpClient.patch(`/api/branches/${id}/deactivate`);
   }
+
+  static reactivate(id) {
+    return HttpClient.patch(`/api/branches/${id}/reactivate`);
+  }
 }

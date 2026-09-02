@@ -2,7 +2,7 @@ import { signal } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
 import { AuthStore } from '@/stores/AuthStore';
 import { AuthService } from '@/services/AuthService';
-import { PATHS } from '@/app/routes';
+import { homePathFor } from '@/app/routes';
 
 export class LoginController extends Controller {
   email = signal('');
@@ -26,7 +26,7 @@ export class LoginController extends Controller {
     try {
       const data = await AuthService.login(this.email.value, this.password.value);
       await AuthStore.login(data.token, data.refreshToken);
-      this.redirect.value = { path: PATHS.dashboard, options: { replace: true } };
+      this.redirect.value = { path: homePathFor(AuthStore.role.value), options: { replace: true } };
     } catch {
       this.error.value = 'No se pudo iniciar sesión. Verifica tus credenciales.';
     } finally {

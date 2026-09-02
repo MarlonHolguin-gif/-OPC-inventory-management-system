@@ -27,6 +27,12 @@ export class TransferFormController extends Controller {
   destinationBranchId = signal('');
   urgency = signal('MEDIUM');
   items = signal([{ ...EMPTY_ITEM }]);
+  // { [productId]: currentQuantity } de la sucursal de origen.
+  inventoryByProductId = signal({});
+  // branchId de origen para el que ya terminó de cargar el inventario. Hasta
+  // que coincida con el origen efectivo, no se evalúa el faltante (evita
+  // marcar líneas en rojo mientras la petición está en vuelo).
+  originInventoryLoadedFor = signal('');
 
   visible = signal(false);
   loading = signal(true);
@@ -54,6 +60,27 @@ export class TransferFormController extends Controller {
       : (options[0]?.id ?? '');
   });
 
+  // Stock del producto de una línea en la sucursal de origen. undefined solo
+  // mientras el inventario del origen todavía no cargó; una vez cargado, un
+  // producto sin fila de inventario en el origen son 0 existencias — el
+  // inventario es compartido y el backend aplica el mismo criterio.
+  lineStock(item) {
+    if (!item.productId) return undefined;
+    if (String(this.originInventoryLoadedFor.value) !== String(this.originBranchIdValue.value)) {
+      return undefined;
+    }
+    return this.inventoryByProductId.value[Number(item.productId)] ?? 0;
+  }
+
+  // ¿Alguna línea pide más de lo que hay en el origen? El backend igual lo
+  // rechaza, pero así ni siquiera se intenta.
+  hasStockShortage = computed(() =>
+    this.items.value.some((item) => {
+      const available = this.lineStock(item);
+      return available !== undefined && Number(item.quantity) > Number(available);
+    }),
+  );
+
   open = () => {
     this.visible.value = true;
     if (!this.#loaded) {
@@ -78,6 +105,22 @@ export class TransferFormController extends Controller {
       this.destinationBranchId.value = this.destinationOptions.value[0]?.id ?? '';
     }
     this.loading.value = false;
+    this.loadOriginInventory();
+  }
+
+  async loadOriginInventory() {
+    const originId = this.originBranchIdValue.value;
+    if (!originId) return;
+    this.originInventoryLoadedFor.value = '';
+    try {
+      const data = await TransferService.branchInventory(originId);
+      this.inventoryByProductId.value = Object.fromEntries(
+        data.map((entry) => [entry.productId, entry.currentQuantity]),
+      );
+      this.originInventoryLoadedFor.value = String(originId);
+    } catch {
+      this.inventoryByProductId.value = {};
+    }
   }
 
   setUrgency = (value) => {
@@ -86,10 +129,14 @@ export class TransferFormController extends Controller {
 
   setDestination = (value) => {
     this.destinationBranchId.value = value;
+    // Cambiar el destino puede recalcular el origen efectivo (originOptions
+    // excluye el destino) — recargar el stock del origen.
+    this.loadOriginInventory();
   };
 
   setOrigin = (value) => {
     this.originBranchId.value = value;
+    this.loadOriginInventory();
   };
 
   updateItem = (index, field, value) => {
@@ -120,6 +167,13 @@ export class TransferFormController extends Controller {
     }
     if (!items.every((item) => item.productId && Number(item.quantity) > 0)) {
       UiStore.fail('Cada ítem necesita producto y una cantidad positiva.');
+      return;
+    }
+    if (this.hasStockShortage.value) {
+      UiStore.fail(
+        'Hay líneas que piden más de lo que hay en la sucursal de origen. El inventario es compartido: ' +
+          'no se puede transferir lo que no existe.',
+      );
       return;
     }
 

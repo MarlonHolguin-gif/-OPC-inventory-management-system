@@ -1,4 +1,4 @@
-import { GENERAL_ADMIN } from '@/constants/roles';
+import { GENERAL_ADMIN, BRANCH_MANAGER, INVENTORY_OPERATOR } from '@/constants/roles';
 import {
   DashboardIcon,
   InventoryIcon,
@@ -40,13 +40,22 @@ export const PATHS = {
 // Rutas que solo puede ver el administrador general.
 export const ADMIN_ROLES = [GENERAL_ADMIN];
 
+// El Panel es una herramienta de análisis para decidir; el operador de
+// inventario trabaja en operaciones, no lo usa.
+export const DASHBOARD_ROLES = [GENERAL_ADMIN, BRANCH_MANAGER];
+
+// Pantalla de inicio según el rol (el operador no tiene Panel).
+export function homePathFor(role) {
+  return role === INVENTORY_OPERATOR ? PATHS.inventory : PATHS.dashboard;
+}
+
 // Rail de navegación lateral. `adminOnly` oculta la sección a los no-admin.
 export const NAV_SECTIONS = [
   {
     id: 'operations',
     adminOnly: false,
     items: [
-      { to: PATHS.dashboard, label: 'Panel', icon: DashboardIcon },
+      { to: PATHS.dashboard, label: 'Panel', icon: DashboardIcon, notRoles: [INVENTORY_OPERATOR] },
       { to: PATHS.inventory, label: 'Inventario', icon: InventoryIcon },
       { to: PATHS.movements, label: 'Movimientos', icon: MovementsIcon },
       { to: PATHS.purchases, label: 'Compras', icon: PurchasesIcon },

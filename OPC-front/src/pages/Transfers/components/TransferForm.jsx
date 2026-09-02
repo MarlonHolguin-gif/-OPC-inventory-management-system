@@ -6,9 +6,12 @@ const URGENCY_OPTIONS = Object.entries(TRANSFER_URGENCY_LABELS).map(([value, lab
 
 const branchOptions = (branches) => branches.map((branch) => ({ value: branch.id, label: branch.name }));
 
+const SHORTAGE_CELL = { color: 'var(--bad)', fontWeight: 'bold' };
+
 export function TransferForm({ controller }) {
   const items = controller.items.value;
   const products = controller.products.value;
+  const shortage = controller.hasStockShortage.value;
 
   return (
     <AsyncBoundary loading={controller.loading.value}>
@@ -41,44 +44,52 @@ export function TransferForm({ controller }) {
             <thead>
               <tr>
                 <th>Producto</th>
+                <th>Disponible en origen</th>
                 <th>Cantidad</th>
                 <th aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>
-              {items.map((item, index) => (
-                <tr key={index}>
-                  <td>
-                    <select
-                      value={item.productId}
-                      onChange={(event) => controller.updateItem(index, 'productId', event.target.value)}
-                    >
-                      <option value="">— elegir —</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.sku} — {product.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      step="1"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(event) => controller.updateItem(index, 'quantity', event.target.value)}
-                    />
-                  </td>
-                  <td>
-                    {items.length > 1 && (
-                      <button type="button" onClick={() => controller.removeItem(index)}>
-                        Quitar
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {items.map((item, index) => {
+                const available = controller.lineStock(item);
+                const insufficient = available !== undefined && Number(item.quantity) > Number(available);
+                return (
+                  <tr key={index}>
+                    <td>
+                      <select
+                        value={item.productId}
+                        onChange={(event) => controller.updateItem(index, 'productId', event.target.value)}
+                      >
+                        <option value="">— elegir —</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.sku} — {product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={insufficient ? SHORTAGE_CELL : undefined}>
+                      {item.productId ? (available ?? '…') : '—'}
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(event) => controller.updateItem(index, 'quantity', event.target.value)}
+                      />
+                    </td>
+                    <td>
+                      {items.length > 1 && (
+                        <button type="button" onClick={() => controller.removeItem(index)}>
+                          Quitar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -87,8 +98,15 @@ export function TransferForm({ controller }) {
           + Agregar ítem
         </button>
 
+        {shortage && (
+          <p className="badge badge-bad">
+            Alguna línea pide más de lo que hay en la sucursal de origen. El inventario es compartido: no
+            se puede transferir lo que no existe.
+          </p>
+        )}
+
         <div className="form-actions">
-          <button type="submit" disabled={controller.submitting.value}>
+          <button type="submit" disabled={controller.submitting.value || shortage}>
             {controller.submitting.value ? 'Enviando…' : 'Solicitar transferencia'}
           </button>
           <button type="button" onClick={controller.close}>

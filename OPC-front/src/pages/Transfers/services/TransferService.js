@@ -53,4 +53,9 @@ export class TransferService {
   static productCatalog() {
     return HttpClient.get('/api/products/catalog').then((r) => r.data);
   }
+
+  // Inventario de la sucursal de origen, para no solicitar más de lo que hay.
+  static branchInventory(branchId) {
+    return HttpClient.get(`/api/inventario/sucursal/${branchId}`).then((r) => r.data);
+  }
 }

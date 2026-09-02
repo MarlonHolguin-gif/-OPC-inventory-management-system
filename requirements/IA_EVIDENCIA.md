@@ -328,6 +328,18 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
+### 2.31 Alertas Inteligentes: la notificación también se dispara al cambiar un umbral — *Impacto: Bajo*
+
+**Prompt (resumido):** revisar el módulo de Alertas Inteligentes contra el enunciado ("notificaciones automáticas cuando un producto supera o cae por debajo de umbrales configurables … por correo o en la interfaz"); el usuario aprobó implementar solo el arreglo del umbral (el correo se deja fuera — el enunciado lo hace opcional con "puede … o en la interfaz").
+
+**Resultado del diagnóstico:** el requisito estaba cumplido (notificación automática al cruzar el umbral en un movimiento; umbrales configurables desde 2.30; campana en la interfaz). El único hueco lo introdujo 2.30: `notifyStockThresholdCrossed` solo se llamaba desde `InventoryMovementService`, así que **subir el `min_stock` por encima del stock actual dejaba el producto en alerta sin generar una notificación nueva** hasta el siguiente movimiento.
+
+**Implementación:** `InventoryService.updateThresholds` evalúa el estado de alerta con los umbrales viejos y con los nuevos (mismo `InventoryAlertService`), y llama a `notificationService.notifyStockThresholdCrossed` con ese antes/después — el método ya ignora los no-cruces y los retornos a NORMAL, así que no hace falta lógica anti-duplicados nueva. Test nuevo en `InventoryServiceTest` (cambiar el mínimo por encima del stock genera la notificación `LOW_STOCK`).
+
+**Verificación:** `./mvnw test` (38/38) y `lint` + `build` del frontend limpios.
+
+---
+
 ### 2.32 Cablear la conversión de unidades en Compras y Ventas + stock inicial al crear un producto — *Impacto: Alto*
 
 **Prompt (resumido):** el usuario notó que agregar factores de conversión en "Gestionar unidades" no se reflejaba en ningún lado (ni en compra ni en venta aparecía la unidad alternativa), y pidió **cablearlo en Compras y Ventas**. Además: al crear un producto no hay dónde poner la cantidad y no le gustó que entrara "sin existencias" — eligió agregar un **campo de stock inicial** en el formulario.
@@ -342,15 +354,38 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
-### 2.31 Alertas Inteligentes: la notificación también se dispara al cambiar un umbral — *Impacto: Bajo*
+### 2.33 Quitar el ítem "Panel" al operador de inventario — *Impacto: Bajo*
 
-**Prompt (resumido):** revisar el módulo de Alertas Inteligentes contra el enunciado ("notificaciones automáticas cuando un producto supera o cae por debajo de umbrales configurables … por correo o en la interfaz"); el usuario aprobó implementar solo el arreglo del umbral (el correo se deja fuera — el enunciado lo hace opcional con "puede … o en la interfaz").
+**Prompt (resumido):** *"vamos a eliminar el item PANEL del operario"* — el Dashboard es una herramienta de análisis para decidir; el operador de inventario trabaja en operaciones.
 
-**Resultado del diagnóstico:** el requisito estaba cumplido (notificación automática al cruzar el umbral en un movimiento; umbrales configurables desde 2.30; campana en la interfaz). El único hueco lo introdujo 2.30: `notifyStockThresholdCrossed` solo se llamaba desde `InventoryMovementService`, así que **subir el `min_stock` por encima del stock actual dejaba el producto en alerta sin generar una notificación nueva** hasta el siguiente movimiento.
+**Implementación:** `DASHBOARD_ROLES = [GENERAL_ADMIN, BRANCH_MANAGER]` y `homePathFor(role)` en `routes.js`; el ítem "Panel" del riel lleva `notRoles: [INVENTORY_OPERATOR]` y `AppLayout` filtra los ítems por rol; la ruta `/dashboard` queda envuelta en `<ProtectedRoute roles={DASHBOARD_ROLES}>`. Para no rebotar en bucle, `ProtectedRoute` gana un `fallback` que por defecto es la pantalla de inicio del propio rol (`homePathFor`), y `/` + rutas desconocidas + el redirect post-login usan esa misma función — el operador entra a `/inventario`. Solo frontend; los endpoints `/api/dashboard/*` no cambian (la comparativa ya era `@PreAuthorize('GENERAL_ADMIN')`).
 
-**Implementación:** `InventoryService.updateThresholds` evalúa el estado de alerta con los umbrales viejos y con los nuevos (mismo `InventoryAlertService`), y llama a `notificationService.notifyStockThresholdCrossed` con ese antes/después — el método ya ignora los no-cruces y los retornos a NORMAL, así que no hace falta lógica anti-duplicados nueva. Test nuevo en `InventoryServiceTest` (cambiar el mínimo por encima del stock genera la notificación `LOW_STOCK`).
+**Verificación:** `lint` + `build` limpios.
 
-**Verificación:** `./mvnw test` (38/38) y `lint` + `build` del frontend limpios.
+---
+
+### 2.34 Bloquear una solicitud de transferencia si el origen no tiene existencias — *Impacto: Medio*
+
+**Prompt (resumido):** el usuario, como operario, pudo crear una solicitud de transferencia de "Alpin" con origen en una sucursal que no tiene ese producto. *"Como se comparte el inventario … si a la hora de hacer la transferencia este producto no cumple con lo solicitado, no me deje hacer esa transferencia y salga una alerta."* Además: alertas de la UI a 3 segundos.
+
+**Implementación:** `TransferService.create` valida, por cada ítem, que la sucursal de **origen** tenga `current_quantity >= cantidad_solicitada` (además de la validación que ya existía en la preparación, donde el stock pudo cambiar) — `IllegalStateException` con el detalle ("disponible X, solicitado Y"). Frontend: el formulario de solicitud carga el inventario del origen, muestra "Disponible en origen" por línea (resaltado si falta), un aviso y el botón deshabilitado cuando alguna línea excede el stock. Test nuevo en `TransferServiceTest`. `UiStore.MESSAGE_TIMEOUT_MS` sube de 2 s a 3 s.
+
+**Verificación:** `./mvnw test` (41/41) y `lint` + `build` limpios. End-to-end contra Docker: solicitud con origen sin stock -> 409 con el mensaje; con origen que sí tiene -> 201.
+
+---
+
+### 2.35 Dos bugs del formulario de transferencias reportados por el usuario — *Impacto: Medio*
+
+**Prompt (resumido):** *"prueba una transferencia donde la sucursal que envía va a ser la de Medellín, eliges el producto Alpin, va a salir 0 pero … la alerta sale por fuera del modal, en la page … con cualquier otro producto la advertencia sí sale en el modal y no me deja presionar el botón. Lo mismo pasa con una sucursal, creé la de Barranquilla pero no me sale como sucursal de origen. Dime antes qué pasa y luego implementamos."*
+
+**Diagnóstico (antes de tocar código):**
+
+- **Bug 1 — Alpin:** `GET /api/inventario/sucursal/{id}` (`InventoryService.listByBranch`) solo devuelve filas que **ya existen** en `tr_inventory`; Alpin nunca tuvo movimiento en Medellín, así que no venía en la respuesta. El `TransferFormController` armaba `inventoryByProductId` solo con eso, `lineStock()` devolvía `undefined`, y tanto `hasStockShortage` como el marcado por línea usan `available !== undefined` — con `undefined` dejaban pasar. El backend sí trata la fila ausente como 0 (`.orElse(ZERO)`) → 409 → el `GlobalAlert` vive en `AppLayout`, fuera del modal.
+- **Bug 2 — Barranquilla:** no es bug de código. La sucursal quedó `active = 0` en la base (creada 22:04:27, desactivada 22:04:37 — un clic de prueba en "Desactivar"). El formulario de transferencias filtra `activeBranches` (correcto); la página de Inventario no filtra por `active`, por eso ahí sí aparecía. El problema real: **no había forma de reactivar una sucursal** — a diferencia de categorías/productos/proveedores, `BranchService` solo tenía `deactivate`.
+
+**Implementación:** Bug 1 — `lineStock()` devuelve `undefined` solo mientras el inventario del origen aún carga (nuevo signal `originInventoryLoadedFor`); una vez cargado, un producto sin fila son 0 existencias, igual criterio que el backend → aviso dentro del modal + botón deshabilitado. Bug 2 — `BranchService.reactivate` + `PATCH /api/branches/{id}/reactivate` (`@PreAuthorize('GENERAL_ADMIN')`), `BranchService.reactivate` en el frontend, botón "Reactivar" en `BranchesPage` cuando `!branch.active`, `BranchDirectoryStore.reset()` tras la mutación.
+
+**Verificación:** `./mvnw test` (41/41) y `lint` + `build` limpios. End-to-end contra Docker: `PATCH .../154/reactivate` -> 200 y Barranquilla vuelve a `active`; transferencia de Alpin con origen sin fila -> 409, con origen que tiene stock -> 201.
 
 ---
 
@@ -373,7 +408,8 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 - **El bug de Flyway descrito en 2.5** — no se dio por buena la integración solo porque la app arrancaba sin errores; hizo falta revisar los logs a propósito, encontrar que faltaba `spring-boot-starter-flyway`, corregir y volver a verificar desde un volumen vacío para confirmar que sí funcionaba.
 - **Documentación pendiente detectada por el usuario, no por la IA, dos veces en la misma sesión de trabajo de base de datos.** Después de completar la integración de Flyway y el seed de datos, la IA reportó la tarea como terminada sin haber actualizado `Decisiones_Arquitectura.md`, `DER.md` ni esta misma evidencia de IA — fue el usuario quien preguntó explícitamente "¿actualizaste la documentación?" en dos ocasiones separadas antes de que se hiciera. Es una limitación real de proceso: la IA no verifica por iniciativa propia que la documentación quede sincronizada con el código/infraestructura que acaba de cambiar, salvo que se le pida. **Se repitió una tercera vez, más adelante en el proyecto**: al terminar los módulos de Compras y Ventas, ni la sección "Estado de implementación" de `DER.md` ni este mismo archivo se actualizaron — quedaron describiendo un estado anterior (sin JPA, sin tests) durante varias tarjetas del backlog. Fue el usuario quien, revisando el propio `Analisis_Requerimientos.md`, preguntó cuál de esos puntos del checklist realmente faltaba — la IA los verificó uno por uno contra el repositorio y el Trello real (en vez de confiar en el `[x]` ya marcado) antes de responder, y solo entonces se actualizaron ambos documentos.
 - **La validación de stock suficiente y el recálculo de costo promedio ponderado no estaban implementados** cuando se pidieron sus tests (sección 2.3) — la tarjeta de "tests" terminó forzando a completar la implementación real antes de poder probarla, en vez de ser una tarjeta puramente de verificación.
-- **El endpoint para reactivar un proveedor desactivado faltaba** (sección 2.8) — lo encontró el usuario probando la UI manualmente, no la IA, pese a que el mismo patrón ya existía para Usuarios.
+- **El endpoint para reactivar un proveedor desactivado faltaba** (sección 2.8) — lo encontró el usuario probando la UI manualmente, no la IA, pese a que el mismo patrón ya existía para Usuarios. **Volvió a pasar con las sucursales** (sección 2.35): al agregar "reactivar" a categorías y productos no se revisó que las sucursales tuvieran el mismo hueco, y el usuario lo topó al no poder deshacer una desactivación accidental.
+- **El frontend y el backend no coincidían en qué significa "producto sin fila de inventario"** (sección 2.35): el backend lo trata como 0 existencias, el formulario de transferencias como "dato desconocido, dejar pasar" — la validación del cliente se saltaba justo para los productos recién creados, que son los más propensos a no tener stock en todas las sucursales.
 - **Dos bugs de Hibernate en el módulo de Ventas** (sección 2.9: ítems de lista de precios que se guardaban pero no se veían; borrado de ítem que devolvía 200 sin borrar nada) — ninguno de los dos era visible leyendo el código ni probando solo la respuesta HTTP; hizo falta activar el log de SQL y volver a consultar la base de datos después de cada operación para confirmar que el efecto real coincidía con la respuesta reportada.
 - **El mensaje "Stock insuficiente: disponible 85.0000"** (sección 2.5, #11) — encontrado por el usuario probando la venta en el navegador, no por la IA.
 - **La IA cuestionó su propia interpretación de un requisito ambiguo cuando el usuario dudó de ella, en vez de defenderla.** El PDF solo dice, en la sección 3.3, *"aplicar descuentos y gestionar diferentes listas de precios"* — una sola línea, sin más detalle. La IA la había interpretado como listas independientes de la sucursal (pensadas para variar precios en el tiempo). Cuando el usuario preguntó *"no he comprendido bien si es así como lo hicimos, ¿qué piensas tú?"*, la respuesta no fue justificar el diseño ya construido, sino señalar una debilidad real y no forzada: en un sistema explícitamente multi-sucursal, que la lista de precios sea totalmente independiente de la sucursal (se puede vender en Cali con la lista de Bogotá sin ninguna restricción) es inconsistente con el resto del sistema, y una lectura igual de válida del requisito original habría sido "una lista de precios por sucursal". Se dejó la decisión explícitamente pendiente para que el usuario la resuelva, en vez de cambiar el código unilateralmente para parecer más alineado con la crítica.

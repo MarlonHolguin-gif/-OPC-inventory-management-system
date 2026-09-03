@@ -389,6 +389,51 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
+### 2.36 Cuatro correcciones tras una prueba completa de la interfaz — *Impacto: Medio*
+
+**Prompt (resumido):** el usuario probó toda la aplicación y pidió, "teniendo en cuenta las buenas prácticas, nada de código repetitivo y la estructura por capas": (1) al agregar un producto con un SKU ya registrado no se muestra ninguna alerta; (2) al crear un usuario, una sucursal o un proveedor (y con el `tax_id` duplicado) la alerta sale **fuera** del modal; (3) se pueden crear categorías y unidades de medida idénticas a otras ya existentes — pidió botón de eliminar y ciclo desactivar/reactivar para unidades; (4) al cargar stock inicial de un producto solo se puede enviar a una sucursal, pedir también "a todas".
+
+**Implementación:**
+
+- **(1) y (2) son el mismo problema.** El error de un envío de formulario iba a `UiStore.fail` → `GlobalAlert`, que vive en `AppLayout` **debajo** del modal: la alerta se disparaba pero quedaba tapada (por eso "no se muestra ninguna" en productos y "sale por fuera" en el resto). Se resolvió en la capa base, no formulario por formulario: `FormController` gana un signal `error`; `run()` lo llena en vez de tocar `UiStore`; `FormPanel` pinta un `<Alert>` con ese texto dentro del modal. Los ~10 formularios CRUD (proveedores, clientes, sucursales, usuarios, categorías, unidades, productos, listas de precios, umbrales) quedaron cubiertos con un solo cambio; solo hubo que pasar `error={form.error.value}` en los `FormPanel` escritos a mano. La validación de cliente de `UserFormController` (falta la sucursal) pasa por el mismo canal (`reject()`).
+- **(3)** Backend: `V14` agrega `active` a `ma_units` (borrado lógico, como categorías/productos). `CategoryService` y `UnitService` validan nombre único (y abreviatura única en unidades) en `create`/`update` — validación en la capa de servicio, no índice `UNIQUE`, porque una base en uso puede tener duplicados de antes y el índice fallaría al aplicarse. `delete` físico en ambos, bloqueado con `IllegalStateException` explicativa si algún producto usa la categoría / la unidad (como base o alternativa). `UnitService` gana `deactivate`/`reactivate`. Endpoints nuevos: `DELETE /api/categories/{id}`, `DELETE /api/units/{id}`, `PATCH /api/units/{id}/deactivate|reactivate`. Frontend: botón "Eliminar" (con confirmación) en categorías y unidades, columna "Estado" y botones "Desactivar"/"Reactivar" en unidades, y el formulario de producto ya solo ofrece categorías/unidades activas (dejando la actual al editar).
+- **(4)** `ProductCreateRequest` gana `initialStockAllBranches`; `ProductService.registerInitialStock` genera un `POSITIVE_ADJUSTMENT` por cada sucursal activa (`BranchRepository.findByActiveTrue`) cuando está marcado, o solo en `initialStockBranchId` en otro caso — el stock inicial sigue pasando por `InventoryMovementService`. El select del formulario suma la opción "Todas las sucursales".
+
+**Verificación:** `./mvnw test` (51/51, incluye `CategoryServiceTest` y `UnitServiceTest` nuevos + el caso de stock inicial a todas las sucursales en `ProductServiceTest`; `OpcBackApplicationTests` aplica `V1`→`V14` contra MySQL) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.37 Otra tanda tras probar la interfaz: auditoría, fechas y roles de transferencia, alerta de "sin existencias" — *Impacto: Medio*
+
+**Prompt (resumido):** con las mismas indicaciones (capas, sin código repetitivo), el usuario reportó: (1) en auditoría, una modificación muestra qué cambió pero no a qué producto (al cambiar el precio se ve el precio y la fecha, no el producto); (2) al despachar una transferencia se puede elegir una fecha de llegada anterior a la de despacho; (3) un operador no debería poder confirmar ni recibir transferencias — solo verlas y solicitarlas; eso es del gerente de la sucursal o el administrador; (4) al crear un producto sin stock, que genere una notificación para ver qué productos hay sin existencias.
+
+**Diagnóstico presentado antes de implementar** + 3 preguntas resueltas por el usuario: la clasificación de prioridad de ruta también pasa a gerente/admin; la notificación de "sin existencias" es un tipo nuevo (`OUT_OF_STOCK`, con migración) con filtro en la campana; se dispara solo al crear el producto, una por cada sucursal que quede sin stock.
+
+**Implementación:**
+
+- **(1)** `AuditLogService.search` resuelve el nombre + SKU de los productos de la página en una sola consulta (`ProductRepository.findAllById`) y lo devuelve en `AuditLogResponse.entityLabel`; si el producto ya no existe, cae al `name`/`sku` guardado en el propio registro (una CREATE/DELETE siempre los trae) y en último caso a `#id`. La vista pasa a mostrar una columna "Producto" (Nombre — SKU) en vez del id crudo.
+- **(2)** `TransferService.dispatch` valida que `estimatedArrivalDate` sea posterior a la fecha de despacho — la más tardía entre la estimada de despacho (fijada al preparar) y el momento real. `IllegalArgumentException` si no. El `datetime-local` de llegada en el frontend lleva `min` con el mismo piso.
+- **(3)** Nuevo `BranchAccessService.assertCanManage(email, branchId)` = ADMIN_GENERAL, o BRANCH_MANAGER asignado a la sucursal (el operador de inventario asignado pasa `canWrite` pero no `canManage`). `TransferService` lo usa en `prepare`, `dispatch`, `receiveComplete`, `receivePartial`, `resolveShortage` y `updateRoutePriority`; `create` (solicitar) y la lectura quedan como estaban. El frontend (`TransferDetailController.canManageOrigin`/`canManageDestination`) oculta esos formularios cuando el usuario no tiene nivel de gestión.
+- **(4)** `V15` extiende el ENUM `sy_notifications.type` con `OUT_OF_STOCK`. `NotificationService.notifyProductWithoutStock(product, branchIds)` guarda una notificación por sucursal. `ProductService.create` calcula, tras la carga de stock inicial, qué sucursales activas quedaron sin fila y las notifica (con `initialStockAllBranches` no notifica ninguna; con una sola sucursal, notifica el resto; sin stock, todas). La campana suma un label/badge para el tipo y una fila de filtros ("Todas / Sin existencias / Stock bajo / Stock alto / Faltantes") en el panel.
+
+**Verificación:** `./mvnw test` (57/57, `AuditLogServiceTest` nuevo + casos de rol y fecha en `TransferServiceTest` + casos de notificación en `ProductServiceTest`; `OpcBackApplicationTests` aplica `V1`→`V15` contra MySQL) y `lint` + `build` del frontend limpios. End-to-end contra Docker: operador recibe 403 al intentar `POST /transfers/{id}/prepare`; `dispatch` con llegada anterior al despacho -> 400; crear producto sin stock -> notificaciones `OUT_OF_STOCK` en las sucursales activas; auditoría de un cambio de precio muestra el nombre del producto.
+
+---
+
+### 2.38 Refinamientos tras seguir probando: contexto en auditoría, alertas como ventana emergente, fecha de despacho ≥ solicitud — *Impacto: Bajo*
+
+**Prompt (resumido):** (1) en auditoría, al cambiar la unidad de "Jugo de Naranja" de Litro a Caja, el diff mostraba `baseUnit: 4` → `baseUnit: 103` — números sin contexto de qué se cambió realmente; (2) las alertas de página aparecen arriba del contenido, y en una página con scroll (estando abajo) no se ven — pasarlas a ventana emergente; las de los modales están bien; (3) faltó, del punto 2.37, que la fecha estimada de despacho no pueda ser anterior a la fecha en que se creó la solicitud.
+
+**Implementación:**
+
+- **(1)** `AuditEntityListener` reduce las asociaciones `@ManyToOne` a su id a propósito (evita ciclos y payloads enormes). La traducción se hace ahora al leer: `AuditLogService.resolveLabels` junta los ids de `category` y `baseUnit` de toda la página y los resuelve en dos consultas (`CategoryRepository`/`UnitRepository.findAllById`), y `enrich` sustituye el número por «Nombre» / «Nombre (abreviatura)» (o `#id` si la fila fue borrada). En el frontend, `AUDIT_FIELD_LABELS` en `constants.js` mapea los nombres de campo de la entidad a español ("baseUnit" → "Unidad base", "referencePrice" → "Precio referencial", …) — mismo patrón que los mapas de ENUM.
+- **(2)** `GlobalAlert` pasa a renderizarse por *portal* a `document.body` con `position: fixed` en la esquina superior derecha (`Alert.css`), con sombra, encima del contenido y del modal. El componente `Alert` interno (el que usa `FormPanel` dentro de los modales) no cambió — sigue en flujo.
+- **(3)** `TransferService.prepare` valida que `estimatedDispatchDate` (si viene) no sea anterior a `transfer.getRequestDate()`. El `datetime-local` de despacho en el frontend lleva `min` con la fecha de la solicitud. Encadenado con 2.37: solicitud ≤ despacho ≤ llegada.
+
+**Verificación:** `./mvnw test` (59/59, `AuditLogServiceTest` +1 caso de traducción de asociación, `TransferServiceTest` +1 caso de fecha de despacho) y `lint` + `build` limpios.
+
+---
+
 ## 3. Evaluación crítica
 
 ### Qué aportó la IA
@@ -420,6 +465,8 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 - **El mismo bug de cascada CSS de la sección 2.15, repetido una segunda vez** (sección 2.19): una regla responsive del dashboard se ubicó antes que su regla base incondicional en el archivo y perdía contra ella pese a que la media query sí se cumplía. Mismo diagnóstico y misma solución que la primera vez — la lección de la sección 2.15 no evitó que volviera a pasar, solo aceleró el diagnóstico la segunda vez.
 - **Un bug real de zona horaria** (sección 2.18) que la IA no detectó por iniciativa propia — lo encontró el usuario al notar que el porcentaje de cumplimiento nunca subía pese a recibir a tiempo. La causa (JVM en UTC + `serverTimezone` de JDBC ya presente desde antes) exigió una investigación con pruebas controladas antes de tocar cualquier dato, y la corrección de los registros históricos se hizo campo por campo — corregir todos por igual habría creado secuencias imposibles (recepción antes del despacho).
 - **Un filtro cliente-side bloqueaba un valor de negocio válido** (sección 2.17, #3: cantidad 0 en preparar/recibir una transferencia) — el backend ya lo aceptaba; fue una pregunta directa del usuario ("¿por qué no puedo elegir 0?") la que expuso que el frontend estaba descartando ese caso sin que nadie lo hubiera pedido así.
+- **La autorización de transferencias era solo por sucursal, no por rol** (sección 2.37): `BranchAccessService.assertCanWrite` no distinguía entre gerente y operador, así que un operador asignado a la sucursal podía preparar, despachar y recibir transferencias. El enunciado dice que el operador "solicita transferencias" y el gerente "aprueba transferencias" — la IA había modelado la autorización como una sola dimensión (sucursal) cuando eran dos (sucursal + rol). Lo encontró el usuario probando con una cuenta de operador.
+- **Una notificación que el criterio de la regla de umbral no podía generar** (sección 2.37): un producto recién creado sin stock tiene `current_quantity = 0` y `min_stock = 0`, y la regla `0 < 0` da `NORMAL` — nunca "stock bajo". No era un bug, era un hueco: "sin existencias" y "por debajo del mínimo" son condiciones distintas y solo la segunda estaba cubierta.
 
 ### Dónde no fue útil / limitaciones
 

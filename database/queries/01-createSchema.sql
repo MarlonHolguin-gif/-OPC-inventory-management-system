@@ -92,7 +92,8 @@ CREATE TABLE ma_categories (
 CREATE TABLE ma_units (
     id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name         VARCHAR(50) NOT NULL,
-    abbreviation VARCHAR(10) NOT NULL
+    abbreviation VARCHAR(10) NOT NULL,
+    active       BOOLEAN     NOT NULL DEFAULT TRUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE ma_products (
@@ -316,7 +317,7 @@ CREATE TABLE tr_transfer_events (
 
 CREATE TABLE sy_notifications (
     id                  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    type                ENUM('LOW_STOCK','HIGH_STOCK','TRANSFER_SHORTAGE') NOT NULL,
+    type                ENUM('LOW_STOCK','HIGH_STOCK','TRANSFER_SHORTAGE','OUT_OF_STOCK') NOT NULL,
     branch_id           BIGINT UNSIGNED NOT NULL,
     product_id          BIGINT UNSIGNED NULL,
     message             VARCHAR(255) NOT NULL,

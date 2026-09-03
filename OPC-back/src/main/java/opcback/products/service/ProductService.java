@@ -1,6 +1,8 @@
 package opcback.products.service;
 
 import lombok.RequiredArgsConstructor;
+import opcback.branches.entity.Branch;
+import opcback.branches.repository.BranchRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.entity.MovementType;
@@ -14,6 +16,7 @@ import opcback.products.entity.Unit;
 import opcback.products.repository.CategoryRepository;
 import opcback.products.repository.ProductRepository;
 import opcback.products.repository.UnitRepository;
+import opcback.system.alerts.service.NotificationService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +35,9 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final UnitRepository unitRepository;
+    private final BranchRepository branchRepository;
     private final InventoryMovementService inventoryMovementService;
+    private final NotificationService notificationService;
 
     /**
      * Listado completo (incluye inactivos) — es el que debe usarse para
@@ -73,34 +80,70 @@ public class ProductService {
 
         Product saved = productRepository.save(product);
 
-        registerInitialStock(saved, request, authentication);
+        Set<Long> stockedBranchIds = registerInitialStock(saved, request, authentication);
+        notifyBranchesWithoutStock(saved, stockedBranchIds);
 
         return ProductResponse.from(saved);
     }
 
     /**
-     * Stock inicial opcional: si viene una cantidad y una sucursal, se
-     * genera un ajuste positivo por esa cantidad — el stock inicial sigue
-     * pasando por InventoryMovementService (única puerta a current_quantity),
-     * no se escribe directo en tr_inventory.
+     * Stock inicial opcional: si viene una cantidad (> 0), se genera un ajuste
+     * positivo por esa cantidad en cada sucursal destino — todas las activas si
+     * `initialStockAllBranches`, o solo `initialStockBranchId` en otro caso. El
+     * stock inicial sigue pasando por InventoryMovementService (única puerta a
+     * current_quantity), no se escribe directo en tr_inventory.
+     *
+     * Devuelve los ids de las sucursales que quedaron con stock — el resto de
+     * las activas recibe una notificación de "sin existencias".
      */
-    private void registerInitialStock(Product product, ProductCreateRequest request, Authentication authentication) {
+    private Set<Long> registerInitialStock(Product product, ProductCreateRequest request, Authentication authentication) {
         BigDecimal initialStock = request.initialStock();
-        if (initialStock == null || initialStock.compareTo(BigDecimal.ZERO) <= 0 || request.initialStockBranchId() == null) {
-            return;
+        if (initialStock == null || initialStock.compareTo(BigDecimal.ZERO) <= 0) {
+            return Set.of();
         }
 
-        InventoryMovementRequest movementRequest = new InventoryMovementRequest(
-                request.initialStockBranchId(),
-                product.getId(),
-                MovementType.POSITIVE_ADJUSTMENT,
-                initialStock,
-                product.getReferencePrice().compareTo(BigDecimal.ZERO) > 0 ? product.getReferencePrice() : null,
-                "Carga inicial de inventario",
-                "MANUAL_ADJUSTMENT",
-                0L,
-                LocalDateTime.now());
-        inventoryMovementService.register(movementRequest, authentication);
+        Set<Long> targetBranchIds;
+        if (request.toAllBranches()) {
+            targetBranchIds = branchRepository.findByActiveTrue().stream()
+                    .map(Branch::getId).collect(Collectors.toSet());
+        } else if (request.initialStockBranchId() != null) {
+            targetBranchIds = Set.of(request.initialStockBranchId());
+        } else {
+            return Set.of();
+        }
+
+        BigDecimal unitCost = product.getReferencePrice().compareTo(BigDecimal.ZERO) > 0
+                ? product.getReferencePrice()
+                : null;
+
+        for (Long branchId : targetBranchIds) {
+            InventoryMovementRequest movementRequest = new InventoryMovementRequest(
+                    branchId,
+                    product.getId(),
+                    MovementType.POSITIVE_ADJUSTMENT,
+                    initialStock,
+                    unitCost,
+                    "Carga inicial de inventario",
+                    "MANUAL_ADJUSTMENT",
+                    0L,
+                    LocalDateTime.now());
+            inventoryMovementService.register(movementRequest, authentication);
+        }
+        return targetBranchIds;
+    }
+
+    /**
+     * Notifica (tipo OUT_OF_STOCK, una por sucursal) las sucursales activas
+     * que quedaron sin existencias del producto recién creado.
+     */
+    private void notifyBranchesWithoutStock(Product product, Set<Long> stockedBranchIds) {
+        List<Long> withoutStock = branchRepository.findByActiveTrue().stream()
+                .map(Branch::getId)
+                .filter(id -> !stockedBranchIds.contains(id))
+                .toList();
+        if (!withoutStock.isEmpty()) {
+            notificationService.notifyProductWithoutStock(product, withoutStock);
+        }
     }
 
     @Transactional

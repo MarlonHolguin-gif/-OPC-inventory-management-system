@@ -142,6 +142,21 @@ public class NotificationService {
         save(NotificationType.TRANSFER_SHORTAGE, transfer.getDestinationBranchId(), item.getProduct(), message);
     }
 
+    /**
+     * Se llama al crear un producto, una vez por cada sucursal activa que
+     * quede sin existencias de él (sin fila en tr_inventory). Sirve para que
+     * el gerente/administrador de cada sucursal vea qué productos hay sin
+     * stock — no hay alerta de "stock bajo" en este caso porque con
+     * min_stock en 0 la regla de umbral da NORMAL.
+     */
+    @Transactional
+    public void notifyProductWithoutStock(Product product, List<Long> branchIds) {
+        String message = "Producto sin existencias: %s — %s".formatted(product.getSku(), product.getName());
+        for (Long branchId : branchIds) {
+            save(NotificationType.OUT_OF_STOCK, branchId, product, message);
+        }
+    }
+
     private void save(NotificationType type, Long branchId, Product product, String message) {
         Notification notification = new Notification();
         notification.setType(type);

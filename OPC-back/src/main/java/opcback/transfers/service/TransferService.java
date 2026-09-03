@@ -226,7 +226,7 @@ public class TransferService {
     public TransferResponse updateRoutePriority(
             Long transferId, TransferRoutePriorityRequest request, Authentication authentication) {
         Transfer transfer = findTransferOrThrow(transferId);
-        branchAccessService.assertCanWrite(authentication.getName(), transfer.getOriginBranchId());
+        branchAccessService.assertCanManage(authentication.getName(), transfer.getOriginBranchId());
 
         if (TERMINAL_STATUSES.contains(transfer.getStatus())) {
             throw new IllegalStateException(
@@ -252,7 +252,7 @@ public class TransferService {
     @Transactional
     public TransferResponse prepare(Long transferId, TransferPrepareRequest request, Authentication authentication) {
         Transfer transfer = findTransferOrThrow(transferId);
-        branchAccessService.assertCanWrite(authentication.getName(), transfer.getOriginBranchId());
+        branchAccessService.assertCanManage(authentication.getName(), transfer.getOriginBranchId());
 
         if (transfer.getStatus() != TransferStatus.REQUESTED) {
             throw new IllegalStateException(
@@ -284,6 +284,12 @@ public class TransferService {
             item.setShippedQuantity(itemRequest.shippedQuantity());
         }
 
+        if (request.estimatedDispatchDate() != null
+                && request.estimatedDispatchDate().isBefore(transfer.getRequestDate())) {
+            throw new IllegalArgumentException(
+                    "La fecha estimada de despacho no puede ser anterior a la fecha de la solicitud");
+        }
+
         transfer.setEstimatedDispatchDate(request.estimatedDispatchDate());
         transfer.setStatus(TransferStatus.IN_PREPARATION);
         Transfer saved = transferRepository.save(transfer);
@@ -301,7 +307,7 @@ public class TransferService {
     @Transactional
     public TransferResponse dispatch(Long transferId, TransferDispatchRequest request, Authentication authentication) {
         Transfer transfer = findTransferOrThrow(transferId);
-        branchAccessService.assertCanWrite(authentication.getName(), transfer.getOriginBranchId());
+        branchAccessService.assertCanManage(authentication.getName(), transfer.getOriginBranchId());
 
         if (transfer.getStatus() != TransferStatus.IN_PREPARATION) {
             throw new IllegalStateException(
@@ -309,9 +315,12 @@ public class TransferService {
                             + transfer.getStatus() + ")");
         }
 
+        LocalDateTime dispatchedAt = LocalDateTime.now();
+        assertArrivalAfterDispatch(request.estimatedArrivalDate(), transfer.getEstimatedDispatchDate(), dispatchedAt);
+
         transfer.setCarrier(request.carrier());
         transfer.setEstimatedArrivalDate(request.estimatedArrivalDate());
-        transfer.setActualDispatchDate(LocalDateTime.now());
+        transfer.setActualDispatchDate(dispatchedAt);
         transfer.setStatus(TransferStatus.IN_TRANSIT);
         Transfer saved = transferRepository.save(transfer);
 
@@ -344,7 +353,7 @@ public class TransferService {
     @Transactional
     public TransferResponse receiveComplete(Long transferId, Authentication authentication) {
         Transfer transfer = findTransferOrThrow(transferId);
-        branchAccessService.assertCanWrite(authentication.getName(), transfer.getDestinationBranchId());
+        branchAccessService.assertCanManage(authentication.getName(), transfer.getDestinationBranchId());
 
         if (transfer.getStatus() != TransferStatus.IN_TRANSIT) {
             throw new IllegalStateException(
@@ -381,7 +390,7 @@ public class TransferService {
     @Transactional
     public TransferResponse receivePartial(Long transferId, TransferReceivePartialRequest request, Authentication authentication) {
         Transfer transfer = findTransferOrThrow(transferId);
-        branchAccessService.assertCanWrite(authentication.getName(), transfer.getDestinationBranchId());
+        branchAccessService.assertCanManage(authentication.getName(), transfer.getDestinationBranchId());
 
         if (transfer.getStatus() != TransferStatus.IN_TRANSIT) {
             throw new IllegalStateException(
@@ -439,7 +448,7 @@ public class TransferService {
     public TransferResponse resolveShortage(
             Long transferId, TransferShortageResolutionRequest request, Authentication authentication) {
         Transfer transfer = findTransferOrThrow(transferId);
-        branchAccessService.assertCanWrite(authentication.getName(), transfer.getDestinationBranchId());
+        branchAccessService.assertCanManage(authentication.getName(), transfer.getDestinationBranchId());
 
         if (transfer.getStatus() != TransferStatus.PARTIALLY_RECEIVED) {
             throw new IllegalStateException("La transferencia " + transfer.getTransferNumber()
@@ -559,6 +568,26 @@ public class TransferService {
 
     private String formatQuantity(BigDecimal value) {
         return value.stripTrailingZeros().toPlainString();
+    }
+
+    /**
+     * La fecha estimada de llegada tiene que ser posterior al despacho — se
+     * compara contra la más tardía entre la fecha estimada de despacho (la
+     * que fijó la sucursal origen al preparar) y el momento real del
+     * despacho. Es opcional: si no se indica, no se valida.
+     */
+    private void assertArrivalAfterDispatch(
+            LocalDateTime estimatedArrival, LocalDateTime estimatedDispatch, LocalDateTime dispatchedAt) {
+        if (estimatedArrival == null) {
+            return;
+        }
+        LocalDateTime floor = estimatedDispatch != null && estimatedDispatch.isAfter(dispatchedAt)
+                ? estimatedDispatch
+                : dispatchedAt;
+        if (!estimatedArrival.isAfter(floor)) {
+            throw new IllegalArgumentException(
+                    "La fecha estimada de llegada debe ser posterior a la fecha de despacho");
+        }
     }
 
     private TransferResponse toResponse(Transfer transfer) {

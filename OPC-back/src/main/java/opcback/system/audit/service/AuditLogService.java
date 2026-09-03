@@ -2,6 +2,12 @@ package opcback.system.audit.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import opcback.products.entity.Category;
+import opcback.products.entity.Product;
+import opcback.products.entity.Unit;
+import opcback.products.repository.CategoryRepository;
+import opcback.products.repository.ProductRepository;
+import opcback.products.repository.UnitRepository;
 import opcback.system.audit.dto.AuditLogResponse;
 import opcback.system.audit.entity.AuditAction;
 import opcback.system.audit.entity.AuditLog;
@@ -18,7 +24,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * Escribe en sy_audit_log por JDBC directo (JdbcTemplate), no por el
@@ -51,9 +63,23 @@ public class AuditLogService {
 
     private static final String FIND_USER_ID_BY_EMAIL_SQL = "SELECT id FROM ma_users WHERE email = ?";
 
+    /** Única entidad auditada hoy (ver Auditable.java). */
+    private static final String PRODUCT_ENTITY = "Product";
+
+    /**
+     * Propiedades de Product que son asociaciones @ManyToOne — AuditEntityListener
+     * las guarda reducidas a su id, así que en la vista hay que traducirlas a un
+     * nombre legible ("baseUnit: 4" -> "baseUnit: Litro (lt)").
+     */
+    private static final String CATEGORY_FIELD = "category";
+    private static final String BASE_UNIT_FIELD = "baseUnit";
+
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final AuditLogRepository auditLogRepository;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+    private final UnitRepository unitRepository;
 
     /**
      * Nunca propaga una excepción hacia quien la llama: un fallo al
@@ -114,19 +140,126 @@ public class AuditLogService {
                 (root, query, cb) -> from == null ? null : cb.greaterThanOrEqualTo(root.get("eventDate"), from),
                 (root, query, cb) -> to == null ? null : cb.lessThanOrEqualTo(root.get("eventDate"), to));
 
-        return auditLogRepository.findAll(spec, pageable).map(this::toResponse);
+        Page<AuditLog> page = auditLogRepository.findAll(spec, pageable);
+        Labels labels = resolveLabels(page.getContent());
+        return page.map(log -> toResponse(log, labels));
     }
 
-    private AuditLogResponse toResponse(AuditLog log) {
+    /**
+     * Traduce, para toda la página en tres consultas, los ids que aparecen en
+     * los registros de auditoría a texto legible: el producto de cada evento
+     * ("Nombre (SKU)") y las asociaciones que quedaron guardadas como id
+     * (categoría, unidad base).
+     */
+    private Labels resolveLabels(List<AuditLog> logs) {
+        List<Long> productIds = new ArrayList<>();
+        Set<Long> categoryIds = new TreeSet<>();
+        Set<Long> unitIds = new TreeSet<>();
+
+        for (AuditLog log : logs) {
+            if (!PRODUCT_ENTITY.equals(log.getEntity())) {
+                continue;
+            }
+            productIds.add(log.getEntityId());
+            for (Object values : List.of(safeMap(fromJson(log.getOldValues())), safeMap(fromJson(log.getNewValues())))) {
+                collectId((Map<?, ?>) values, CATEGORY_FIELD, categoryIds);
+                collectId((Map<?, ?>) values, BASE_UNIT_FIELD, unitIds);
+            }
+        }
+
+        Map<Long, String> products = productIds.isEmpty() ? Map.of()
+                : productRepository.findAllById(productIds.stream().distinct().toList()).stream()
+                        .collect(Collectors.toMap(Product::getId, p -> "%s (%s)".formatted(p.getName(), p.getSku())));
+        Map<Long, String> categories = categoryIds.isEmpty() ? Map.of()
+                : categoryRepository.findAllById(categoryIds).stream()
+                        .collect(Collectors.toMap(Category::getId, Category::getName));
+        Map<Long, String> units = unitIds.isEmpty() ? Map.of()
+                : unitRepository.findAllById(unitIds).stream()
+                        .collect(Collectors.toMap(Unit::getId, u -> "%s (%s)".formatted(u.getName(), u.getAbbreviation())));
+
+        return new Labels(products, categories, units);
+    }
+
+    private record Labels(Map<Long, String> products, Map<Long, String> categories, Map<Long, String> units) {
+    }
+
+    private static Map<?, ?> safeMap(Object parsed) {
+        return parsed instanceof Map<?, ?> map ? map : Map.of();
+    }
+
+    private static void collectId(Map<?, ?> values, String field, Set<Long> into) {
+        if (values.get(field) instanceof Number number) {
+            into.add(number.longValue());
+        }
+    }
+
+    private AuditLogResponse toResponse(AuditLog log, Labels labels) {
+        boolean isProduct = PRODUCT_ENTITY.equals(log.getEntity());
+        Object oldValues = enrich(fromJson(log.getOldValues()), labels, isProduct);
+        Object newValues = enrich(fromJson(log.getNewValues()), labels, isProduct);
         return new AuditLogResponse(
                 log.getId(),
                 log.getEntity(),
                 log.getEntityId(),
+                resolveEntityLabel(log, labels.products(), oldValues, newValues),
                 log.getAction(),
                 log.getUserId(),
-                fromJson(log.getOldValues()),
-                fromJson(log.getNewValues()),
+                oldValues,
+                newValues,
                 log.getEventDate());
+    }
+
+    /**
+     * Sustituye los ids de asociación por su nombre legible. Si el id ya no
+     * resuelve (la categoría/unidad fue borrada) se deja como "#id" para que
+     * al menos se vea que era una referencia y no un número suelto.
+     */
+    @SuppressWarnings("unchecked")
+    private Object enrich(Object parsed, Labels labels, boolean isProduct) {
+        if (!isProduct || !(parsed instanceof Map)) {
+            return parsed;
+        }
+        Map<String, Object> values = new LinkedHashMap<>((Map<String, Object>) parsed);
+        replaceId(values, CATEGORY_FIELD, labels.categories());
+        replaceId(values, BASE_UNIT_FIELD, labels.units());
+        return values;
+    }
+
+    private static void replaceId(Map<String, Object> values, String field, Map<Long, String> labels) {
+        if (values.get(field) instanceof Number number) {
+            String label = labels.get(number.longValue());
+            values.put(field, label != null ? label : "#" + number.longValue());
+        }
+    }
+
+    /**
+     * Prioridad: el nombre actual del producto; si ya no existe, el que quedó
+     * guardado en el propio registro (una CREATE/DELETE siempre trae name y
+     * sku; una UPDATE solo si esos campos cambiaron); en último caso, null.
+     */
+    private String resolveEntityLabel(AuditLog log, Map<Long, String> productLabels, Object oldValues, Object newValues) {
+        if (!PRODUCT_ENTITY.equals(log.getEntity())) {
+            return null;
+        }
+        String current = productLabels.get(log.getEntityId());
+        if (current != null) {
+            return current;
+        }
+        return labelFromValues(newValues != null ? newValues : oldValues);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String labelFromValues(Object parsed) {
+        if (!(parsed instanceof Map)) {
+            return null;
+        }
+        Map<String, Object> values = (Map<String, Object>) parsed;
+        Object name = values.get("name");
+        Object sku = values.get("sku");
+        if (name == null) {
+            return sku != null ? sku.toString() : null;
+        }
+        return sku != null ? "%s (%s)".formatted(name, sku) : name.toString();
     }
 
     private String toJson(Map<String, Object> values) {

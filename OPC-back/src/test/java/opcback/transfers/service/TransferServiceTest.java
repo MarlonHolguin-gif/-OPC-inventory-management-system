@@ -2,6 +2,7 @@ package opcback.transfers.service;
 
 import opcback.auth.entity.User;
 import opcback.auth.repository.UserRepository;
+import opcback.inventory.entity.Inventory;
 import opcback.inventory.repository.InventoryRepository;
 import opcback.inventory.service.InventoryMovementService;
 import opcback.products.entity.Product;
@@ -9,7 +10,10 @@ import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
 import opcback.system.alerts.service.NotificationService;
 import opcback.transfers.dto.TransferCreateRequest;
+import opcback.transfers.dto.TransferDispatchRequest;
 import opcback.transfers.dto.TransferItemRequest;
+import opcback.transfers.dto.TransferPrepareRequest;
+import opcback.transfers.dto.PrepareItemRequest;
 import opcback.transfers.dto.TransferResponse;
 import opcback.transfers.dto.TransferRoutePriorityRequest;
 import opcback.transfers.dto.TransferShortageResolutionRequest;
@@ -27,15 +31,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -237,6 +244,53 @@ class TransferServiceTest {
                 TRANSFER_ID, new TransferRoutePriorityRequest(TransferRoutePriority.LOW), authentication))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ya está finalizada");
+
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    void unOperadorNoPuedeClasificarLaRutaDeUnaTransferencia() {
+        transfer.setStatus(TransferStatus.IN_PREPARATION);
+        doThrow(new AccessDeniedException("solo gerente o admin"))
+                .when(branchAccessService).assertCanManage(EMAIL, ORIGIN_BRANCH);
+
+        assertThatThrownBy(() -> transferService.updateRoutePriority(
+                TRANSFER_ID, new TransferRoutePriorityRequest(TransferRoutePriority.HIGH), authentication))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    void laFechaEstimadaDeDespachoNoPuedeSerAnteriorALaSolicitud() {
+        transfer.setStatus(TransferStatus.REQUESTED);
+        transfer.setRequestDate(LocalDateTime.now());
+        Inventory inventory = new Inventory();
+        inventory.initializeQuantity(new BigDecimal("100"));
+        when(inventoryRepository.findByBranchIdAndProductId(ORIGIN_BRANCH, 10L))
+                .thenReturn(Optional.of(inventory));
+
+        TransferPrepareRequest request = new TransferPrepareRequest(
+                LocalDateTime.now().minusDays(2),
+                List.of(new PrepareItemRequest(shortItem.getId(), new BigDecimal("1"))));
+
+        assertThatThrownBy(() -> transferService.prepare(TRANSFER_ID, request, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("anterior a la fecha de la solicitud");
+
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    void laFechaEstimadaDeLlegadaNoPuedeSerAnteriorAlDespacho() {
+        transfer.setStatus(TransferStatus.IN_PREPARATION);
+
+        TransferDispatchRequest request = new TransferDispatchRequest(
+                "Servientrega", LocalDateTime.now().minusDays(1));
+
+        assertThatThrownBy(() -> transferService.dispatch(TRANSFER_ID, request, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("posterior a la fecha de despacho");
 
         verify(transferRepository, never()).save(any());
     }

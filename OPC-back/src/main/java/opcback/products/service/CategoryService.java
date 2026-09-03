@@ -31,6 +31,10 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse create(CategoryRequest request) {
+        if (categoryRepository.existsByNameIgnoreCase(request.name())) {
+            throw new IllegalStateException("Ya existe una categoría con el nombre «" + request.name() + "».");
+        }
+
         Category category = new Category();
         category.setName(request.name());
         category.setDescription(request.description());
@@ -42,6 +46,11 @@ public class CategoryService {
     @Transactional
     public CategoryResponse update(Long id, CategoryRequest request) {
         Category category = findCategoryOrThrow(id);
+
+        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(request.name(), id)) {
+            throw new IllegalStateException("Ya existe otra categoría con el nombre «" + request.name() + "».");
+        }
+
         category.setName(request.name());
         category.setDescription(request.description());
         category.setUpdatedAt(LocalDateTime.now());
@@ -74,6 +83,23 @@ public class CategoryService {
         category.setActive(true);
         category.setUpdatedAt(LocalDateTime.now());
         return CategoryResponse.from(categoryRepository.save(category));
+    }
+
+    /**
+     * Borrado físico. Solo se permite si ninguna ficha de producto (activa o
+     * inactiva) apunta a la categoría — si la usa alguna, se bloquea con el
+     * motivo concreto y queda la opción de "Desactivar".
+     */
+    @Transactional
+    public void delete(Long id) {
+        Category category = findCategoryOrThrow(id);
+
+        if (productRepository.existsByCategoryId(id)) {
+            throw new IllegalStateException("No se puede eliminar la categoría «" + category.getName()
+                    + "» porque hay productos asociados a ella. Reasigna esos productos o usa «Desactivar».");
+        }
+
+        categoryRepository.delete(category);
     }
 
     private Category findCategoryOrThrow(Long id) {

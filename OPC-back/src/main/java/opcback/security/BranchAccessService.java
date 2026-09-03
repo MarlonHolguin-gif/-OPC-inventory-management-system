@@ -30,6 +30,7 @@ import java.util.List;
 public class BranchAccessService {
 
     private static final String GENERAL_ADMIN_ROLE = "GENERAL_ADMIN";
+    private static final String BRANCH_MANAGER_ROLE = "BRANCH_MANAGER";
 
     private final UserRepository userRepository;
     private final UserBranchRepository userBranchRepository;
@@ -41,6 +42,23 @@ public class BranchAccessService {
             return true;
         }
         return userBranchRepository.findBranchIdsByUserId(user.getId()).contains(branchId);
+    }
+
+    /**
+     * Escritura de nivel gestión: acciones que un operador de inventario NO
+     * puede hacer aunque esté asignado a la sucursal — hoy, confirmar y
+     * despachar transferencias, recibirlas y clasificar la ruta (el operador
+     * solo puede solicitarlas y consultarlas). GENERAL_ADMIN en cualquier
+     * sucursal; BRANCH_MANAGER solo en las suyas.
+     */
+    @Transactional(readOnly = true)
+    public boolean canManage(String email, Long branchId) {
+        User user = findUserOrThrow(email);
+        if (isGeneralAdmin(user)) {
+            return true;
+        }
+        return BRANCH_MANAGER_ROLE.equals(user.getRole().getCode())
+                && userBranchRepository.findBranchIdsByUserId(user.getId()).contains(branchId);
     }
 
     /**
@@ -56,6 +74,19 @@ public class BranchAccessService {
     public void assertCanWrite(String email, Long branchId) {
         if (!canWrite(email, branchId)) {
             throw new AccessDeniedException("No tiene acceso de escritura a la sucursal " + branchId);
+        }
+    }
+
+    /**
+     * Lanza AccessDeniedException (403) si el usuario no tiene nivel de
+     * gestión sobre la sucursal — ver {@link #canManage}.
+     */
+    @Transactional(readOnly = true)
+    public void assertCanManage(String email, Long branchId) {
+        if (!canManage(email, branchId)) {
+            throw new AccessDeniedException(
+                    "Esta acción sobre la sucursal " + branchId
+                            + " es solo para el gerente de la sucursal o el administrador general");
         }
     }
 

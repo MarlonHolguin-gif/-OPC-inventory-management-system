@@ -7,5 +7,6 @@ package opcback.system.alerts.entity;
 public enum NotificationType {
     LOW_STOCK,
     HIGH_STOCK,
-    TRANSFER_SHORTAGE
+    TRANSFER_SHORTAGE,
+    OUT_OF_STOCK
 }

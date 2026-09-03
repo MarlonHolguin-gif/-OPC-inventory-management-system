@@ -26,4 +26,7 @@ public class Unit {
 
     @Column(nullable = false, length = 10)
     private String abbreviation;
+
+    @Column(nullable = false)
+    private boolean active;
 }

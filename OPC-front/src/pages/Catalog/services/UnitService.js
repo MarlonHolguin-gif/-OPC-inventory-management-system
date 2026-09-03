@@ -12,4 +12,16 @@ export class UnitService {
   static update(id, payload) {
     return HttpClient.put(`/api/units/${id}`, payload).then((r) => r.data);
   }
+
+  static deactivate(id) {
+    return HttpClient.patch(`/api/units/${id}/deactivate`);
+  }
+
+  static reactivate(id) {
+    return HttpClient.patch(`/api/units/${id}/reactivate`);
+  }
+
+  static remove(id) {
+    return HttpClient.delete(`/api/units/${id}`);
+  }
 }

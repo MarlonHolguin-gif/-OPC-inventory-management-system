@@ -4,11 +4,18 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { backendError } from '@/lib/format';
-import { GENERAL_ADMIN } from '@/constants/roles';
+import { GENERAL_ADMIN, BRANCH_MANAGER } from '@/constants/roles';
 import { TransferService } from '../services/TransferService';
 import { timelineStepIndex } from '../constants';
 
 const RECEIVED_STATUSES = ['FULLY_RECEIVED', 'PARTIALLY_RECEIVED'];
+
+// Fecha -> string para <input type="datetime-local"> (hora local, sin segundos).
+function toDateTimeLocal(date) {
+  const d = new Date(date);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export class TransferDetailController extends Controller {
   constructor(transferId) {
@@ -47,14 +54,17 @@ export class TransferDetailController extends Controller {
   );
   shortageResolved = computed(() => Boolean(this.transfer.value?.shortageResolution));
 
-  canActOnOrigin = computed(() => this.#canWrite(this.transfer.value?.originBranchId));
-  canActOnDestination = computed(() => this.#canWrite(this.transfer.value?.destinationBranchId));
+  // Preparar, despachar, recibir, tratar faltantes y clasificar la ruta son
+  // acciones de gestión: solo el gerente de la sucursal o el administrador
+  // general. El operador de inventario solo consulta y solicita.
+  canManageOrigin = computed(() => this.#canManage(this.transfer.value?.originBranchId));
+  canManageDestination = computed(() => this.#canManage(this.transfer.value?.destinationBranchId));
 
   // 3.5 — clasificar la ruta por prioridad: la fija la sucursal origen
   // mientras la transferencia no haya llegado ni se haya cancelado.
   canClassifyRoute = computed(
     () =>
-      this.canActOnOrigin.value &&
+      this.canManageOrigin.value &&
       !this.isTerminal.value &&
       !this.isCancelled.value,
   );
@@ -77,10 +87,31 @@ export class TransferDetailController extends Controller {
     ];
   });
 
-  #canWrite(branchId) {
+  // Mínimo para el <input type="datetime-local"> de despacho estimado: no
+  // puede ser anterior a la fecha de la solicitud. El backend aplica el mismo
+  // piso.
+  dispatchMin = computed(() => {
+    const requested = this.transfer.value?.requestDate;
+    return requested ? toDateTimeLocal(requested) : '';
+  });
+
+  // Mínimo para el <input type="datetime-local"> de llegada estimada: no
+  // puede ser anterior al despacho (fecha estimada de despacho si se fijó, o
+  // "ahora"). El backend aplica el mismo piso.
+  arrivalMin = computed(() => {
+    const estimated = this.transfer.value?.estimatedDispatchDate;
+    const now = new Date();
+    const floor = estimated && new Date(estimated) > now ? new Date(estimated) : now;
+    return toDateTimeLocal(floor);
+  });
+
+  #canManage(branchId) {
     if (branchId == null) return false;
+    if (this.isAdmin.value) return true;
     const own = AuthStore.branches.value;
-    return this.isAdmin.value || (Array.isArray(own) && own.includes(branchId));
+    return (
+      AuthStore.role.value === BRANCH_MANAGER && Array.isArray(own) && own.includes(branchId)
+    );
   }
 
   branchName(id) {

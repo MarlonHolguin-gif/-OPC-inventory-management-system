@@ -1,3 +1,5 @@
+import { auditFieldLabel } from '../constants';
+
 /**
  * Muestra de forma legible el cambio entre `oldValues` (valores_anteriores) y
  * `newValues` (valores_nuevos) de un evento de auditoría.
@@ -6,8 +8,9 @@
  *  - DELETE: solo hay valores anteriores (todos "desaparecen").
  *  - UPDATE: el backend ya envía únicamente los campos que cambiaron.
  *
- * Los valores que son objeto/array (ej. una asociación reducida a id, o un
- * mapa) se muestran como JSON con sangría.
+ * El nombre de cada campo y las asociaciones (categoría, unidad base) vienen
+ * ya en texto legible; los valores que siguen siendo objeto/array se muestran
+ * como JSON con sangría.
  */
 function formatValue(value) {
   if (value === null || value === undefined) return '—';
@@ -46,7 +49,7 @@ export function AuditDiff({ oldValues, newValues }) {
           const changed = serialize(before[key]) !== serialize(after[key]);
           return (
             <tr key={key} className={changed ? 'audit-diff-changed' : undefined}>
-              <th scope="row">{key}</th>
+              <th scope="row">{auditFieldLabel(key)}</th>
               <td className="audit-diff-old">{formatValue(before[key])}</td>
               <td className="audit-diff-new">{formatValue(after[key])}</td>
             </tr>

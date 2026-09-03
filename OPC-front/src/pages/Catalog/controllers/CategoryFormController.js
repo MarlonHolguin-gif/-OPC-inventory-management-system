@@ -59,4 +59,17 @@ export class CategoryFormController extends FormController {
       UiStore.fail(backendError(error, 'No se pudo reactivar la categoría.'));
     }
   }
+
+  async remove(category) {
+    if (!window.confirm(`¿Eliminar definitivamente la categoría «${category.name}»?`)) return;
+    UiStore.clear();
+    try {
+      await CategoryService.remove(category.id);
+      await this.catalog.loadAll();
+      UiStore.notify('Categoría eliminada.');
+    } catch (error) {
+      // El backend bloquea el borrado si hay productos asociados — se muestra tal cual.
+      UiStore.fail(backendError(error, 'No se pudo eliminar la categoría.'));
+    }
+  }
 }

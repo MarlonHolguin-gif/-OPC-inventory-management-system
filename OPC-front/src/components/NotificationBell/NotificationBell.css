@@ -49,6 +49,31 @@
   font: 600 11px var(--font-mono);
   color: var(--text-dim);
 }
+.notification-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.notification-filter {
+  margin: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 11px var(--font-mono);
+}
+.notification-filter:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+.notification-filter.active {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
 .notification-empty {
   color: var(--text-dim);
   font-size: 13px;

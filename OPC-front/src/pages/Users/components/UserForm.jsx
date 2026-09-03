@@ -21,6 +21,7 @@ export function UserForm({ controller }) {
       submitting={form.submitting.value}
       onSubmit={(event) => form.submit(event)}
       onCancel={form.close}
+      error={form.error.value}
     >
       <TextField
         label="Nombre"

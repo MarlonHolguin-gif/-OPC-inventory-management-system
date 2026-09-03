@@ -4,6 +4,7 @@ import { FormPanel } from '@/components/FormPanel';
 import { Modal } from '@/components/Modal';
 import { TextField, SelectField } from '@/components/Field';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
+import { ALL_BRANCHES } from '../controllers/ProductFormController';
 import { ProductUnitsPanel } from './ProductUnitsPanel';
 
 const COLUMNS = [
@@ -20,18 +21,23 @@ export function ProductsTab({ controller }) {
   const values = form.form.value;
   const selectedProduct = controller.productUnits.product.value;
 
-  const categoryOptions = controller.categories.value.map((category) => ({
-    value: category.id,
-    label: category.name,
-  }));
-  const unitOptions = controller.units.value.map((unit) => ({
-    value: unit.id,
-    label: `${unit.name} (${unit.abbreviation})`,
-  }));
-  const branchOptions = BranchDirectoryStore.all.value.map((branch) => ({
-    value: branch.id,
-    label: branch.name,
-  }));
+  // En el alta solo se ofrecen categorías/unidades activas; al editar se deja
+  // además la que ya tiene el producto aunque esté inactiva, para no perder el
+  // valor del select.
+  const isSelectable = (entity, currentId) => entity.active || entity.id === currentId;
+
+  const categoryOptions = controller.categories.value
+    .filter((category) => isSelectable(category, values.categoryId))
+    .map((category) => ({ value: category.id, label: category.name }));
+  const unitOptions = controller.units.value
+    .filter((unit) => isSelectable(unit, values.baseUnitId))
+    .map((unit) => ({ value: unit.id, label: `${unit.name} (${unit.abbreviation})` }));
+  const initialStockBranchOptions = [
+    { value: ALL_BRANCHES, label: 'Todas las sucursales' },
+    ...BranchDirectoryStore.all.value
+      .filter((branch) => branch.active)
+      .map((branch) => ({ value: branch.id, label: branch.name })),
+  ];
 
   return (
     <section>
@@ -69,6 +75,7 @@ export function ProductsTab({ controller }) {
             submitting={form.submitting.value}
             onSubmit={(event) => form.submit(event)}
             onCancel={form.close}
+            error={form.error.value}
           >
           <TextField
             label="SKU"
@@ -121,10 +128,10 @@ export function ProductsTab({ controller }) {
               />
               {Number(values.initialStock) > 0 && (
                 <SelectField
-                  label="Sucursal del stock inicial"
+                  label="Destino del stock inicial"
                   value={values.initialStockBranchId}
                   onChange={(value) => form.setField('initialStockBranchId', value)}
-                  options={branchOptions}
+                  options={initialStockBranchOptions}
                 />
               )}
             </>

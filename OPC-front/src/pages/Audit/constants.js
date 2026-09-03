@@ -18,6 +18,25 @@ export function auditActionBadgeClass(action) {
   return 'badge badge-warn';
 }
 
+// Nombres legibles de las propiedades del producto que registra la auditoría
+// (el backend usa el nombre de campo de la entidad; `category` y `baseUnit`
+// ya vienen resueltos a texto, no como id).
+export const AUDIT_FIELD_LABELS = {
+  sku: 'SKU',
+  name: 'Nombre',
+  description: 'Descripción',
+  category: 'Categoría',
+  baseUnit: 'Unidad base',
+  referencePrice: 'Precio referencial',
+  active: 'Estado',
+  createdAt: 'Fecha de creación',
+  updatedAt: 'Última actualización',
+};
+
+export function auditFieldLabel(field) {
+  return AUDIT_FIELD_LABELS[field] ?? field;
+}
+
 // La auditoría cubre una sola entidad: el catálogo de productos (ver
 // Auditable.java). Por eso ya no hay un mapa de entidades ni filtro por
 // entidad — solo se filtra por id de producto, responsable y fechas.

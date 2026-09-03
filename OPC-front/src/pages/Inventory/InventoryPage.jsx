@@ -105,6 +105,7 @@ export default function InventoryPage() {
             submitting={threshold.submitting.value}
             onSubmit={(event) => threshold.submit(event)}
             onCancel={threshold.close}
+            error={threshold.error.value}
           >
             <TextField
               label="Stock mínimo"

@@ -20,6 +20,7 @@ export function EntityForm({ controller, submitLabel, fields }) {
       onSubmit={(event) => controller.submit(event)}
       onCancel={controller.close}
       cancelLabel="Cancelar"
+      error={controller.error.value}
     >
       {fields.map((field) => {
         const common = {

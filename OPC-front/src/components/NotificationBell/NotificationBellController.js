@@ -13,9 +13,15 @@ export class NotificationBellController extends PollingController {
   notifications = signal(null); // null = todavía no cargó ni una vez
   open = signal(false);
   expandedId = signal(null);
+  typeFilter = signal(''); // '' = todos los tipos
 
   list = computed(() => this.notifications.value ?? []);
+  // El contador de la campana es sobre TODAS las no leídas, no sobre el filtro.
   unreadCount = computed(() => this.list.value.filter((n) => n.status !== 'READ').length);
+  filteredList = computed(() => {
+    const type = this.typeFilter.value;
+    return type ? this.list.value.filter((n) => n.type === type) : this.list.value;
+  });
 
   branchName(id) {
     return BranchDirectoryStore.nameOf(id) ?? id;
@@ -28,6 +34,10 @@ export class NotificationBellController extends PollingController {
     ]);
     this.notifications.value = notifications;
   }
+
+  setTypeFilter = (value) => {
+    this.typeFilter.value = value;
+  };
 
   toggleOpen = () => {
     this.open.value = !this.open.value;

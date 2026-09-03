@@ -10,6 +10,7 @@ export function PriceListForm({ form }) {
       submitting={form.submitting.value}
       onSubmit={(event) => form.submit(event)}
       onCancel={form.close}
+      error={form.error.value}
     >
       <TextField
         label="Nombre"

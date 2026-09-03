@@ -33,7 +33,7 @@ export default function AuditPage() {
               <thead>
                 <tr>
                   <th>Fecha</th>
-                  <th>ID del producto</th>
+                  <th>Producto</th>
                   <th>Acción</th>
                   <th>Responsable</th>
                   <th aria-label="Detalle" />
@@ -46,7 +46,7 @@ export default function AuditPage() {
                     <Fragment key={row.id}>
                       <tr>
                         <td>{formatDateTime(row.eventDate)}</td>
-                        <td>{row.entityId}</td>
+                        <td>{row.entityLabel ?? `#${row.entityId}`}</td>
                         <td>
                           <span className={auditActionBadgeClass(row.action)}>
                             {auditActionLabel(row.action)}

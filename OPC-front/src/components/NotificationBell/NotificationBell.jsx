@@ -2,7 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useController } from '@/lib/useController';
 import { BellIcon } from '@/components/icons/UtilityIcons';
 import { NotificationBellController } from './NotificationBellController';
-import { notificationTypeBadgeClass, notificationTypeLabel } from './constants';
+import {
+  NOTIFICATION_TYPE_FILTERS,
+  notificationTypeBadgeClass,
+  notificationTypeLabel,
+} from './constants';
 import './NotificationBell.css';
 
 function formatDateTime(value) {
@@ -14,9 +18,10 @@ export default function NotificationBell() {
   const containerRef = useRef(null);
 
   const open = controller.open.value;
-  const list = controller.list.value;
+  const list = controller.filteredList.value;
   const unreadCount = controller.unreadCount.value;
   const expandedId = controller.expandedId.value;
+  const typeFilter = controller.typeFilter.value;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -50,8 +55,23 @@ export default function NotificationBell() {
             <span className="count">{unreadCount} sin leer</span>
           </div>
 
+          <div className="notification-filters">
+            {NOTIFICATION_TYPE_FILTERS.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                className={`notification-filter${typeFilter === filter.value ? ' active' : ''}`}
+                onClick={() => controller.setTypeFilter(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
           {list.length === 0 ? (
-            <p className="notification-empty">No hay notificaciones.</p>
+            <p className="notification-empty">
+              {typeFilter ? 'No hay notificaciones de este tipo.' : 'No hay notificaciones.'}
+            </p>
           ) : (
             <ul className="notification-list">
               {list.map((notification) => (

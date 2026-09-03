@@ -3,6 +3,10 @@ import { UiStore } from '@/stores/UiStore';
 import { backendError } from '@/lib/format';
 import { ProductService } from '../services/ProductService';
 
+// Valor del select de sucursal del stock inicial que significa "repartir la
+// misma cantidad en todas las sucursales activas".
+export const ALL_BRANCHES = 'ALL';
+
 const EMPTY = {
   sku: '',
   name: '',
@@ -12,6 +16,7 @@ const EMPTY = {
   referencePrice: '',
   // Solo se usan al crear: cargan stock inicial vía un ajuste positivo.
   initialStock: '',
+  // branchId de destino, o ALL_BRANCHES para todas las sucursales activas.
   initialStockBranchId: '',
 };
 
@@ -44,6 +49,8 @@ export class ProductFormController extends FormController {
       referencePrice: referencePrice ? Number(referencePrice) : null,
     };
 
+    const allBranches = initialStockBranchId === ALL_BRANCHES;
+
     const ok = await this.run(
       () =>
         this.isEditing
@@ -52,7 +59,9 @@ export class ProductFormController extends FormController {
               ...payload,
               sku,
               initialStock: initialStock ? Number(initialStock) : null,
-              initialStockBranchId: initialStockBranchId ? Number(initialStockBranchId) : null,
+              initialStockBranchId:
+                !allBranches && initialStockBranchId ? Number(initialStockBranchId) : null,
+              initialStockAllBranches: allBranches,
             }),
       'No se pudo guardar el producto.',
     );

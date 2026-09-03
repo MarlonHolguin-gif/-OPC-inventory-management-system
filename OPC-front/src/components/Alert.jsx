@@ -1,4 +1,6 @@
+import { createPortal } from 'react-dom';
 import { UiStore } from '@/stores/UiStore';
+import './Alert.css';
 
 /**
  * Alerta puntual (error o éxito). Se le pasa el texto y opcionalmente un
@@ -29,15 +31,17 @@ export function Alert({ tone = 'error', children, onDismiss }) {
 
 /**
  * Alerta global montada una vez en el layout: muestra lo que haya en
- * `UiStore.error` / `UiStore.success`. Reemplaza el `{error && <p role="alert">}`
- * copiado en cada página.
+ * `UiStore.error` / `UiStore.success` como una ventana emergente fija en la
+ * esquina superior derecha (portal a `document.body`), visible aunque la
+ * página esté scrolleada. Reemplaza el `{error && <p role="alert">}` copiado
+ * en cada página.
  */
 export function GlobalAlert() {
   const error = UiStore.error.value;
   const success = UiStore.success.value;
   if (!error && !success) return null;
-  return (
-    <div style={{ padding: '12px 28px 0' }}>
+  return createPortal(
+    <div className="global-alert">
       {error && (
         <Alert tone="error" onDismiss={() => UiStore.clear()}>
           {error}
@@ -48,6 +52,7 @@ export function GlobalAlert() {
           {success}
         </Alert>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

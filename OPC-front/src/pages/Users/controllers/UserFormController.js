@@ -1,7 +1,6 @@
 import { computed } from '@preact/signals-react';
 import { FormController } from '@/lib/FormController';
 import { ROLES, GENERAL_ADMIN } from '@/constants/roles';
-import { UiStore } from '@/stores/UiStore';
 import { UserService } from '../services/UserService';
 
 const EMPTY = { name: '', email: '', password: '', roleCode: ROLES[0].code, branchId: '' };
@@ -33,7 +32,7 @@ export class UserFormController extends FormController {
     const { name, email, password, roleCode, branchId } = this.form.value;
 
     if (!this.isEditing && this.needsBranch.value && !branchId) {
-      UiStore.fail('Selecciona a qué sucursal va a servir este usuario.');
+      this.reject('Selecciona a qué sucursal va a servir este usuario.');
       return;
     }
 

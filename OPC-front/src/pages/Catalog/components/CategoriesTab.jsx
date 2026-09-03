@@ -34,6 +34,9 @@ export function CategoriesTab({ controller }) {
                 Reactivar
               </button>
             )}
+            <button type="button" onClick={() => form.remove(category)}>
+              Eliminar
+            </button>
           </>
         )}
       />
@@ -47,6 +50,7 @@ export function CategoriesTab({ controller }) {
             submitting={form.submitting.value}
             onSubmit={(event) => form.submit(event)}
             onCancel={form.close}
+            error={form.error.value}
           >
             <TextField
               label="Nombre"

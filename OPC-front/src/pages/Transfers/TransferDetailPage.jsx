@@ -102,7 +102,7 @@ function TransferDetailBody({ controller, transfer }) {
 
       <DataTable columns={ITEM_COLUMNS} rows={transfer.items} />
 
-      {transfer.status === 'REQUESTED' && controller.canActOnOrigin.value && (
+      {transfer.status === 'REQUESTED' && controller.canManageOrigin.value && (
         <form onSubmit={(event) => controller.prepare(event)} noValidate>
           <h2>Preparar envío (sucursal origen)</h2>
           <table>
@@ -137,6 +137,7 @@ function TransferDetailBody({ controller, transfer }) {
           <TextField
             label="Fecha estimada de despacho (opcional)"
             type="datetime-local"
+            min={controller.dispatchMin.value}
             value={controller.estimatedDispatchDate.value}
             onChange={controller.setEstimatedDispatchDate}
           />
@@ -146,7 +147,7 @@ function TransferDetailBody({ controller, transfer }) {
         </form>
       )}
 
-      {transfer.status === 'IN_PREPARATION' && controller.canActOnOrigin.value && (
+      {transfer.status === 'IN_PREPARATION' && controller.canManageOrigin.value && (
         <form onSubmit={(event) => controller.dispatch(event)} noValidate>
           <h2>Despachar (sucursal origen)</h2>
           <TextField
@@ -157,6 +158,7 @@ function TransferDetailBody({ controller, transfer }) {
           <TextField
             label="Fecha estimada de llegada"
             type="datetime-local"
+            min={controller.arrivalMin.value}
             value={controller.estimatedArrivalDate.value}
             onChange={controller.setEstimatedArrivalDate}
           />
@@ -166,7 +168,7 @@ function TransferDetailBody({ controller, transfer }) {
         </form>
       )}
 
-      {transfer.status === 'IN_TRANSIT' && controller.canActOnDestination.value && (
+      {transfer.status === 'IN_TRANSIT' && controller.canManageDestination.value && (
         <div className="receive-forms-row">
           <form onSubmit={(event) => controller.receiveComplete(event)} noValidate>
             <h2>Confirmar recepción completa (sucursal destino)</h2>
@@ -297,11 +299,11 @@ function ShortageSection({ controller, transfer, submitting }) {
     return null;
   }
 
-  if (!controller.canActOnDestination.value) {
+  if (!controller.canManageDestination.value) {
     return (
       <div className="shortage-box">
         <h2>Faltante pendiente de tratamiento</h2>
-        <p>La sucursal destino debe definir qué hacer con el faltante (reenvío, ajuste o reclamación).</p>
+        <p>El gerente de la sucursal destino debe definir qué hacer con el faltante (reenvío, ajuste o reclamación).</p>
       </div>
     );
   }

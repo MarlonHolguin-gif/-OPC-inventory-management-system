@@ -9,7 +9,7 @@ export function AuditFilters({ controller }) {
     <FilterBar onSubmit={controller.applyFilters}>
       <FilterField>
         <TextField
-          label="ID del producto"
+          label="Producto (ID)"
           type="number"
           value={filters.entityId}
           onChange={(value) => controller.setFilter('entityId', value)}

@@ -7,6 +7,7 @@ import { TextField } from '@/components/Field';
 const COLUMNS = [
   { key: 'name', header: 'Nombre' },
   { key: 'abbreviation', header: 'Abreviatura' },
+  { key: 'active', header: 'Estado', render: (unit) => (unit.active ? 'Activa' : 'Inactiva') },
 ];
 
 export function UnitsTab({ controller }) {
@@ -20,9 +21,23 @@ export function UnitsTab({ controller }) {
         rows={controller.units.value}
         empty="No hay unidades de medida."
         actions={(unit) => (
-          <button type="button" onClick={() => form.startEdit(unit)}>
-            Editar
-          </button>
+          <>
+            <button type="button" onClick={() => form.startEdit(unit)}>
+              Editar
+            </button>
+            {unit.active ? (
+              <button type="button" onClick={() => form.deactivate(unit.id)}>
+                Desactivar
+              </button>
+            ) : (
+              <button type="button" onClick={() => form.reactivate(unit.id)}>
+                Reactivar
+              </button>
+            )}
+            <button type="button" onClick={() => form.remove(unit)}>
+              Eliminar
+            </button>
+          </>
         )}
       />
 
@@ -38,6 +53,7 @@ export function UnitsTab({ controller }) {
             submitting={form.submitting.value}
             onSubmit={(event) => form.submit(event)}
             onCancel={form.close}
+            error={form.error.value}
           >
             <TextField
               label="Nombre"

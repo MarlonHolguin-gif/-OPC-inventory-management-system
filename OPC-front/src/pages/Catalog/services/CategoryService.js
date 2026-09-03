@@ -20,4 +20,8 @@ export class CategoryService {
   static reactivate(id) {
     return HttpClient.patch(`/api/categories/${id}/reactivate`);
   }
+
+  static remove(id) {
+    return HttpClient.delete(`/api/categories/${id}`);
+  }
 }

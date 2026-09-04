@@ -320,6 +320,7 @@ CREATE TABLE sy_notifications (
     type                ENUM('LOW_STOCK','HIGH_STOCK','TRANSFER_SHORTAGE','OUT_OF_STOCK') NOT NULL,
     branch_id           BIGINT UNSIGNED NOT NULL,
     product_id          BIGINT UNSIGNED NULL,
+    reference_id        BIGINT UNSIGNED NULL,
     message             VARCHAR(255) NOT NULL,
     channel             ENUM('IN_APP','EMAIL') NOT NULL DEFAULT 'IN_APP',
     status               ENUM('PENDING','SENT','READ') NOT NULL DEFAULT 'PENDING',

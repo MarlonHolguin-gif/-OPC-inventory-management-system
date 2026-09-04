@@ -434,6 +434,48 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
+### 2.39 Rediseño del acceso y monograma OPI — *Impacto: Bajo*
+
+**Prompt (resumido):** rediseñar solo el login y el logo; la paleta está bien pero el login se ve muy simple. El usuario pidió tres propuestas, eligió el monograma de una y la estructura de otra, luego afinó el fondo ("líneas cibernéticas del mismo color, sin exagerar") en dos iteraciones más, revisando cada vez un *artifact* con maquetas antes de tocar código.
+
+**Implementación:**
+
+- `BrandMark` (componente compartido): monograma «OPI» sobre una línea-estante, teja en `var(--accent)` con recorte en `var(--bg)` — sirve para el acceso y el riel; `public/favicon.svg` replica el trazo con *paths* (sin depender de fuentes).
+- `CircuitField` (`src/components/`): fondo de nodos conectados por trazas en ángulo recto en el verde de acento a baja opacidad; dos "chispas" con `offset-path` y nodos que laten, todo detenido por `prefers-reduced-motion`.
+- `LoginPage`: tarjeta de vidrio (`backdrop-filter`, con fallback `@supports`) + hairline de acento, el monograma reemplaza al `<h1>OptiPlant</h1>` y al `.login-logo` «OP», resplandor radial de `--accent-dim`. Sin tocar `LoginController` ni rutas.
+
+**Verificación:** `npm run lint` + `npx vite build` limpios; contenedor de frontend reconstruido y probado por el usuario en `http://localhost:3000`.
+
+---
+
+### 2.40 Pantalla de carga con la marca en las transiciones entre vistas — *Impacto: Bajo*
+
+**Prompt (resumido):** las pantallas de carga al cambiar de módulo muestran solo un "Cargando…" pelado; que usen el fondo del login con el logo de OPI en el centro y una barra cargando.
+
+**Implementación:** `LoadingScreen` (fondo `CircuitField` + `BrandMark` + barra indeterminada, `position: fixed`, `role="status"`, respeta `prefers-reduced-motion`). `AsyncBoundary` gana un prop `variant`: `"inline"` (texto discreto, por defecto — se queda en los formularios/sub-paneles dentro de un modal) y `"screen"` (la `LoadingScreen`). 16 `*Page.jsx` + los 2 paneles de Compras pasan a `variant="screen"`. `CircuitField` se movió de `pages/Login/components/` a `src/components/` al volverse compartido.
+
+**Verificación:** `npm run lint` + `npx vite build` limpios; contenedor reconstruido y probado por el usuario.
+
+---
+
+### 2.41 Notificaciones de stock por reconciliación, chequeo programado y redirección — *Impacto: Medio*
+
+**Prompt (resumido):** que las notificaciones que se generan solas se regeneren cada cierto tiempo (entre las 7:00 y las 19:00) para no olvidar lo pendiente; que las ya cumplidas se borren al instante; y que al pulsar una notificación se redirija a esa alerta. Buenas prácticas, capas, clases y signals.
+
+**Diagnóstico presentado antes de implementar:** hoy `notifyStockThresholdCrossed` solo crea una notificación en el cruce real de umbral (antes ≠ después) y **nunca borra** cuando la condición se resuelve; `OUT_OF_STOCK` solo se dispara al crear el producto; no hay nada programado; el clic solo despliega un detalle, no navega. **3 preguntas resueltas por el usuario:** chequeo cada 2 horas (7, 9, …, 19); el chequeo resurge a "sin leer" solo las notificaciones que ya estaban leídas y siguen vigentes (no toca las no leídas, no duplica); el clic lleva a la vista exacta (Inventario de la sucursal con el producto filtrado / detalle de la transferencia — requiere columna `reference_id` y filtro por URL en Inventario).
+
+**Implementación:**
+
+- **Modelo de reconciliación.** `sy_notifications` deja de ser una bitácora y pasa a reflejar el estado pendiente actual. `NotificationService.reconcileStockNotification(branchId, product, cantidad, min, max[, resurfaceRead])` es el criterio único: calcula el tipo que debería existir (`OUT_OF_STOCK` si la cantidad es 0, si no lo que diga `InventoryAlertService`), y crea / reemplaza (si cambió de tipo) / **borra** la notificación de stock de ese producto-sucursal. `desiredStockType` mantiene "cuándo avisar" y "cuándo borrar el aviso" en un solo lugar.
+- **Disparo instantáneo:** `InventoryMovementService` (cada movimiento), `InventoryService.updateThresholds` (cada cambio de umbral) y `ProductService` (alta) llaman ahora a `reconcileStockNotification` — el `InventoryAlertService` que `InventoryMovementService` inyectaba dejó de hacer falta.
+- **Chequeo programado:** `NotificationReconciliationJob` (`@EnableScheduling` en `OpcBackApplication`, `@Scheduled` con cron `notifications.reconciliation.cron`, por defecto `0 0 7,9,11,13,15,17,19 * * *` zona `America/Bogota`) recorre `InventoryRepository.findAllWithProduct()` y reconcilia cada fila con `resurfaceRead = true` (una notificación leída cuyo problema sigue vuelve a `PENDING` y sube al tope). Cada fila en su propia transacción: una inconsistente no aborta el barrido.
+- **Faltante de transferencia:** `V16` añade `reference_id` a `sy_notifications`; `notifyTransferShortage` guarda ahí el id de la transferencia y `TransferService.resolveShortage` llama `clearTransferShortage(transferId)` — las notificaciones del faltante se borran al tratarlo.
+- **Redirección:** `notificationLink(notification)` (frontend) mapea tipo + ids a una ruta (stock → `/inventario?sucursal=&buscar=<SKU>`, faltante → `/transferencias/{referenceId}`); `NotificationBellController` publica el destino en un signal `redirect` que `useRedirect` navega, cerrando el panel. Se quitó el detalle desplegable. `InventoryController`/`InventoryPage` leen `?sucursal=&buscar=` (`useSearchParams`) para preseleccionar sucursal y filtrar por SKU.
+
+**Verificación:** `./mvnw test` (69/69 — `NotificationServiceTest` nuevo con 8 casos de reconciliación + resurgir, `NotificationReconciliationJobTest` nuevo con 2; `OpcBackApplicationTests` aplica `V1`→`V16` contra MySQL) y `lint` + `build` del frontend limpios. End-to-end contra Docker (solo umbrales, reversible): subir el mínimo por encima del stock → aparece `LOW_STOCK` (`referenceId` nulo); restaurar el mínimo → se borra al instante; bajar el máximo por debajo del stock → aparece `HIGH_STOCK`; estado final igual al previo.
+
+---
+
 ## 3. Evaluación crítica
 
 ### Qué aportó la IA

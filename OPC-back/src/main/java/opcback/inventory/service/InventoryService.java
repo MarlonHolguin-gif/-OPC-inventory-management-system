@@ -62,10 +62,11 @@ public class InventoryService {
      * sucursal, se crea en 0; así se puede configurar el umbral antes del
      * primer ingreso. Un `maxStock` de 0 = "sin tope máximo".
      *
-     * Si al cambiar el umbral el stock actual pasa a estar en alerta (o deja
-     * de estarlo), se dispara la misma notificación que un movimiento —
-     * `notifyStockThresholdCrossed` con el estado de antes y de después,
-     * reutilizando su criterio anti-duplicados.
+     * Al cambiar el umbral, el nivel de stock puede pasar a estar en alerta
+     * (o dejar de estarlo) sin que se mueva una sola unidad — así que se
+     * reconcilia la notificación de stock con el nuevo umbral, igual que
+     * tras un movimiento: crea la alerta si corresponde, o borra la que
+     * hubiera si el nuevo umbral la deja sin efecto.
      */
     @Transactional
     public InventoryResponse updateThresholds(
@@ -80,20 +81,14 @@ public class InventoryService {
         Inventory inventory = inventoryRepository.findByBranchIdAndProductId(branchId, productId)
                 .orElseGet(() -> createEmptyInventory(branchId, productId));
 
-        BigDecimal currentQuantity = inventory.getCurrentQuantity();
-        AlertStatus before = inventoryAlertService.evaluate(
-                currentQuantity, inventory.getMinStock(), inventory.getMaxStock());
-        AlertStatus after = inventoryAlertService.evaluate(
-                currentQuantity, request.minStock(), request.maxStock());
-
         inventory.setMinStock(request.minStock());
         inventory.setMaxStock(request.maxStock());
         inventory.setUpdatedAt(LocalDateTime.now());
         Inventory saved = inventoryRepository.save(inventory);
 
-        notificationService.notifyStockThresholdCrossed(
-                branchId, saved.getProduct(), before, after,
-                currentQuantity, saved.getMinStock(), saved.getMaxStock());
+        notificationService.reconcileStockNotification(
+                branchId, saved.getProduct(),
+                saved.getCurrentQuantity(), saved.getMinStock(), saved.getMaxStock());
 
         return toResponse(saved);
     }

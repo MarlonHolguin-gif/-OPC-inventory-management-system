@@ -3,6 +3,7 @@ package opcback.system.alerts.service;
 import lombok.RequiredArgsConstructor;
 import opcback.exception.ResourceNotFoundException;
 import opcback.inventory.entity.AlertStatus;
+import opcback.inventory.service.InventoryAlertService;
 import opcback.products.entity.Product;
 import opcback.security.BranchAccessService;
 import opcback.system.alerts.dto.NotificationResponse;
@@ -19,23 +20,39 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Épica de Alertas Inteligentes: evalúa cruces de umbral de stock (card 1,
- * llamada desde InventoryMovementService) y faltantes de transferencia
- * (card 3, llamada desde TransferService), y expone su lectura/marcado
- * (card 2, vía NotificationController). Es el único punto que escribe en
+ * Épica de Alertas Inteligentes. Es el único punto que escribe en
  * sy_notifications — igual que InventoryMovementService con
  * tr_inventory_movements, para no duplicar el criterio en varios lugares.
+ *
+ * Modelo: sy_notifications refleja el ESTADO PENDIENTE ACTUAL, no un
+ * histórico de eventos. Una sola función (reconcileStockNotification) decide
+ * qué notificación de stock debe existir para un producto en una sucursal —
+ * crea la que falte, reemplaza si cambió de tipo y borra la que ya se
+ * cumplió. La llaman con el mismo criterio:
+ *   - el disparo instantáneo: cada movimiento de inventario, cada cambio de
+ *     umbral y el alta de un producto (ver InventoryMovementService,
+ *     InventoryService, ProductService);
+ *   - el chequeo programado: NotificationReconciliationJob, cada 2 horas
+ *     entre las 7:00 y las 19:00.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class NotificationService {
 
+    /** Tipos que dependen del nivel de stock de un producto en una sucursal. */
+    private static final Set<NotificationType> STOCK_TYPES =
+            EnumSet.of(NotificationType.LOW_STOCK, NotificationType.HIGH_STOCK, NotificationType.OUT_OF_STOCK);
+
     private final NotificationRepository notificationRepository;
     private final BranchAccessService branchAccessService;
+    private final InventoryAlertService inventoryAlertService;
 
     /**
      * Card 2 — "un usuario solo ve notificaciones de sus sucursales
@@ -92,41 +109,86 @@ public class NotificationService {
     }
 
     /**
-     * Card 1 — se llama en cada movimiento de inventario, con el estado de
-     * alerta de ANTES y de DESPUÉS de aplicarlo. Solo genera notificación
-     * si el estado realmente cambió hacia LOW_STOCK/HIGH_STOCK (un cruce
-     * real) — si ya estaba en ese estado (before == after), no hay nada
-     * nuevo que avisar, que es exactamente el criterio de "no duplicadas
-     * mientras la condición no cambie": no hace falta una columna extra ni
-     * consultar notificaciones previas, el propio antes/después de esta
-     * llamada ya lo garantiza.
+     * Sincroniza la notificación de stock de un producto en una sucursal
+     * con su estado real. Variante sin resurgir: la usan los disparos
+     * instantáneos, que no vuelven a molestar con algo ya visto.
      */
     @Transactional
-    public void notifyStockThresholdCrossed(
-            Long branchId, Product product, AlertStatus before, AlertStatus after,
+    public void reconcileStockNotification(Long branchId, Product product,
             BigDecimal currentQuantity, BigDecimal minStock, BigDecimal maxStock) {
-        if (after == before || after == AlertStatus.NORMAL) {
+        reconcileStockNotification(branchId, product, currentQuantity, minStock, maxStock, false);
+    }
+
+    /**
+     * Sincroniza la notificación de stock de un producto en una sucursal
+     * con su estado real:
+     *   - si el stock está sano, borra cualquier notificación de stock que
+     *     hubiera (la condición se cumplió);
+     *   - si no, se asegura de que exista exactamente una del tipo correcto
+     *     (LOW_STOCK / HIGH_STOCK / OUT_OF_STOCK), reemplazando una de otro
+     *     tipo si el nivel cambió de categoría.
+     *
+     * @param resurfaceRead solo el chequeo programado lo pasa en true: si la
+     *   notificación vigente estaba marcada como leída pero el problema
+     *   sigue, vuelve a PENDING y sube al tope para que no se olvide. Las
+     *   que aún están sin leer no se tocan.
+     */
+    @Transactional
+    public void reconcileStockNotification(Long branchId, Product product,
+            BigDecimal currentQuantity, BigDecimal minStock, BigDecimal maxStock, boolean resurfaceRead) {
+        NotificationType desired = desiredStockType(currentQuantity, minStock, maxStock);
+        List<Notification> existing = notificationRepository
+                .findByProduct_IdAndBranchIdAndTypeIn(product.getId(), branchId, STOCK_TYPES);
+
+        if (desired == null) {
+            notificationRepository.deleteAll(existing);
             return;
         }
 
-        NotificationType type = after == AlertStatus.LOW_STOCK ? NotificationType.LOW_STOCK : NotificationType.HIGH_STOCK;
-        String etiqueta = type == NotificationType.LOW_STOCK ? "Stock bajo" : "Stock alto";
-        BigDecimal threshold = type == NotificationType.LOW_STOCK ? minStock : maxStock;
-        String message = "%s: %s — %s (actual %s, %s %s)".formatted(
-                etiqueta, product.getSku(), product.getName(), formatQuantity(currentQuantity),
-                type == NotificationType.LOW_STOCK ? "mínimo" : "máximo", formatQuantity(threshold));
+        Notification current = null;
+        List<Notification> stale = new ArrayList<>();
+        for (Notification notification : existing) {
+            if (current == null && notification.getType() == desired) {
+                current = notification;
+            } else {
+                stale.add(notification);
+            }
+        }
+        notificationRepository.deleteAll(stale);
 
-        save(type, branchId, product, message);
+        String message = stockMessage(desired, product, currentQuantity, minStock, maxStock);
+        if (current == null) {
+            save(desired, branchId, product, null, message);
+            return;
+        }
+
+        current.setMessage(message);
+        if (resurfaceRead && current.getStatus() == NotificationStatus.READ) {
+            current.setStatus(NotificationStatus.PENDING);
+            current.setReadAt(null);
+            current.setGeneratedAt(LocalDateTime.now());
+        }
+        notificationRepository.save(current);
+    }
+
+    /**
+     * Se llama al crear un producto, una vez por cada sucursal activa que
+     * quede sin existencias de él (sin fila en tr_inventory). Pasa por la
+     * misma reconciliación (stock 0 -> OUT_OF_STOCK) para no duplicar
+     * criterio ni crear una notificación repetida si ya la hubiera.
+     */
+    @Transactional
+    public void notifyProductWithoutStock(Product product, List<Long> branchIds) {
+        for (Long branchId : branchIds) {
+            reconcileStockNotification(branchId, product, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+        }
     }
 
     /**
      * Card 3 — se llama por cada ítem con diferencia > 0 en una recepción
-     * parcial. El esquema de sy_notifications no tiene una columna propia
-     * para "transferencia relacionada" (a diferencia de
-     * tr_inventory_movements, que sí tiene reference_type/reference_id) —
-     * el criterio de aceptación ("incluye producto, cantidad faltante y
-     * transferencia relacionada") se cumple incluyendo el número de
-     * transferencia en el mensaje; product_id ya queda como columna propia.
+     * parcial. reference_id guarda el id de la transferencia (el número va
+     * en el texto, para leerlo) para poder borrar estas notificaciones al
+     * tratar el faltante y para enlazar el clic de la campana al detalle.
      */
     @Transactional
     public void notifyTransferShortage(Transfer transfer, TransferItem item) {
@@ -139,29 +201,62 @@ public class NotificationService {
                 transfer.getTransferNumber(), item.getProduct().getSku(), item.getProduct().getName(),
                 formatQuantity(difference));
 
-        save(NotificationType.TRANSFER_SHORTAGE, transfer.getDestinationBranchId(), item.getProduct(), message);
+        save(NotificationType.TRANSFER_SHORTAGE, transfer.getDestinationBranchId(),
+                item.getProduct(), transfer.getId(), message);
     }
 
     /**
-     * Se llama al crear un producto, una vez por cada sucursal activa que
-     * quede sin existencias de él (sin fila en tr_inventory). Sirve para que
-     * el gerente/administrador de cada sucursal vea qué productos hay sin
-     * stock — no hay alerta de "stock bajo" en este caso porque con
-     * min_stock en 0 la regla de umbral da NORMAL.
+     * Card 5 (cierre del faltante): al registrar el tratamiento de un
+     * faltante de transferencia, sus notificaciones dejan de tener sentido
+     * — se borran al instante (ver TransferService.resolveShortage).
      */
     @Transactional
-    public void notifyProductWithoutStock(Product product, List<Long> branchIds) {
-        String message = "Producto sin existencias: %s — %s".formatted(product.getSku(), product.getName());
-        for (Long branchId : branchIds) {
-            save(NotificationType.OUT_OF_STOCK, branchId, product, message);
-        }
+    public void clearTransferShortage(Long transferId) {
+        notificationRepository.deleteByTypeAndReferenceId(NotificationType.TRANSFER_SHORTAGE, transferId);
     }
 
-    private void save(NotificationType type, Long branchId, Product product, String message) {
+    /**
+     * Tipo de notificación de stock que debería existir hoy para una fila
+     * de inventario, o null si el nivel está sano. Criterio único que
+     * comparten el disparo instantáneo y el chequeo programado.
+     *
+     * OUT_OF_STOCK gana a LOW_STOCK cuando la cantidad es cero: es la
+     * situación más grave y no tiene sentido mostrar las dos. Con
+     * min_stock en 0, InventoryAlertService da NORMAL para stock 0 (0 no es
+     * "< 0"), así que el caso "sin existencias" se resuelve aquí antes de
+     * consultar el umbral.
+     */
+    private NotificationType desiredStockType(BigDecimal currentQuantity, BigDecimal minStock, BigDecimal maxStock) {
+        if (currentQuantity.signum() <= 0) {
+            return NotificationType.OUT_OF_STOCK;
+        }
+        AlertStatus status = inventoryAlertService.evaluate(currentQuantity, minStock, maxStock);
+        return switch (status) {
+            case LOW_STOCK -> NotificationType.LOW_STOCK;
+            case HIGH_STOCK -> NotificationType.HIGH_STOCK;
+            case NORMAL -> null;
+        };
+    }
+
+    private String stockMessage(NotificationType type, Product product,
+            BigDecimal currentQuantity, BigDecimal minStock, BigDecimal maxStock) {
+        return switch (type) {
+            case OUT_OF_STOCK -> "Sin existencias: %s — %s".formatted(product.getSku(), product.getName());
+            case LOW_STOCK -> "Stock bajo: %s — %s (actual %s, mínimo %s)".formatted(
+                    product.getSku(), product.getName(), formatQuantity(currentQuantity), formatQuantity(minStock));
+            case HIGH_STOCK -> "Stock alto: %s — %s (actual %s, máximo %s)".formatted(
+                    product.getSku(), product.getName(), formatQuantity(currentQuantity), formatQuantity(maxStock));
+            case TRANSFER_SHORTAGE -> throw new IllegalArgumentException(
+                    "TRANSFER_SHORTAGE no es una notificación de nivel de stock");
+        };
+    }
+
+    private void save(NotificationType type, Long branchId, Product product, Long referenceId, String message) {
         Notification notification = new Notification();
         notification.setType(type);
         notification.setBranchId(branchId);
         notification.setProduct(product);
+        notification.setReferenceId(referenceId);
         notification.setMessage(message);
         notification.setChannel(NotificationChannel.IN_APP);
         notification.setStatus(NotificationStatus.PENDING);

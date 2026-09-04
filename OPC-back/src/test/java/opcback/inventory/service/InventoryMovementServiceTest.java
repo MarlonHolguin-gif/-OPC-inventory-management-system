@@ -66,12 +66,9 @@ class InventoryMovementServiceTest {
 
     @BeforeEach
     void setUp() {
-        // InventoryAlertService es lógica pura sin dependencias — se usa la
-        // instancia real en vez de un mock, no hay nada que estar
-        // stubbeando en cada test.
         inventoryMovementService = new InventoryMovementService(
                 branchAccessService, productRepository, userRepository, inventoryRepository,
-                inventoryMovementRepository, new InventoryAlertService(), notificationService);
+                inventoryMovementRepository, notificationService);
 
         when(authentication.getName()).thenReturn(EMAIL);
 

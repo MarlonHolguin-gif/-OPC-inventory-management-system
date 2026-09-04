@@ -488,6 +488,9 @@ public class TransferService {
         Transfer saved = transferRepository.save(transfer);
         recordEvent(saved, saved.getStatus(), eventNote, userId);
 
+        // El faltante quedó tratado: sus notificaciones ya no aplican.
+        notificationService.clearTransferShortage(saved.getId());
+
         return toResponse(saved);
     }
 

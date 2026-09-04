@@ -7,7 +7,6 @@ import opcback.exception.ResourceNotFoundException;
 import opcback.inventory.dto.InventoryMovementHistoryResponse;
 import opcback.inventory.dto.InventoryMovementRequest;
 import opcback.inventory.dto.InventoryMovementResponse;
-import opcback.inventory.entity.AlertStatus;
 import opcback.inventory.entity.Inventory;
 import opcback.inventory.entity.InventoryMovement;
 import opcback.inventory.entity.MovementType;
@@ -54,7 +53,6 @@ public class InventoryMovementService {
     private final UserRepository userRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryMovementRepository inventoryMovementRepository;
-    private final InventoryAlertService inventoryAlertService;
     private final NotificationService notificationService;
 
     /**
@@ -131,15 +129,6 @@ public class InventoryMovementService {
         Inventory inventory = inventoryRepository.findByBranchIdAndProductId(request.branchId(), request.productId())
                 .orElseGet(() -> createEmptyInventory(request.branchId(), product));
 
-        // Estado de alerta ANTES de aplicar el movimiento — se compara
-        // contra el de después para detectar un cruce real de umbral
-        // (card 1: "evaluar si cantidad_actual cruzó stock_mínimo o
-        // stock_máximo"), no solo "está en alerta" (eso ya lo estaría en
-        // cada movimiento siguiente, generando una notificación por cada
-        // uno mientras la condición no cambie).
-        AlertStatus statusBefore = inventoryAlertService.evaluate(
-                inventory.getCurrentQuantity(), inventory.getMinStock(), inventory.getMaxStock());
-
         BigDecimal unitCost = request.unitCost() != null ? request.unitCost() : BigDecimal.ZERO;
 
         if (request.movementType().isInbound()) {
@@ -165,10 +154,12 @@ public class InventoryMovementService {
         InventoryMovement savedMovement = inventoryMovementRepository.save(movement);
         Inventory savedInventory = inventoryRepository.save(inventory);
 
-        AlertStatus statusAfter = inventoryAlertService.evaluate(
-                savedInventory.getCurrentQuantity(), savedInventory.getMinStock(), savedInventory.getMaxStock());
-        notificationService.notifyStockThresholdCrossed(
-                request.branchId(), product, statusBefore, statusAfter,
+        // Sincroniza la notificación de stock con el nivel resultante: crea
+        // la alerta si el movimiento dejó el stock bajo/alto/en cero, o la
+        // borra si el movimiento lo devolvió a un nivel sano (card 1 +
+        // "las cumplidas se borran al instante").
+        notificationService.reconcileStockNotification(
+                request.branchId(), product,
                 savedInventory.getCurrentQuantity(), savedInventory.getMinStock(), savedInventory.getMaxStock());
 
         return InventoryMovementResponse.from(savedMovement, savedInventory.getCurrentQuantity());

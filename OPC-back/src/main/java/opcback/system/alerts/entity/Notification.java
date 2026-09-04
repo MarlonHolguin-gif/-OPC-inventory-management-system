@@ -45,6 +45,16 @@ public class Notification {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    /**
+     * Id de la entidad que originó la notificación cuando no es un producto
+     * — hoy solo la transferencia de un TRANSFER_SHORTAGE. Sirve para
+     * borrar sus notificaciones al tratar el faltante y para que el clic en
+     * la campana lleve al detalle de esa transferencia. Nulo para los tipos
+     * de stock (se identifican por branch_id + product_id).
+     */
+    @Column(name = "reference_id")
+    private Long referenceId;
+
     @Column(nullable = false, length = 255)
     private String message;
 

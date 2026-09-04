@@ -4,7 +4,6 @@ import opcback.inventory.dto.InventoryResponse;
 import opcback.inventory.dto.InventoryThresholdRequest;
 import opcback.inventory.entity.Inventory;
 import opcback.inventory.repository.InventoryRepository;
-import opcback.inventory.entity.AlertStatus;
 import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
@@ -98,7 +97,7 @@ class InventoryServiceTest {
     }
 
     @Test
-    void notificaCuandoElNuevoUmbralDejaElProductoEnAlerta() {
+    void reconciliaLaNotificacionDeStockConElNuevoUmbral() {
         Inventory inventory = existingInventory();
         inventory.initializeQuantity(new BigDecimal("10")); // por debajo del nuevo mínimo
         when(inventoryRepository.findByBranchIdAndProductId(BRANCH_ID, PRODUCT_ID)).thenReturn(Optional.of(inventory));
@@ -107,10 +106,12 @@ class InventoryServiceTest {
                 BRANCH_ID, PRODUCT_ID, new InventoryThresholdRequest(new BigDecimal("50"), new BigDecimal("0")),
                 authentication);
 
-        // pasó de NORMAL (min 0) a LOW_STOCK (min 50, stock 10) -> se avisa
-        verify(notificationService).notifyStockThresholdCrossed(
-                eq(BRANCH_ID), any(), eq(AlertStatus.NORMAL), eq(AlertStatus.LOW_STOCK),
-                any(), any(), any());
+        // el nuevo mínimo (50) deja el stock (10) por debajo -> se reconcilia
+        // la notificación con el nivel resultante (NotificationService decide
+        // si crea, reemplaza o borra)
+        verify(notificationService).reconcileStockNotification(
+                eq(BRANCH_ID), any(Product.class),
+                any(BigDecimal.class), any(BigDecimal.class), any(BigDecimal.class));
     }
 
     @Test

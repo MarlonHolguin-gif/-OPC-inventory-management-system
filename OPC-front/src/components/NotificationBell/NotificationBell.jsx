@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useController } from '@/lib/useController';
+import { useRedirect } from '@/lib/useRedirect';
 import { BellIcon } from '@/components/icons/UtilityIcons';
 import { NotificationBellController } from './NotificationBellController';
 import {
@@ -17,10 +18,11 @@ export default function NotificationBell() {
   const controller = useController(NotificationBellController);
   const containerRef = useRef(null);
 
+  useRedirect(controller.redirect);
+
   const open = controller.open.value;
   const list = controller.filteredList.value;
   const unreadCount = controller.unreadCount.value;
-  const expandedId = controller.expandedId.value;
   const typeFilter = controller.typeFilter.value;
 
   useEffect(() => {
@@ -87,28 +89,6 @@ export default function NotificationBell() {
                     <span className="notification-message">{notification.message}</span>
                     <span className="notification-date">{formatDateTime(notification.generatedAt)}</span>
                   </button>
-
-                  {expandedId === notification.id && (
-                    <div className="notification-detail">
-                      <p>
-                        <strong>Sucursal:</strong> {controller.branchName(notification.branchId)}
-                      </p>
-                      {notification.productSku && (
-                        <p>
-                          <strong>Producto:</strong> {notification.productSku} — {notification.productName}
-                        </p>
-                      )}
-                      <p>
-                        <strong>Generada:</strong> {formatDateTime(notification.generatedAt)}
-                      </p>
-                      <p>
-                        <strong>Estado:</strong>{' '}
-                        {notification.status === 'READ'
-                          ? `Leída — ${formatDateTime(notification.readAt)}`
-                          : 'Pendiente'}
-                      </p>
-                    </div>
-                  )}
                 </li>
               ))}
             </ul>

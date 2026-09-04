@@ -9,6 +9,7 @@ import { SunIcon, MoonIcon } from '@/components/icons/UtilityIcons';
 import { LogoutIcon } from '@/components/icons/NavIcons';
 import NotificationBell from '@/components/NotificationBell/NotificationBell';
 import { GlobalAlert } from '@/components/Alert';
+import { BrandMark } from '@/components/BrandMark';
 import './AppLayout.css';
 
 function RailItem({ to, label, icon: Icon }) {
@@ -44,8 +45,8 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <aside className="app-rail">
-        <div className="rail-logo" title="OptiPlant · Inventario">
-          OP
+        <div className="rail-logo" title="OptiPlant Inventory">
+          <BrandMark size={34} />
         </div>
 
         <nav className="rail-nav">

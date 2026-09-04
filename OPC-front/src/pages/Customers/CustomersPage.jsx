@@ -43,7 +43,7 @@ export default function CustomersPage() {
         label="Buscar cliente"
       />
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <DataTable
           columns={COLUMNS}
           rows={controller.filtered.value}

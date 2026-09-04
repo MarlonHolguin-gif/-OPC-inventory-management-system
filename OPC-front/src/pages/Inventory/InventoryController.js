@@ -20,6 +20,17 @@ export class InventoryController extends Controller {
 
   threshold = new InventoryThresholdController(this);
 
+  // Sucursal pedida por enlace (clic en una notificación de stock). Se
+  // aplica en onMount si es una sucursal real; si no, cae al comportamiento
+  // normal (primera sucursal asignada).
+  #linkedBranchId = null;
+
+  constructor(link) {
+    super();
+    if (link?.search) this.search.value = link.search;
+    this.#linkedBranchId = link?.branchId != null ? Number(link.branchId) : null;
+  }
+
   allBranches = computed(() => BranchDirectoryStore.all.value);
 
   // ¿El usuario puede editar los umbrales de la sucursal seleccionada?
@@ -53,12 +64,30 @@ export class InventoryController extends Controller {
     }
 
     const own = AuthStore.branches.value;
-    this.selectedBranchId.value =
+    const fallback =
       Array.isArray(own) && own.length > 0 ? own[0] : (this.allBranches.value[0]?.id ?? null);
+    const linked = this.#linkedBranchId
+      && this.allBranches.value.some((branch) => branch.id === this.#linkedBranchId)
+      ? this.#linkedBranchId
+      : null;
+    this.selectedBranchId.value = linked ?? fallback;
     this.loading.value = false;
 
     if (this.selectedBranchId.value) await this.loadInventory();
   }
+
+  // Llega desde la campana cuando la URL cambia sin re-montar la vista
+  // (clic en otra notificación estando ya en Inventario). El montaje inicial
+  // ya lo resuelve onMount, así que aquí se ignora mientras carga.
+  openFromLink = (branchId, search) => {
+    if (this.loading.value) return;
+    if (search != null) this.search.value = search;
+    const id = branchId != null ? Number(branchId) : null;
+    if (id && id !== this.selectedBranchId.value
+      && this.allBranches.value.some((branch) => branch.id === id)) {
+      this.setBranch(id);
+    }
+  };
 
   setSearch = (value) => {
     this.search.value = value;

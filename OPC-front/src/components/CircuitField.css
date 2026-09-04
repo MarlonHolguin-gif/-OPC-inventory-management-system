@@ -1,0 +1,81 @@
+/* Fondo de circuito de la marca (acceso y pantalla de carga) — ver CircuitField.jsx. */
+
+.circuit-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.circuit-trace path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.2;
+}
+.circuit-trace--faint path {
+  opacity: 0.1;
+}
+
+.circuit-pad circle {
+  fill: var(--accent);
+  opacity: 0.38;
+}
+
+.circuit-hub {
+  fill: var(--accent);
+  opacity: 0.3;
+}
+
+.circuit-spark {
+  fill: var(--accent);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .circuit-hub {
+    /* el retardo por nodo llega como style inline desde CircuitField.jsx */
+    animation: circuit-beat 3.6s ease-in-out infinite;
+  }
+
+  .circuit-spark {
+    animation: circuit-run 5.5s linear infinite;
+  }
+  .circuit-spark--a {
+    offset-path: path('M20 44 H118 V96 H176 L206 66 H300 V30');
+  }
+  .circuit-spark--b {
+    offset-path: path('M60 232 H150 V168 H236 L268 200 H366');
+    animation-duration: 7s;
+    animation-delay: 2.4s;
+  }
+}
+
+@keyframes circuit-beat {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes circuit-run {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}

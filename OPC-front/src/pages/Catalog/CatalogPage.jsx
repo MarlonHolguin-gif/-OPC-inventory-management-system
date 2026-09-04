@@ -16,7 +16,7 @@ export default function CatalogPage() {
 
       <Tabs items={CATALOG_TABS} active={activeTab} onSelect={controller.setTab} />
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         {activeTab === 'categories' && <CategoriesTab controller={controller} />}
         {activeTab === 'units' && <UnitsTab controller={controller} />}
         {activeTab === 'products' && <ProductsTab controller={controller} />}

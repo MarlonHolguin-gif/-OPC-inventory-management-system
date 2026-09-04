@@ -36,7 +36,7 @@ export default function MovementsPage() {
 
       <CrudToolbar label="Registrar movimiento" onCreate={form.open} />
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <FilterBar onSubmit={(event) => controller.search(event)}>
           <FilterField>
             <SelectField

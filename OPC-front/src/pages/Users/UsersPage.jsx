@@ -26,7 +26,7 @@ export default function UsersPage() {
     <main>
       <h1>Usuarios</h1>
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <DataTable
           columns={columns}
           rows={controller.users.value}

@@ -93,7 +93,7 @@ export default function TransfersPage() {
         </Modal>
       )}
 
-      <AsyncBoundary loading={controller.transfers.value === null}>
+      <AsyncBoundary variant="screen" loading={controller.transfers.value === null}>
         {sections.length === 0 && <p>No hay transferencias registradas todavía.</p>}
 
         {sections.map((section) => (

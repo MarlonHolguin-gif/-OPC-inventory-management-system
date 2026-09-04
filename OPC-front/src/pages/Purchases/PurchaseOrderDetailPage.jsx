@@ -40,7 +40,7 @@ function PurchaseOrderDetailView({ orderId }) {
 
   return (
     <main>
-      <AsyncBoundary loading={order === null}>
+      <AsyncBoundary variant="screen" loading={order === null}>
         {order && <PurchaseOrderDetailBody controller={controller} order={order} />}
       </AsyncBoundary>
     </main>

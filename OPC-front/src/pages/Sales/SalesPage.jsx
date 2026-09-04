@@ -44,7 +44,7 @@ export default function SalesPage() {
 
       <CrudToolbar label="Registrar venta" onCreate={form.open} />
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <FilterBar onSubmit={(event) => controller.search(event)}>
           <FilterField>
             <TextField

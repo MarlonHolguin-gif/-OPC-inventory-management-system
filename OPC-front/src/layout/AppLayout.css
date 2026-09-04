@@ -17,13 +17,7 @@
 .rail-logo {
   width: 34px;
   height: 34px;
-  border-radius: 8px;
-  background: var(--accent);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 700 13px var(--font-heading);
-  color: var(--bg);
   margin: 0 auto 18px;
   flex-shrink: 0;
 }

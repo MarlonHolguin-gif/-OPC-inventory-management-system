@@ -18,7 +18,7 @@ export default function DashboardPage() {
     <main>
       <h1>Panel</h1>
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <SelectField
           label="Sucursal"
           value={controller.branchId.value}

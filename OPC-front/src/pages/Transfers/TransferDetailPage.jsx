@@ -56,7 +56,7 @@ function TransferDetailView({ transferId }) {
       {loadError ? (
         <p className="badge badge-bad">{loadError}</p>
       ) : (
-        <AsyncBoundary loading={transfer === null}>
+        <AsyncBoundary variant="screen" loading={transfer === null}>
           {transfer && <TransferDetailBody controller={controller} transfer={transfer} />}
         </AsyncBoundary>
       )}

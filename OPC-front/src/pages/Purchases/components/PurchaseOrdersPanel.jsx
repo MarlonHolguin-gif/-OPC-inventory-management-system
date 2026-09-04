@@ -30,7 +30,7 @@ export function PurchaseOrdersPanel() {
     <>
       <CrudToolbar label="Nueva orden de compra" onCreate={form.openCreate} />
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         {PURCHASE_ORDER_GROUPS.map((group) => {
           const rows = orders.filter((order) => group.statuses.includes(order.status));
           return (

@@ -41,7 +41,7 @@ export default function ComplianceReportPage() {
         </Link>
       </div>
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         {controller.totalConsidered.value === 0 ? (
           <p>No hay transferencias recibidas con fecha estimada en este rango.</p>
         ) : (

@@ -24,7 +24,7 @@ export default function AuditPage() {
 
       <AuditFilters controller={controller} />
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         {rows.length === 0 ? (
           <p>No hay eventos de auditoría que coincidan con los filtros.</p>
         ) : (

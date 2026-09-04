@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
@@ -11,8 +13,21 @@ import { alertLabel } from './constants';
 import './InventoryPage.css';
 
 export default function InventoryPage() {
-  const controller = useController(InventoryController);
+  const [searchParams] = useSearchParams();
+  const branchParam = searchParams.get('sucursal');
+  const searchParam = searchParams.get('buscar');
+
+  const controller = useController(InventoryController, {
+    branchId: branchParam,
+    search: searchParam,
+  });
   const threshold = controller.threshold;
+
+  // Si la URL cambia sin re-montar (otra notificación de stock desde la
+  // campana estando ya en Inventario), reencuadra la vista.
+  useEffect(() => {
+    controller.openFromLink(branchParam, searchParam);
+  }, [branchParam, searchParam, controller]);
   const stockByProduct = controller.inventoryByProductId.value;
   const canEdit = controller.canEditSelectedBranch.value;
 
@@ -62,7 +77,7 @@ export default function InventoryPage() {
     <main>
       <h1>Inventario</h1>
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <div className="inventory-toolbar">
           <SearchBar
             value={controller.search.value}

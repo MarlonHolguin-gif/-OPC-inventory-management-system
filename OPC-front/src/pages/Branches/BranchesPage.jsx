@@ -30,7 +30,7 @@ export default function BranchesPage() {
     <main>
       <h1>Sucursales</h1>
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <DataTable
           columns={COLUMNS}
           rows={controller.items.value}

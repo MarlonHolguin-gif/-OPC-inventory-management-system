@@ -1,3 +1,5 @@
+import { PATHS } from '@/app/routes';
+
 // Etiquetas y helpers de UI para Notificaciones — reflejan literalmente el
 // ENUM de la BD (opcback.system.alerts.entity.NotificationType).
 
@@ -29,4 +31,28 @@ export function notificationTypeBadgeClass(type) {
   return type === 'TRANSFER_SHORTAGE' || type === 'OUT_OF_STOCK'
     ? 'badge badge-bad'
     : 'badge badge-warn';
+}
+
+/**
+ * A dónde lleva el clic en una notificación: a la vista donde se atiende.
+ * Stock → Inventario de esa sucursal con el producto ya filtrado por SKU.
+ * Faltante de transferencia → detalle de esa transferencia.
+ * Devuelve null si no hay un destino claro.
+ */
+export function notificationLink(notification) {
+  switch (notification.type) {
+    case 'LOW_STOCK':
+    case 'HIGH_STOCK':
+    case 'OUT_OF_STOCK': {
+      const params = new URLSearchParams({ sucursal: String(notification.branchId) });
+      if (notification.productSku) params.set('buscar', notification.productSku);
+      return `${PATHS.inventory}?${params.toString()}`;
+    }
+    case 'TRANSFER_SHORTAGE':
+      return notification.referenceId
+        ? PATHS.transferDetail.replace(':transferId', notification.referenceId)
+        : PATHS.transfers;
+    default:
+      return null;
+  }
 }

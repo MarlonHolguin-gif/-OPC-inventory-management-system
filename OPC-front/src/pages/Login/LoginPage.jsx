@@ -3,7 +3,9 @@ import { useRedirect } from '@/lib/useRedirect';
 import { ThemeStore } from '@/stores/ThemeStore';
 import { TextField } from '@/components/Field';
 import { PasswordField } from '@/components/PasswordField';
+import { BrandMark } from '@/components/BrandMark';
 import { SunIcon, MoonIcon } from '@/components/icons/UtilityIcons';
+import { CircuitField } from '@/components/CircuitField';
 import { LoginController } from './LoginController';
 import './LoginPage.css';
 
@@ -15,6 +17,8 @@ export default function LoginPage() {
 
   return (
     <main className="login-screen">
+      <CircuitField />
+
       <button
         type="button"
         onClick={ThemeStore.toggle}
@@ -25,8 +29,9 @@ export default function LoginPage() {
       </button>
 
       <div className="login-card">
-        <div className="login-logo">OP</div>
-        <h1 className="login-title">OptiPlant</h1>
+        <h1 className="login-title">
+          <BrandMark size={52} />
+        </h1>
         <p className="login-subtitle">Sistema de inventario multi-sucursal</p>
 
         <form onSubmit={(event) => controller.submit(event)} className="login-form" noValidate>

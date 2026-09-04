@@ -44,7 +44,7 @@ export function PurchaseHistoryPanel() {
   }));
 
   return (
-    <AsyncBoundary loading={controller.loading.value}>
+    <AsyncBoundary variant="screen" loading={controller.loading.value}>
       <FilterBar onSubmit={(event) => controller.search(event)}>
         <FilterField>
           <SelectField

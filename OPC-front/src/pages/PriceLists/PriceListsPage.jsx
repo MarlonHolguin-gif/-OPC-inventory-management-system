@@ -34,7 +34,7 @@ export default function PriceListsPage() {
     <main>
       <h1>Listas de precios</h1>
 
-      <AsyncBoundary loading={controller.loading.value}>
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <DataTable
           columns={COLUMNS}
           rows={controller.items.value}

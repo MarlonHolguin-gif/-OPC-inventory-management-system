@@ -37,7 +37,7 @@ function SaleDetailView({ saleId }) {
         <Link to="/ventas">← Volver a Ventas</Link>
       </p>
 
-      <AsyncBoundary loading={sale === null}>
+      <AsyncBoundary variant="screen" loading={sale === null}>
         {sale && <SaleReceipt controller={controller} sale={sale} />}
       </AsyncBoundary>
     </main>

@@ -317,7 +317,7 @@ CREATE TABLE tr_transfer_events (
 
 CREATE TABLE sy_notifications (
     id                  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    type                ENUM('LOW_STOCK','HIGH_STOCK','TRANSFER_SHORTAGE','OUT_OF_STOCK') NOT NULL,
+    type                ENUM('LOW_STOCK','HIGH_STOCK','TRANSFER_SHORTAGE','OUT_OF_STOCK','TRANSFER_PENDING','PURCHASE_ORDER_PENDING') NOT NULL,
     branch_id           BIGINT UNSIGNED NOT NULL,
     product_id          BIGINT UNSIGNED NULL,
     reference_id        BIGINT UNSIGNED NULL,

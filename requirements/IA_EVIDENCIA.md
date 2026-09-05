@@ -476,6 +476,39 @@ A partir del módulo de Compras, cada pantalla nueva del frontend se probó con 
 
 ---
 
+### 2.42 Dos bugs reportados por el usuario: campana que deja la vista "clavada" y producto repetido en una orden — *Impacto: Bajo*
+
+**Prompt (resumido):** (1) al pulsar una notificación de la campana redirige a la alerta pero la vista queda estática — no deja entrar a ningún otro módulo. (2) en una transferencia (y también ventas/compras) se puede elegir dos veces el mismo producto; la orden se crea pero el despacho falla al descontar el stock dos veces. Que no se pueda reelegir un producto ya agregado en la misma orden.
+
+**Causa del bug 1:** `useRedirect` navegaba en un `useEffect` con `navigate` en las dependencias y nunca "consumía" el destino. react-router recrea la función `navigate` en cada cambio de ruta, así que el efecto se re-disparaba con el mismo `redirect.value` y arrastraba al usuario de vuelta a la vista de la notificación una y otra vez. Arreglado guardando en un `useRef` el último destino ya atendido: el controller publica un objeto nuevo por cada intención de navegar, así que `target === handledTarget.current` distingue un destino real de un re-disparo espurio. No se muta el argumento del hook (lo prohíbe `react-hooks/immutability`).
+
+**Causa del bug 2:** ni el frontend ni el backend impedían repetir un producto entre líneas. En `TransferService.dispatch` se genera un `TRANSFER_OUT` por línea; con dos líneas del mismo producto, el segundo descuento se queda sin stock y la transferencia queda trabada en `EN_PREPARACION`. Arreglado en las dos capas:
+- **Frontend:** `@/lib/lineItems` (`availableLineProducts` / `hasDuplicateProducts`); los tres selectores de ítem (transferencia, venta, compra) ya no ofrecen un producto elegido en otra línea, el botón "+ Agregar ítem" se deshabilita cuando ya se usaron todos los productos, y cada `submit`/`#validate` rechaza duplicados con un mensaje claro.
+- **Backend:** `TransferService.create`, `SaleService.register` y `PurchaseOrderService.create`/`update` rechazan con `IllegalArgumentException` si `items` trae un `productId` repetido — antes de tocar la BD.
+
+**Verificación:** `./mvnw test` (72/72 — un caso nuevo de rechazo por producto repetido en `TransferServiceTest`, `SaleServiceTest` y `PurchaseOrderServiceTest`) y `lint` + `build` del frontend limpios.
+
+---
+
+### 2.43 Notificaciones de flujo de trabajo por rol (transferencias y órdenes de compra) — *Impacto: Medio*
+
+**Prompt (resumido):** que en las notificaciones aparezca también cuando hay transferencias esperando aceptación, en preparación o en tránsito, y cuando una orden de compra está pendiente por enviar al proveedor o por recepción; pero según el rol — al operador (que solo hace la solicitud) no le salen, al gerente y al administrador sí.
+
+**Decisiones (3 preguntas al usuario):** (1) cada estado notifica **a la sucursal que debe actuar** (origen mientras se prepara/despacha, destino en tránsito); (2) el operador de inventario **no ve nada del flujo**, solo stock; (3) una orden con recepción parcial **sigue notificando** hasta recepción completa o cancelación, y una transferencia con faltante sigue hasta que se registre reenvío / reclamación / ajuste.
+
+**Implementación:**
+
+- **`V17`** añade `TRANSFER_PENDING` y `PURCHASE_ORDER_PENDING` al ENUM `sy_notifications.type`. `reference_id` (ya existente, `V16`) guarda el id de la transferencia u orden.
+- **Mismo modelo de reconciliación que el stock.** `NotificationService.reconcileTransferNotification(transfer[, resurfaceRead])` y `reconcilePurchaseOrderNotification(order[, resurfaceRead])` calculan, a partir del estado, la sucursal a notificar y el texto (un `record WorkflowTarget`), o `null` si la entidad ya no espera acción — y crean / actualizan (el `branch_id` **cambia** de origen a destino al pasar a tránsito) / borran una única notificación por `(type, reference_id)`. Método privado común `reconcileWorkflowNotification`.
+- **Disparo instantáneo:** `TransferService` (`create`, `prepare`, `dispatch`, `receiveComplete`, `receivePartial`, `resolveShortage`, reenvío) y `PurchaseOrderService` / `PurchaseReceiptService` (`create`, `update`, `markAsSent`, `cancel`, `register`) reconcilian tras cada transición.
+- **Chequeo programado + arranque:** `NotificationReconciliationJob` suma `reconcileWorkflowNotifications()` — barre `transferRepository.findByStatusIn(...)` y `purchaseOrderRepository.findByStatusIn(...)` de los estados abiertos, cada uno en su propia transacción (una fila inconsistente no aborta el barrido). Comparte el cron `notifications.reconciliation.cron` (con resurgir de las leídas). Además, un `@EventListener(ApplicationReadyEvent.class)` reconcilia todo **al arrancar** (stock y flujo, **sin** resurgir): sin esto, tras un despliegue o un restore de la BD las notificaciones de lo que ya estaba pendiente no aparecerían hasta el siguiente tick del cron.
+- **Filtro por rol:** `NotificationService.list` y `markAsRead` ocultan los dos tipos de flujo a quien no es `GENERAL_ADMIN` ni `BRANCH_MANAGER` — nuevo `BranchAccessService.isBranchManager(email)` (un gerente gestiona todas sus sucursales asignadas, así que basta rol + el filtro por sucursal que el listado ya aplica).
+- **Frontend:** `constants.js` de la campana suma etiquetas, chips de filtro (`Transferencias`, `Compras`), y `notificationLink` → `TRANSFER_PENDING` a `/transferencias/{id}`, `PURCHASE_ORDER_PENDING` a `/compras/{id}`. Nuevo `badge-info` (token `--info` azul, claro/oscuro): el flujo no es una alerta, es un paso pendiente. Ningún cambio de controller — el rol lo filtra el backend.
+
+**Verificación:** `./mvnw test` (84/84 — `NotificationServiceTest` +9 casos: reconciliación por estado de transferencia y orden, cambio de sucursal origen→destino, faltante parcial pendiente / ya tratado, borrado al cerrarse, filtro de rol en `list`; `NotificationReconciliationJobTest` +3: barridos de flujo, reconciliación al arrancar sin resurgir, aislamiento de fallos; `OpcBackApplicationTests` aplica `V1`→`V17` contra MySQL y ejerce el `ApplicationReadyEvent`) y `lint` + `build` del frontend limpios. Verificado además contra Docker: al reconstruir el backend, la reconciliación de arranque crea las `TRANSFER_PENDING` de las transferencias que ya estaban abiertas.
+
+---
+
 ## 3. Evaluación crítica
 
 ### Qué aportó la IA

@@ -4,6 +4,7 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { backendError } from '@/lib/format';
+import { availableLineProducts, hasDuplicateProducts } from '@/lib/lineItems';
 import { TransferService } from '../services/TransferService';
 
 const EMPTY_ITEM = { productId: '', quantity: '' };
@@ -139,6 +140,14 @@ export class TransferFormController extends Controller {
     this.loadOriginInventory();
   };
 
+  // Catálogo para el selector de una línea sin los productos ya elegidos en
+  // otras líneas — un producto va una sola vez por transferencia.
+  availableProducts(index) {
+    return availableLineProducts(this.products.value, this.items.value, index);
+  }
+
+  canAddItem = computed(() => this.items.value.length < this.products.value.length);
+
   updateItem = (index, field, value) => {
     this.items.value = this.items.value.map((item, i) =>
       i === index ? { ...item, [field]: value } : item,
@@ -167,6 +176,10 @@ export class TransferFormController extends Controller {
     }
     if (!items.every((item) => item.productId && Number(item.quantity) > 0)) {
       UiStore.fail('Cada ítem necesita producto y una cantidad positiva.');
+      return;
+    }
+    if (hasDuplicateProducts(items)) {
+      UiStore.fail('Hay un producto repetido en varias líneas. Cada producto va una sola vez por transferencia.');
       return;
     }
     if (this.hasStockShortage.value) {

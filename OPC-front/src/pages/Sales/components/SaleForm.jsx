@@ -39,7 +39,7 @@ export function SaleForm({ controller }) {
           <SaleItemsTable controller={controller} />
         </div>
 
-        <button type="button" onClick={controller.addItem}>
+        <button type="button" onClick={controller.addItem} disabled={!controller.canAddItem.value}>
           + Agregar ítem
         </button>
 

@@ -41,7 +41,7 @@ export function PurchaseOrderForm({ controller }) {
           <PurchaseItemsTable controller={controller} />
         </div>
 
-        <button type="button" onClick={controller.addItem}>
+        <button type="button" onClick={controller.addItem} disabled={!controller.canAddItem.value}>
           + Agregar ítem
         </button>
 

@@ -14,7 +14,6 @@ const UNIT_HINT_STYLE = {
 
 export function PurchaseItemsTable({ controller }) {
   const items = controller.items.value;
-  const products = controller.products.value;
   const subtotals = controller.lineSubtotals.value;
 
   return (
@@ -39,7 +38,7 @@ export function PurchaseItemsTable({ controller }) {
                 onChange={(event) => controller.updateItem(index, 'productId', event.target.value)}
               >
                 <option value="">— elegir —</option>
-                {products.map((product) => (
+                {controller.availableProducts(index).map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.sku} — {product.name}
                   </option>

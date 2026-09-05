@@ -14,7 +14,6 @@ const UNIT_HINT_STYLE = {
 };
 export function SaleItemsTable({ controller }) {
   const items = controller.items.value;
-  const products = controller.products.value;
   const details = controller.lineDetails.value;
 
   return (
@@ -44,7 +43,7 @@ export function SaleItemsTable({ controller }) {
                   onChange={(event) => controller.updateItem(index, 'productId', event.target.value)}
                 >
                   <option value="">— elegir —</option>
-                  {products.map((product) => (
+                  {controller.availableProducts(index).map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.sku} — {product.name}
                     </option>

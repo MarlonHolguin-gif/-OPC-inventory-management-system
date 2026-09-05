@@ -26,6 +26,8 @@
   --bad-dim: oklch(94% 0.06 25);
   --warn: oklch(55% 0.15 80);
   --warn-dim: oklch(94% 0.06 80);
+  --info: oklch(48% 0.13 255);
+  --info-dim: oklch(94% 0.05 255);
 
   /* Paleta categórica para gráficas (reporte de cumplimiento logístico) —
      hex literal, no oklch: son los valores exactos que pasaron el
@@ -57,6 +59,8 @@
   --bad-dim: oklch(28% 0.07 25);
   --warn: oklch(78% 0.14 80);
   --warn-dim: oklch(30% 0.06 80);
+  --info: oklch(72% 0.12 255);
+  --info-dim: oklch(29% 0.06 255);
 
   --chart-low: #3987e5;
   --chart-medium: #199e70;
@@ -291,6 +295,10 @@ hr {
 .badge-warn {
   background: var(--warn-dim);
   color: var(--warn);
+}
+.badge-info {
+  background: var(--info-dim);
+  color: var(--info);
 }
 
 /* Fila de acciones secundarias tipo enlace-con-pinta-de-botón. */

@@ -4,6 +4,7 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { toNumber, backendError } from '@/lib/format';
+import { availableLineProducts, hasDuplicateProducts } from '@/lib/lineItems';
 import { PurchaseService } from '../services/PurchaseService';
 
 const EMPTY_ITEM = { productId: '', unitId: '', quantity: '', unitPrice: '', discountPercentage: '' };
@@ -176,6 +177,14 @@ export class PurchaseOrderFormController extends Controller {
     this.paymentTerms.value = value;
   };
 
+  // Catálogo del selector de una línea sin los productos ya elegidos en
+  // otras líneas — un producto va una sola vez por orden de compra.
+  availableProducts(index) {
+    return availableLineProducts(this.products.value, this.items.value, index);
+  }
+
+  canAddItem = computed(() => this.items.value.length < this.products.value.length);
+
   updateItem = (index, field, value) => {
     this.items.value = this.items.value.map((item, i) => {
       if (i !== index) return item;
@@ -212,6 +221,10 @@ export class PurchaseOrderFormController extends Controller {
       UiStore.fail(
         'Cada ítem necesita producto, cantidad positiva, precio unitario válido y un descuento entre 0 y 100 %.',
       );
+      return;
+    }
+    if (hasDuplicateProducts(this.items.value)) {
+      UiStore.fail('Hay un producto repetido en varias líneas. Cada producto va una sola vez por orden de compra.');
       return;
     }
 

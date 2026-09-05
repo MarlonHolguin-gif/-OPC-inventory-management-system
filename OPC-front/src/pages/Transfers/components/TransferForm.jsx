@@ -10,7 +10,6 @@ const SHORTAGE_CELL = { color: 'var(--bad)', fontWeight: 'bold' };
 
 export function TransferForm({ controller }) {
   const items = controller.items.value;
-  const products = controller.products.value;
   const shortage = controller.hasStockShortage.value;
 
   return (
@@ -61,7 +60,7 @@ export function TransferForm({ controller }) {
                         onChange={(event) => controller.updateItem(index, 'productId', event.target.value)}
                       >
                         <option value="">— elegir —</option>
-                        {products.map((product) => (
+                        {controller.availableProducts(index).map((product) => (
                           <option key={product.id} value={product.id}>
                             {product.sku} — {product.name}
                           </option>
@@ -94,7 +93,7 @@ export function TransferForm({ controller }) {
           </table>
         </div>
 
-        <button type="button" onClick={controller.addItem}>
+        <button type="button" onClick={controller.addItem} disabled={!controller.canAddItem.value}>
           + Agregar ítem
         </button>
 

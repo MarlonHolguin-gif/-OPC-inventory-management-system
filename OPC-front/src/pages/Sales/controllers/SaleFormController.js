@@ -4,6 +4,7 @@ import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { toNumber, isCurrentlyValid, backendError } from '@/lib/format';
+import { availableLineProducts, hasDuplicateProducts } from '@/lib/lineItems';
 import { SaleService } from '../services/SaleService';
 
 const EMPTY_ITEM = { productId: '', unitId: '', quantity: '', discountPct: '' };
@@ -196,6 +197,14 @@ export class SaleFormController extends Controller {
     this.customerId.value = value;
   };
 
+  // Catálogo del selector de una línea sin los productos ya elegidos en
+  // otras líneas — un producto va una sola vez por venta.
+  availableProducts(index) {
+    return availableLineProducts(this.products.value, this.items.value, index);
+  }
+
+  canAddItem = computed(() => this.items.value.length < this.products.value.length);
+
   updateItem = (index, field, value) => {
     this.items.value = this.items.value.map((item, i) => {
       if (i !== index) return item;
@@ -217,6 +226,9 @@ export class SaleFormController extends Controller {
 
   #validate() {
     if (!this.priceListId.value) return 'Selecciona una lista de precios vigente.';
+    if (hasDuplicateProducts(this.items.value)) {
+      return 'Hay un producto repetido en varias líneas. Cada producto va una sola vez por venta.';
+    }
     if (this.hasStockShortage.value) {
       return 'Hay líneas con una cantidad mayor al stock disponible en la sucursal.';
     }

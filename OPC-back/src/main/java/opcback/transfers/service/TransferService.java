@@ -170,6 +170,14 @@ public class TransferService {
             throw new IllegalArgumentException("La sucursal de origen y destino no pueden ser la misma");
         }
 
+        // Un mismo producto no puede ir en dos líneas: al despachar se
+        // generaría un TRANSFER_OUT por línea y el segundo descuento se
+        // quedaría sin stock, dejando la transferencia trabada.
+        long distinctProducts = request.items().stream().map(TransferItemRequest::productId).distinct().count();
+        if (distinctProducts != request.items().size()) {
+            throw new IllegalArgumentException("Una transferencia no puede repetir el mismo producto en varias líneas");
+        }
+
         Long requestedBy = resolveUserId(authentication);
 
         Transfer transfer = new Transfer();
@@ -210,6 +218,7 @@ public class TransferService {
 
         Transfer saved = transferRepository.save(transfer);
         recordEvent(saved, TransferStatus.REQUESTED, "Solicitud creada", requestedBy);
+        notificationService.reconcileTransferNotification(saved);
 
         return toResponse(saved);
     }
@@ -294,6 +303,7 @@ public class TransferService {
         transfer.setStatus(TransferStatus.IN_PREPARATION);
         Transfer saved = transferRepository.save(transfer);
         recordEvent(saved, TransferStatus.IN_PREPARATION, "Envío preparado", resolveUserId(authentication));
+        notificationService.reconcileTransferNotification(saved);
 
         return toResponse(saved);
     }
@@ -342,6 +352,7 @@ public class TransferService {
 
         recordEvent(saved, TransferStatus.IN_TRANSIT, "Despachada (transportista: " + request.carrier() + ")",
                 resolveUserId(authentication));
+        notificationService.reconcileTransferNotification(saved);
 
         return toResponse(saved);
     }
@@ -376,6 +387,7 @@ public class TransferService {
         }
 
         recordEvent(saved, TransferStatus.FULLY_RECEIVED, "Recepción completa", resolveUserId(authentication));
+        notificationService.reconcileTransferNotification(saved);
 
         return toResponse(saved);
     }
@@ -432,6 +444,7 @@ public class TransferService {
 
         recordEvent(saved, TransferStatus.PARTIALLY_RECEIVED, "Recepción parcial — diferencia pendiente de reclamo",
                 resolveUserId(authentication));
+        notificationService.reconcileTransferNotification(saved);
 
         return toResponse(saved);
     }
@@ -488,8 +501,10 @@ public class TransferService {
         Transfer saved = transferRepository.save(transfer);
         recordEvent(saved, saved.getStatus(), eventNote, userId);
 
-        // El faltante quedó tratado: sus notificaciones ya no aplican.
+        // El faltante quedó tratado: sus notificaciones ya no aplican y la
+        // transferencia deja de esperar acción.
         notificationService.clearTransferShortage(saved.getId());
+        notificationService.reconcileTransferNotification(saved);
 
         return toResponse(saved);
     }
@@ -517,6 +532,7 @@ public class TransferService {
         Transfer saved = transferRepository.save(reshipment);
         recordEvent(saved, TransferStatus.REQUESTED,
                 "Solicitud creada por reenvío del faltante de " + original.getTransferNumber(), userId);
+        notificationService.reconcileTransferNotification(saved);
         return saved;
     }
 

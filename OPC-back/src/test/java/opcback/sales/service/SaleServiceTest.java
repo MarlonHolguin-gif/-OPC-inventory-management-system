@@ -308,6 +308,21 @@ class SaleServiceTest {
     }
 
     @Test
+    void ventaConElMismoProductoEnDosLineasSeRechaza() {
+        stubVigentPriceList();
+
+        SaleCreateRequest request = request(VIGENT_LIST_ID, null,
+                item(CHOCORRAMO_ID, "10", null),
+                item(CHOCORRAMO_ID, "5", null));
+
+        assertThatThrownBy(() -> saleService.register(request, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no puede repetir el mismo producto");
+
+        verify(saleRepository, never()).save(any());
+    }
+
+    @Test
     void ventaConProductoSinPrecioEnLaListaSeRechaza() {
         stubSeller();
         stubVigentPriceList();

@@ -107,6 +107,19 @@ public class BranchAccessService {
         return isGeneralAdmin(findUserOrThrow(email));
     }
 
+    /**
+     * ¿El usuario es gerente de sucursal? Lo usa el listado de notificaciones
+     * para decidir si le muestra las de flujo de trabajo (transferencias y
+     * órdenes de compra pendientes): el operador de inventario, no; el
+     * gerente de sus sucursales y el administrador general, sí. Un gerente
+     * gestiona todas sus sucursales asignadas, así que basta el rol + el
+     * filtro por sucursal que el listado ya aplica.
+     */
+    @Transactional(readOnly = true)
+    public boolean isBranchManager(String email) {
+        return BRANCH_MANAGER_ROLE.equals(findUserOrThrow(email).getRole().getCode());
+    }
+
     private User findUserOrThrow(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + email));

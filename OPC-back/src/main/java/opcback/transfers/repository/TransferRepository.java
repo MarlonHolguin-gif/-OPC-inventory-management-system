@@ -75,4 +75,11 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     List<Transfer> findActiveInvolvingBranch(
             @Param("branchId") Long branchId,
             @Param("excludedStatuses") Collection<TransferStatus> excludedStatuses);
+
+    /**
+     * Transferencias en un conjunto de estados — lo usa el chequeo
+     * programado de notificaciones para reconciliar las que siguen
+     * esperando una acción.
+     */
+    List<Transfer> findByStatusIn(Collection<TransferStatus> statuses);
 }

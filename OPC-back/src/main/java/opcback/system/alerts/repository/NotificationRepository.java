@@ -28,4 +28,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      * hoy los TRANSFER_SHORTAGE de una transferencia, al tratar su faltante.
      */
     void deleteByTypeAndReferenceId(NotificationType type, Long referenceId);
+
+    /**
+     * Notificación de flujo de trabajo ya existente para una entidad
+     * (transferencia u orden de compra) — la base de la reconciliación de
+     * TRANSFER_PENDING / PURCHASE_ORDER_PENDING. Devuelve lista (debería ser
+     * a lo sumo una) para poder limpiar duplicados si los hubiera.
+     */
+    List<Notification> findByTypeAndReferenceId(NotificationType type, Long referenceId);
 }

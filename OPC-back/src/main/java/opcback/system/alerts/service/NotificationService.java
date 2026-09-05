@@ -12,6 +12,7 @@ import opcback.system.alerts.entity.NotificationChannel;
 import opcback.system.alerts.entity.NotificationStatus;
 import opcback.system.alerts.entity.NotificationType;
 import opcback.system.alerts.repository.NotificationRepository;
+import opcback.purchases.entity.PurchaseOrder;
 import opcback.transfers.entity.Transfer;
 import opcback.transfers.entity.TransferItem;
 import org.springframework.security.access.AccessDeniedException;
@@ -50,6 +51,13 @@ public class NotificationService {
     private static final Set<NotificationType> STOCK_TYPES =
             EnumSet.of(NotificationType.LOW_STOCK, NotificationType.HIGH_STOCK, NotificationType.OUT_OF_STOCK);
 
+    /**
+     * Tipos de flujo de trabajo que solo ve quien gestiona la sucursal
+     * (gerente o administrador general) — el operador de inventario, no.
+     */
+    private static final Set<NotificationType> WORKFLOW_PENDING_TYPES =
+            EnumSet.of(NotificationType.TRANSFER_PENDING, NotificationType.PURCHASE_ORDER_PENDING);
+
     private final NotificationRepository notificationRepository;
     private final BranchAccessService branchAccessService;
     private final InventoryAlertService inventoryAlertService;
@@ -81,7 +89,13 @@ public class NotificationService {
             }
         }
 
-        return notifications.stream().map(NotificationResponse::from).toList();
+        // Las notificaciones de flujo de trabajo (transferencias / órdenes de
+        // compra pendientes) solo las ve quien gestiona la sucursal.
+        boolean showWorkflow = isAdmin || branchAccessService.isBranchManager(email);
+        return notifications.stream()
+                .filter(notification -> showWorkflow || !WORKFLOW_PENDING_TYPES.contains(notification.getType()))
+                .map(NotificationResponse::from)
+                .toList();
     }
 
     /**
@@ -96,6 +110,10 @@ public class NotificationService {
 
         boolean isAdmin = branchAccessService.isGeneralAdmin(email);
         if (!isAdmin && !branchAccessService.getWritableBranchIds(email).contains(notification.getBranchId())) {
+            throw new AccessDeniedException("No tiene acceso a esta notificación");
+        }
+        if (WORKFLOW_PENDING_TYPES.contains(notification.getType())
+                && !isAdmin && !branchAccessService.isBranchManager(email)) {
             throw new AccessDeniedException("No tiene acceso a esta notificación");
         }
 
@@ -215,6 +233,116 @@ public class NotificationService {
         notificationRepository.deleteByTypeAndReferenceId(NotificationType.TRANSFER_SHORTAGE, transferId);
     }
 
+    // ---- Notificaciones de flujo de trabajo (transferencias / órdenes) ----
+
+    /**
+     * Sincroniza la notificación de flujo de una transferencia con su estado
+     * actual: la crea/actualiza mientras espera una acción y la borra al
+     * cerrarse. Cada estado apunta a la sucursal que tiene que actuar:
+     *   - SOLICITADA / EN_PREPARACION -> sucursal de origen (prepara y despacha);
+     *   - EN_TRANSITO -> sucursal de destino (recibe);
+     *   - RECIBIDA_PARCIAL sin tratar -> sucursal de destino (trata el faltante);
+     *   - RECIBIDA_COMPLETA / CANCELADA / faltante ya tratado -> se borra.
+     * La llaman TransferService tras cada transición y el chequeo programado.
+     */
+    @Transactional
+    public void reconcileTransferNotification(Transfer transfer) {
+        reconcileTransferNotification(transfer, false);
+    }
+
+    @Transactional
+    public void reconcileTransferNotification(Transfer transfer, boolean resurfaceRead) {
+        WorkflowTarget target = transferTarget(transfer);
+        reconcileWorkflowNotification(NotificationType.TRANSFER_PENDING, transfer.getId(), target, resurfaceRead);
+    }
+
+    /**
+     * Sincroniza la notificación de flujo de una orden de compra con su
+     * estado: BORRADOR -> "pendiente por enviar al proveedor"; ENVIADA /
+     * RECIBIDA_PARCIAL -> "pendiente por recepción"; RECIBIDA_COMPLETA /
+     * CANCELADA -> se borra. Siempre apunta a la sucursal de la orden.
+     */
+    @Transactional
+    public void reconcilePurchaseOrderNotification(PurchaseOrder order) {
+        reconcilePurchaseOrderNotification(order, false);
+    }
+
+    @Transactional
+    public void reconcilePurchaseOrderNotification(PurchaseOrder order, boolean resurfaceRead) {
+        WorkflowTarget target = purchaseOrderTarget(order);
+        reconcileWorkflowNotification(NotificationType.PURCHASE_ORDER_PENDING, order.getId(), target, resurfaceRead);
+    }
+
+    /** Sucursal a notificar + texto, o null si la entidad ya no espera acción. */
+    private record WorkflowTarget(Long branchId, String message) {
+    }
+
+    private WorkflowTarget transferTarget(Transfer transfer) {
+        String number = transfer.getTransferNumber();
+        return switch (transfer.getStatus()) {
+            case REQUESTED -> new WorkflowTarget(transfer.getOriginBranchId(),
+                    "Transferencia " + number + " esperando preparación en la sucursal de origen");
+            case IN_PREPARATION -> new WorkflowTarget(transfer.getOriginBranchId(),
+                    "Transferencia " + number + " lista para despachar");
+            case IN_TRANSIT -> new WorkflowTarget(transfer.getDestinationBranchId(),
+                    "Transferencia " + number + " en tránsito, pendiente de recepción");
+            case PARTIALLY_RECEIVED -> transfer.getShortageResolution() == null
+                    ? new WorkflowTarget(transfer.getDestinationBranchId(),
+                        "Transferencia " + number + " con faltante pendiente de tratamiento (reenvío, reclamación o ajuste)")
+                    : null;
+            case FULLY_RECEIVED, CANCELLED -> null;
+        };
+    }
+
+    private WorkflowTarget purchaseOrderTarget(PurchaseOrder order) {
+        String number = order.getOrderNumber();
+        return switch (order.getStatus()) {
+            case DRAFT -> new WorkflowTarget(order.getBranchId(),
+                    "Orden de compra " + number + " pendiente por enviar al proveedor");
+            case SENT -> new WorkflowTarget(order.getBranchId(),
+                    "Orden de compra " + number + " pendiente por recepción");
+            case PARTIALLY_RECEIVED -> new WorkflowTarget(order.getBranchId(),
+                    "Orden de compra " + number + " recibida en parte, aún falta mercancía por recibir");
+            case FULLY_RECEIVED, CANCELLED -> null;
+        };
+    }
+
+    /**
+     * Reconciliación común de las notificaciones de flujo, identificadas por
+     * (tipo, reference_id): crea la que falte, actualiza sucursal y texto si
+     * cambió el estado, y borra cuando ya no hay nada que hacer. Con
+     * resurfaceRead=true (chequeo programado) una notificación leída que
+     * sigue pendiente vuelve a PENDING y sube al tope.
+     */
+    private void reconcileWorkflowNotification(
+            NotificationType type, Long referenceId, WorkflowTarget target, boolean resurfaceRead) {
+        List<Notification> existing = notificationRepository.findByTypeAndReferenceId(type, referenceId);
+
+        if (target == null) {
+            notificationRepository.deleteAll(existing);
+            return;
+        }
+
+        Notification current = existing.isEmpty() ? null : existing.get(0);
+        if (existing.size() > 1) {
+            notificationRepository.deleteAll(existing.subList(1, existing.size()));
+        }
+
+        if (current == null) {
+            save(type, target.branchId(), null, referenceId, target.message());
+            return;
+        }
+
+        current.setBranchId(target.branchId());
+        current.setMessage(target.message());
+        if (resurfaceRead && current.getStatus() == NotificationStatus.READ) {
+            current.setStatus(NotificationStatus.PENDING);
+            current.setReadAt(null);
+            current.setGeneratedAt(LocalDateTime.now());
+        }
+        notificationRepository.save(current);
+    }
+
     /**
      * Tipo de notificación de stock que debería existir hoy para una fila
      * de inventario, o null si el nivel está sano. Criterio único que
@@ -246,8 +374,8 @@ public class NotificationService {
                     product.getSku(), product.getName(), formatQuantity(currentQuantity), formatQuantity(minStock));
             case HIGH_STOCK -> "Stock alto: %s — %s (actual %s, máximo %s)".formatted(
                     product.getSku(), product.getName(), formatQuantity(currentQuantity), formatQuantity(maxStock));
-            case TRANSFER_SHORTAGE -> throw new IllegalArgumentException(
-                    "TRANSFER_SHORTAGE no es una notificación de nivel de stock");
+            case TRANSFER_SHORTAGE, TRANSFER_PENDING, PURCHASE_ORDER_PENDING -> throw new IllegalArgumentException(
+                    type + " no es una notificación de nivel de stock");
         };
     }
 

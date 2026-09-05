@@ -150,6 +150,20 @@ class TransferServiceTest {
     }
 
     @Test
+    void noSePuedeSolicitarUnaTransferenciaConElMismoProductoEnDosLineas() {
+        TransferCreateRequest request = new TransferCreateRequest(
+                ORIGIN_BRANCH, DESTINATION_BRANCH, TransferUrgency.MEDIUM,
+                List.of(new TransferItemRequest(10L, new BigDecimal("5")),
+                        new TransferItemRequest(10L, new BigDecimal("3"))));
+
+        assertThatThrownBy(() -> transferService.create(request, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no puede repetir el mismo producto");
+
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
     void tratamientoAjusteSoloRegistraLaDecisionSinGenerarReenvio() {
         TransferResponse response = transferService.resolveShortage(
                 TRANSFER_ID, new TransferShortageResolutionRequest(ShortageResolution.ADJUSTMENT, "Se asume la merma"),

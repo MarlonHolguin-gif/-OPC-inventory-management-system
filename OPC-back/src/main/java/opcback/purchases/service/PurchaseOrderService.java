@@ -22,6 +22,7 @@ import opcback.purchases.repository.PurchaseOrderRepository;
 import opcback.purchases.repository.PurchaseReceiptItemRepository;
 import opcback.purchases.repository.SupplierRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,7 @@ public class PurchaseOrderService {
     private final UserRepository userRepository;
     private final BranchAccessService branchAccessService;
     private final ProductUnitService productUnitService;
+    private final NotificationService notificationService;
 
     public List<PurchaseOrderResponse> listAll() {
         return purchaseOrderRepository.findAll().stream().map(this::toResponse).toList();
@@ -69,6 +71,7 @@ public class PurchaseOrderService {
     @Transactional
     public PurchaseOrderResponse create(PurchaseOrderCreateRequest request, Authentication authentication) {
         branchAccessService.assertCanWrite(authentication.getName(), request.branchId());
+        assertNoRepeatedProducts(request.items());
 
         Supplier supplier = findSupplierOrThrow(request.supplierId());
 
@@ -88,7 +91,9 @@ public class PurchaseOrderService {
 
         applyItemsAndRecalculateTotals(order, request.items());
 
-        return toResponse(purchaseOrderRepository.save(order));
+        PurchaseOrder saved = purchaseOrderRepository.save(order);
+        notificationService.reconcilePurchaseOrderNotification(saved);
+        return toResponse(saved);
     }
 
     /**
@@ -108,6 +113,7 @@ public class PurchaseOrderService {
             throw new IllegalStateException("Solo se puede editar una orden de compra que está en borrador. "
                     + "Estado actual de " + order.getOrderNumber() + ": " + order.getStatus());
         }
+        assertNoRepeatedProducts(request.items());
 
         order.setSupplier(findSupplierOrThrow(request.supplierId()));
         order.setBranchId(request.branchId());
@@ -116,7 +122,10 @@ public class PurchaseOrderService {
         order.getItems().clear();
         applyItemsAndRecalculateTotals(order, request.items());
 
-        return toResponse(purchaseOrderRepository.save(order));
+        PurchaseOrder saved = purchaseOrderRepository.save(order);
+        // La sucursal de la orden pudo cambiar: la notificación la sigue.
+        notificationService.reconcilePurchaseOrderNotification(saved);
+        return toResponse(saved);
     }
 
     /**
@@ -134,7 +143,9 @@ public class PurchaseOrderService {
         }
 
         order.setStatus(PurchaseOrderStatus.SENT);
-        return toResponse(purchaseOrderRepository.save(order));
+        PurchaseOrder saved = purchaseOrderRepository.save(order);
+        notificationService.reconcilePurchaseOrderNotification(saved);
+        return toResponse(saved);
     }
 
     /**
@@ -155,7 +166,9 @@ public class PurchaseOrderService {
         }
 
         order.setStatus(PurchaseOrderStatus.CANCELLED);
-        return toResponse(purchaseOrderRepository.save(order));
+        PurchaseOrder saved = purchaseOrderRepository.save(order);
+        notificationService.reconcilePurchaseOrderNotification(saved);
+        return toResponse(saved);
     }
 
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
@@ -166,6 +179,15 @@ public class PurchaseOrderService {
      * total. El descuento se recibe como porcentaje y se guarda tanto el
      * porcentaje como el monto que resulta de aplicarlo.
      */
+    // Un producto va una sola vez por orden (aplica al alta y a la edición
+    // del borrador). Se valida antes de tocar la BD.
+    private void assertNoRepeatedProducts(List<PurchaseOrderItemRequest> itemRequests) {
+        long distinctProducts = itemRequests.stream().map(PurchaseOrderItemRequest::productId).distinct().count();
+        if (distinctProducts != itemRequests.size()) {
+            throw new IllegalArgumentException("Una orden de compra no puede repetir el mismo producto en varias líneas");
+        }
+    }
+
     private void applyItemsAndRecalculateTotals(PurchaseOrder order, List<PurchaseOrderItemRequest> itemRequests) {
         BigDecimal subtotal = BigDecimal.ZERO;
         BigDecimal totalDiscount = BigDecimal.ZERO;

@@ -100,6 +100,13 @@ public class SaleService {
                 .orElseThrow(() -> new ResourceNotFoundException("Lista de precios no encontrada: " + request.priceListId()));
         assertPriceListVigente(priceList);
 
+        // Un producto va una sola vez por venta: dos líneas del mismo
+        // producto descontarían stock por separado y confundirían el total.
+        long distinctProducts = request.items().stream().map(SaleItemRequest::productId).distinct().count();
+        if (distinctProducts != request.items().size()) {
+            throw new IllegalArgumentException("Una venta no puede repetir el mismo producto en varias líneas");
+        }
+
         Customer customer = null;
         if (request.customerId() != null) {
             customer = customerRepository.findById(request.customerId())

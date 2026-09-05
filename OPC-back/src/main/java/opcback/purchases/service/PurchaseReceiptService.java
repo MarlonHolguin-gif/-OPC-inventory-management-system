@@ -21,6 +21,7 @@ import opcback.purchases.repository.PurchaseOrderRepository;
 import opcback.purchases.repository.PurchaseReceiptItemRepository;
 import opcback.purchases.repository.PurchaseReceiptRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,7 @@ public class PurchaseReceiptService {
     private final BranchAccessService branchAccessService;
     private final InventoryMovementService inventoryMovementService;
     private final ProductUnitService productUnitService;
+    private final NotificationService notificationService;
 
     @Transactional
     public PurchaseReceiptResponse register(Long orderId, PurchaseReceiptCreateRequest request, Authentication authentication) {
@@ -136,6 +138,8 @@ public class PurchaseReceiptService {
 
         order.setStatus(fullyReceived ? PurchaseOrderStatus.FULLY_RECEIVED : PurchaseOrderStatus.PARTIALLY_RECEIVED);
         purchaseOrderRepository.save(order);
+        // Recepción completa -> se borra la notificación; parcial -> sigue.
+        notificationService.reconcilePurchaseOrderNotification(order);
 
         return new PurchaseReceiptResponse(savedReceipt.getId(), order.getId(), order.getOrderNumber(),
                 savedReceipt.getReceiptType(), savedReceipt.getReceiptDate(), savedReceipt.getNotes(), order.getStatus());

@@ -18,6 +18,7 @@ import opcback.purchases.repository.SupplierRepository;
 import opcback.auth.repository.UserRepository;
 import opcback.products.repository.ProductRepository;
 import opcback.security.BranchAccessService;
+import opcback.system.alerts.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,6 +68,8 @@ class PurchaseOrderServiceTest {
     @Mock
     private ProductUnitService productUnitService;
     @Mock
+    private NotificationService notificationService;
+    @Mock
     private Authentication authentication;
 
     private PurchaseOrderService purchaseOrderService;
@@ -77,7 +80,7 @@ class PurchaseOrderServiceTest {
         purchaseOrderService = new PurchaseOrderService(
                 purchaseOrderRepository, purchaseOrderItemRepository, purchaseReceiptItemRepository,
                 supplierRepository, productRepository, unitRepository, userRepository, branchAccessService,
-                productUnitService);
+                productUnitService, notificationService);
 
         Supplier supplier = new Supplier();
         supplier.setId(1L);
@@ -134,6 +137,21 @@ class PurchaseOrderServiceTest {
         assertThatThrownBy(() -> purchaseOrderService.cancel(ORDER_ID, authentication))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("FULLY_RECEIVED");
+    }
+
+    @Test
+    void crearOrdenConElMismoProductoEnDosLineasSeRechaza() {
+        when(authentication.getName()).thenReturn(EMAIL);
+
+        PurchaseOrderCreateRequest request = new PurchaseOrderCreateRequest(
+                1L, BRANCH_ID, "30 dias",
+                List.of(
+                        new PurchaseOrderItemRequest(10L, null, new BigDecimal("4"), new BigDecimal("1000"), BigDecimal.ZERO),
+                        new PurchaseOrderItemRequest(10L, null, new BigDecimal("2"), new BigDecimal("1000"), BigDecimal.ZERO)));
+
+        assertThatThrownBy(() -> purchaseOrderService.create(request, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no puede repetir el mismo producto");
     }
 
     @Test

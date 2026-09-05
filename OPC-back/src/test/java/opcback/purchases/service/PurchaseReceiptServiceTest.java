@@ -97,7 +97,7 @@ class PurchaseReceiptServiceTest {
         purchaseReceiptService = new PurchaseReceiptService(
                 purchaseOrderRepository, purchaseOrderItemRepository, purchaseReceiptRepository,
                 purchaseReceiptItemRepository, userRepository, branchAccessService, inventoryMovementService,
-                productUnitService);
+                productUnitService, notificationService);
 
         when(authentication.getName()).thenReturn(EMAIL);
 

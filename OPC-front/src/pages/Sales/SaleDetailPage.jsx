@@ -37,9 +37,16 @@ function SaleDetailView({ saleId }) {
         <Link to="/ventas">← Volver a Ventas</Link>
       </p>
 
-      <AsyncBoundary variant="screen" loading={sale === null}>
-        {sale && <SaleReceipt controller={controller} sale={sale} />}
-      </AsyncBoundary>
+      {controller.notFound.value ? (
+        <>
+          <h1>Venta no encontrada</h1>
+          <p>No existe una venta con el identificador {saleId}.</p>
+        </>
+      ) : (
+        <AsyncBoundary variant="screen" loading={controller.loading.value}>
+          {sale && <SaleReceipt controller={controller} sale={sale} />}
+        </AsyncBoundary>
+      )}
     </main>
   );
 }

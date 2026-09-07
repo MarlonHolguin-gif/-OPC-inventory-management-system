@@ -108,7 +108,11 @@ export function ProductsTab({ controller }) {
                 Gestionar unidades
               </button>
               {product.active ? (
-                <button type="button" onClick={() => form.deactivate(product.id)}>
+                <button
+                  type="button"
+                  className="button-danger"
+                  onClick={() => form.deactivate(product.id)}
+                >
                   Desactivar
                 </button>
               ) : (

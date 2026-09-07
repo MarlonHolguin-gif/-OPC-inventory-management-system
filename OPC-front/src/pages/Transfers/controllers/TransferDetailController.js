@@ -132,10 +132,16 @@ export class TransferDetailController extends Controller {
       ]);
     } catch (error) {
       // 403: la transferencia es de sucursales que no le competen al usuario.
-      this.loadError.value =
-        error?.response?.status === 403
-          ? 'No tienes acceso a esta transferencia: no participa ninguna de tus sucursales.'
-          : 'No se pudo cargar la transferencia.';
+      // 404: el identificador no corresponde a ninguna transferencia.
+      const status = error?.response?.status;
+      if (status === 403) {
+        this.loadError.value =
+          'No tienes acceso a esta transferencia: no participa ninguna de tus sucursales.';
+      } else if (status === 404) {
+        this.loadError.value = `No existe una transferencia con el identificador ${this.transferId}.`;
+      } else {
+        this.loadError.value = 'No se pudo cargar la transferencia.';
+      }
       return;
     }
     this.loadError.value = null;

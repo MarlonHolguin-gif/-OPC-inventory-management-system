@@ -36,7 +36,11 @@ export function ProductUnitsPanel({ controller, units }) {
           rowKey={(row) => row.unitId}
           empty="Este producto no tiene unidades alternativas."
           actions={(row) => (
-            <button type="button" onClick={() => controller.remove(row.unitId)}>
+            <button
+              type="button"
+              className="button-danger"
+              onClick={() => controller.remove(row.unitId)}
+            >
               Eliminar
             </button>
           )}

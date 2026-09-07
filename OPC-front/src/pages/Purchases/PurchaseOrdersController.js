@@ -1,6 +1,7 @@
 import { signal, computed } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
 import { UiStore } from '@/stores/UiStore';
+import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { PurchaseService } from './services/PurchaseService';
 import { PURCHASE_ORDER_VIEWS } from './constants';
 import { PurchaseOrderFormController } from './controllers/PurchaseOrderFormController';
@@ -29,6 +30,10 @@ export class PurchaseOrdersController extends Controller {
     this.statusView.value = id;
   };
 
+  branchName(id) {
+    return BranchDirectoryStore.nameOf(id) ?? `Sucursal ${id}`;
+  }
+
   async onMount() {
     await this.load();
     this.loading.value = false;
@@ -36,7 +41,11 @@ export class PurchaseOrdersController extends Controller {
 
   async load() {
     try {
-      this.orders.value = await PurchaseService.list();
+      const [orders] = await Promise.all([
+        PurchaseService.list(),
+        BranchDirectoryStore.ensureLoaded(),
+      ]);
+      this.orders.value = orders;
     } catch {
       UiStore.fail('No se pudo cargar las órdenes de compra.');
     }

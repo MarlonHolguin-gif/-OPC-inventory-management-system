@@ -17,7 +17,7 @@ const COLUMNS = [
 
 const FIELDS = [
   { key: 'name', label: 'Nombre', required: true },
-  { key: 'taxId', label: 'NIT / tax_id' },
+  { key: 'taxId', label: 'NIT o identificación tributaria' },
   { key: 'contact', label: 'Contacto' },
   { key: 'phone', label: 'Teléfono' },
   { key: 'email', label: 'Correo' },
@@ -86,7 +86,11 @@ export default function SuppliersPage() {
                   Editar
                 </button>
                 {supplier.active ? (
-                  <button type="button" onClick={() => controller.deactivate(supplier.id)}>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={() => controller.deactivate(supplier.id)}
+                  >
                     Desactivar
                   </button>
                 ) : (

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useController } from '@/lib/useController';
 import { useRedirect } from '@/lib/useRedirect';
+import { formatDateTime } from '@/lib/format';
 import { BellIcon } from '@/components/icons/UtilityIcons';
 import { NotificationBellController } from './NotificationBellController';
 import {
@@ -9,10 +10,6 @@ import {
   notificationTypeLabel,
 } from './constants';
 import './NotificationBell.css';
-
-function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString() : '—';
-}
 
 export default function NotificationBell() {
   const controller = useController(NotificationBellController);

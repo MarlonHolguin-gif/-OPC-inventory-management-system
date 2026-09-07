@@ -63,7 +63,11 @@ export function CategoriesTab({ controller }) {
                 Editar
               </button>
               {category.active ? (
-                <button type="button" onClick={() => form.deactivate(category.id)}>
+                <button
+                  type="button"
+                  className="button-danger"
+                  onClick={() => form.deactivate(category.id)}
+                >
                   Desactivar
                 </button>
               ) : (
@@ -71,7 +75,11 @@ export function CategoriesTab({ controller }) {
                   Reactivar
                 </button>
               )}
-              <button type="button" onClick={() => form.remove(category)}>
+              <button
+                type="button"
+                className="button-danger"
+                onClick={() => form.remove(category)}
+              >
                 Eliminar
               </button>
             </>

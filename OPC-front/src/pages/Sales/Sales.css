@@ -19,8 +19,9 @@
   flex-shrink: 0;
 }
 
-/* Caja del histórico: toma el alto restante y desplaza dentro (vertical y
-   horizontal), con los nombres de columna fijos. */
+/* Caja del histórico: se pagina en vertical (Pager "1–N de M" + flechas). En
+   horizontal, si hay más columnas de las que caben, la caja desplaza — no se
+   reprime la información con elipsis. */
 .sales-table-card {
   flex: 1;
   min-height: 0;
@@ -30,10 +31,16 @@
   background: var(--surface);
 }
 .sales-table-card table {
+  min-width: 100%;
   margin: 0;
   border: 0;
   border-radius: 0;
   overflow: visible;
+}
+.sales-table-card th,
+.sales-table-card td {
+  padding: 9px 12px;
+  white-space: nowrap;
 }
 .sales-table-card thead th {
   position: sticky;
@@ -50,6 +57,10 @@
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
+}
+
+.sales-page .pager {
+  align-self: flex-end;
 }
 
 /* Aviso de stock insuficiente en el formulario de venta. */

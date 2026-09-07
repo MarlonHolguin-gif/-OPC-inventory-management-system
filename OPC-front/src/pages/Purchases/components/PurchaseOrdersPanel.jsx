@@ -8,12 +8,13 @@ import { PurchaseOrdersController } from '../PurchaseOrdersController';
 import { PURCHASE_ORDER_VIEWS, purchaseOrderStatusLabel } from '../constants';
 import { PurchaseOrderForm } from './PurchaseOrderForm';
 
-const COLUMNS = [
+const columnsFor = (controller) => [
   {
     key: 'orderNumber',
     header: 'Número',
     render: (order) => <Link to={`/compras/${order.id}`}>{order.orderNumber}</Link>,
   },
+  { key: 'branch', header: 'Sucursal', render: (order) => controller.branchName(order.branchId) },
   { key: 'supplierName', header: 'Proveedor' },
   { key: 'orderDate', header: 'Fecha', render: (order) => formatDateTime(order.orderDate) },
   { key: 'status', header: 'Estado', render: (order) => purchaseOrderStatusLabel(order.status) },
@@ -48,7 +49,7 @@ export function PurchaseOrdersPanel() {
       <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <div className="purchases-table-card">
           <DataTable
-            columns={COLUMNS}
+            columns={columnsFor(controller)}
             rows={controller.filteredOrders.value}
             empty="No hay órdenes de compra en esta vista"
             actions={(order) =>

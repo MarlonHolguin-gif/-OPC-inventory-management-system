@@ -50,7 +50,7 @@ export function PurchaseOrderForm({ controller }) {
           </div>
           <button
             type="button"
-            className="op-add-item"
+            className="op-add-item button-add"
             onClick={controller.addItem}
             disabled={!controller.canAddItem.value}
           >

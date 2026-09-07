@@ -97,7 +97,11 @@ export default function UsersPage() {
                   Gestionar sucursales
                 </button>
                 {user.active ? (
-                  <button type="button" onClick={() => controller.deactivate(user.id)}>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={() => controller.deactivate(user.id)}
+                  >
                     Desactivar
                   </button>
                 ) : (

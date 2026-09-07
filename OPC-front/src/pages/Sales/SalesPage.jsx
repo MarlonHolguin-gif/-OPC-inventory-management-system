@@ -1,10 +1,14 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useController } from '@/lib/useController';
+import { usePageSize } from '@/lib/usePageSize';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
+import { Pager } from '@/components/Pager';
 import { TextField, SelectField } from '@/components/Field';
 import { FilterBar, FilterField } from '@/components/FilterBar';
+import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { formatCurrency, formatDateTime } from '@/lib/format';
 import { SalesController } from './SalesController';
@@ -33,6 +37,11 @@ export default function SalesPage() {
   const controller = useController(SalesController);
   const form = controller.form;
   const filters = controller.filters.value;
+  const [cardRef, pageSize] = usePageSize();
+
+  useEffect(() => {
+    controller.setPageSize(pageSize);
+  }, [pageSize, controller]);
 
   const branchOptions = BranchDirectoryStore.all.value.map((b) => ({ value: b.id, label: b.name }));
   const customerOptions = controller.customers.value.map((c) => ({ value: c.id, label: c.name }));
@@ -67,22 +76,12 @@ export default function SalesPage() {
               placeholder="Todos"
             />
           </FilterField>
-          <FilterField>
-            <TextField
-              label="Desde"
-              type="date"
-              value={filters.from}
-              onChange={(value) => controller.setFilter('from', value)}
-            />
-          </FilterField>
-          <FilterField>
-            <TextField
-              label="Hasta"
-              type="date"
-              value={filters.to}
-              onChange={(value) => controller.setFilter('to', value)}
-            />
-          </FilterField>
+          <DateRangeFilter
+            from={filters.from}
+            to={filters.to}
+            onFromChange={(value) => controller.setFilter('from', value)}
+            onToChange={(value) => controller.setFilter('to', value)}
+          />
           <FilterBar.Actions>
             <button type="submit" disabled={controller.searching.value}>
               {controller.searching.value ? 'Buscando…' : 'Filtrar'}
@@ -100,14 +99,22 @@ export default function SalesPage() {
           </button>
         </FilterBar>
 
-        <div className="sales-table-card">
+        <div className="sales-table-card is-paged" ref={cardRef}>
           <DataTable
             columns={COLUMNS_FOR(controller)}
-            rows={controller.filteredResults.value}
+            rows={controller.pageRows.value}
             rowKey={(row, index) => `${row.saleId}-${row.productId}-${index}`}
             empty="No hay ventas que coincidan con los filtros"
           />
         </div>
+
+        <Pager
+          page={controller.currentPage.value}
+          pageSize={controller.pageSize.value}
+          total={controller.filteredResults.value.length}
+          onPrev={() => controller.setPage(controller.currentPage.value - 1)}
+          onNext={() => controller.setPage(controller.currentPage.value + 1)}
+        />
       </AsyncBoundary>
 
       {form.visible.value && (

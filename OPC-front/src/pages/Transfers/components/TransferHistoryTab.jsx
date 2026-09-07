@@ -5,6 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
 import { FilterBar, FilterField } from '@/components/FilterBar';
+import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { TextField, SelectField } from '@/components/Field';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { TransferHistoryController } from '../controllers/TransferHistoryController';
@@ -102,22 +103,14 @@ export function TransferHistoryTab() {
             placeholder="Todos"
           />
         </FilterField>
-        <FilterField>
-          <TextField
-            label="Llegada desde"
-            type="date"
-            value={filters.from}
-            onChange={(value) => controller.setFilter('from', value)}
-          />
-        </FilterField>
-        <FilterField>
-          <TextField
-            label="Llegada hasta"
-            type="date"
-            value={filters.to}
-            onChange={(value) => controller.setFilter('to', value)}
-          />
-        </FilterField>
+        <DateRangeFilter
+          fromLabel="Llegada desde"
+          toLabel="Llegada hasta"
+          from={filters.from}
+          to={filters.to}
+          onFromChange={(value) => controller.setFilter('from', value)}
+          onToChange={(value) => controller.setFilter('to', value)}
+        />
         <FilterBar.Actions>
           <button type="submit" disabled={controller.searching.value}>
             {controller.searching.value ? 'Consultando…' : 'Filtrar'}

@@ -1,6 +1,7 @@
 import { signal, computed } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
 import { UiStore } from '@/stores/UiStore';
+import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { backendError } from '@/lib/format';
 import { PurchaseService } from '../services/PurchaseService';
 
@@ -17,6 +18,8 @@ export class PurchaseOrderDetailController extends Controller {
   }
 
   order = signal(null);
+  loading = signal(true);
+  notFound = signal(false);
   notes = signal('');
   submitting = signal(false);
   transitioning = signal(false);
@@ -43,15 +46,33 @@ export class PurchaseOrderDetailController extends Controller {
     (this.order.value?.items ?? []).filter((item) => pendingQuantity(item) > 0),
   );
 
+  branchName = computed(() => {
+    const id = this.order.value?.branchId;
+    if (id == null) return null;
+    return BranchDirectoryStore.nameOf(id) ?? `Sucursal ${id}`;
+  });
+
   onMount() {
     return this.load();
   }
 
   async load() {
+    this.loading.value = true;
     try {
-      this.order.value = await PurchaseService.get(this.orderId);
-    } catch {
-      UiStore.fail('No se pudo cargar la orden de compra.');
+      const [order] = await Promise.all([
+        PurchaseService.get(this.orderId),
+        BranchDirectoryStore.ensureLoaded(),
+      ]);
+      this.order.value = order;
+      this.notFound.value = false;
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        this.notFound.value = true;
+      } else {
+        UiStore.fail('No se pudo cargar la orden de compra.');
+      }
+    } finally {
+      this.loading.value = false;
     }
   }
 

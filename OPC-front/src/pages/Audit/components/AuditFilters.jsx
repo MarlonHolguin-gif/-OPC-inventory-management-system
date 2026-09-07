@@ -1,5 +1,6 @@
 import { SelectField, TextField } from '@/components/Field';
 import { FilterBar, FilterField } from '@/components/FilterBar';
+import { DateRangeFilter } from '@/components/DateRangeFilter';
 
 export function AuditFilters({ controller }) {
   const filters = controller.filters.value;
@@ -25,22 +26,12 @@ export function AuditFilters({ controller }) {
           placeholder="Todos"
         />
       </FilterField>
-      <FilterField>
-        <TextField
-          label="Desde"
-          type="date"
-          value={filters.from}
-          onChange={(value) => controller.setFilter('from', value)}
-        />
-      </FilterField>
-      <FilterField>
-        <TextField
-          label="Hasta"
-          type="date"
-          value={filters.to}
-          onChange={(value) => controller.setFilter('to', value)}
-        />
-      </FilterField>
+      <DateRangeFilter
+        from={filters.from}
+        to={filters.to}
+        onFromChange={(value) => controller.setFilter('from', value)}
+        onToChange={(value) => controller.setFilter('to', value)}
+      />
 
       <FilterBar.Actions>
         <button type="submit" disabled={controller.searching.value}>

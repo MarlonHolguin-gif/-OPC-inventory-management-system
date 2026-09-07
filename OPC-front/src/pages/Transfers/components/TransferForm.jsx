@@ -99,7 +99,11 @@ export function TransferForm({ controller }) {
                       </td>
                       <td>
                         {items.length > 1 && (
-                          <button type="button" onClick={() => controller.removeItem(index)}>
+                          <button
+                            type="button"
+                            className="button-danger"
+                            onClick={() => controller.removeItem(index)}
+                          >
                             Quitar
                           </button>
                         )}
@@ -112,7 +116,7 @@ export function TransferForm({ controller }) {
           </div>
           <button
             type="button"
-            className="op-add-item"
+            className="op-add-item button-add"
             onClick={controller.addItem}
             disabled={!controller.canAddItem.value}
           >

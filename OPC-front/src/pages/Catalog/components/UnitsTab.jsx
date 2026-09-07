@@ -63,7 +63,11 @@ export function UnitsTab({ controller }) {
                 Editar
               </button>
               {unit.active ? (
-                <button type="button" onClick={() => form.deactivate(unit.id)}>
+                <button
+                  type="button"
+                  className="button-danger"
+                  onClick={() => form.deactivate(unit.id)}
+                >
                   Desactivar
                 </button>
               ) : (
@@ -71,7 +75,11 @@ export function UnitsTab({ controller }) {
                   Reactivar
                 </button>
               )}
-              <button type="button" onClick={() => form.remove(unit)}>
+              <button
+                type="button"
+                className="button-danger"
+                onClick={() => form.remove(unit)}
+              >
                 Eliminar
               </button>
             </>

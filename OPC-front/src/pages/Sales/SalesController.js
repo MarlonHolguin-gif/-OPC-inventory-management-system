@@ -16,6 +16,8 @@ export class SalesController extends Controller {
   results = signal([]);
   loading = signal(true);
   searching = signal(false);
+  page = signal(0);
+  pageSize = signal(10); // lo ajusta la página según el alto disponible
 
   form = new SaleFormController(this);
 
@@ -25,6 +27,25 @@ export class SalesController extends Controller {
     if (!term) return this.results.value;
     return this.results.value.filter((row) => String(row.saleNumber).toLowerCase().includes(term));
   });
+
+  // El histórico se pagina (Pager "1–N de M" + flechas), sin scroll.
+  pageCount = computed(() =>
+    Math.max(1, Math.ceil(this.filteredResults.value.length / this.pageSize.value)),
+  );
+  currentPage = computed(() => Math.min(this.page.value, this.pageCount.value - 1));
+  pageRows = computed(() => {
+    const size = this.pageSize.value;
+    const start = this.currentPage.value * size;
+    return this.filteredResults.value.slice(start, start + size);
+  });
+
+  setPage = (page) => {
+    this.page.value = page;
+  };
+
+  setPageSize = (size) => {
+    this.pageSize.value = size;
+  };
 
   branchName(id) {
     return BranchDirectoryStore.nameOf(id) ?? '—';
@@ -48,6 +69,8 @@ export class SalesController extends Controller {
 
   setFilter = (key, value) => {
     this.filters.value = { ...this.filters.value, [key]: value };
+    // El número de venta filtra en vivo: al cambiarlo, vuelve a la página 1.
+    if (key === 'saleNumber') this.page.value = 0;
   };
 
   clearFilters = () => {
@@ -66,6 +89,7 @@ export class SalesController extends Controller {
       if (f.from) params.from = `${f.from}T00:00:00`;
       if (f.to) params.to = `${f.to}T23:59:59`;
       this.results.value = await SaleService.history(params);
+      this.page.value = 0;
     } catch {
       UiStore.fail('No se pudo consultar el histórico de ventas.');
     } finally {

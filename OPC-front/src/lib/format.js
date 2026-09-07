@@ -29,10 +29,35 @@ export function formatCurrency(value) {
   return parsed.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Formatea una fecha y hora ISO en el formato local del navegador.
-// Devuelve un guion largo cuando no hay dato.
+// Formato colombiano fijo para fechas — no depende del locale del navegador
+// (que en un equipo en inglés daría "8/31/2026, 2:02:19 PM").
+const DATE_LOCALE = 'es-CO';
+
+// Formatea una fecha y hora ISO como dd/mm/aaaa, hh:mm.
+// Devuelve un guion largo cuando no hay dato o la fecha es inválida.
 export function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString() : '—';
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleString(DATE_LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+// Formatea solo la fecha (sin hora) como dd/mm/aaaa.
+export function formatDate(value) {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleDateString(DATE_LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 // Formatea un porcentaje (el valor ya viene en base 100: 10 -> "10 %").

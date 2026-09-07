@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useController } from '@/lib/useController';
+import { formatDate } from '@/lib/format';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
@@ -41,13 +42,13 @@ function activeColumns(controller) {
     {
       key: 'requestDate',
       header: 'Fecha de solicitud',
-      render: (row) => new Date(row.requestDate).toLocaleDateString(),
+      render: (row) => formatDate(row.requestDate),
     },
   ];
 }
 
 function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function TransfersPage() {

@@ -1,6 +1,7 @@
 import { Fragment, useEffect } from 'react';
 import { useController } from '@/lib/useController';
 import { usePageSize } from '@/lib/usePageSize';
+import { formatDateTime } from '@/lib/format';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Pager } from '@/components/Pager';
 import { AuditController } from './AuditController';
@@ -8,10 +9,6 @@ import { AuditFilters } from './components/AuditFilters';
 import { AuditDiff } from './components/AuditDiff';
 import { auditActionBadgeClass, auditActionLabel } from './constants';
 import './Audit.css';
-
-function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString() : '—';
-}
 
 export default function AuditPage() {
   const controller = useController(AuditController);
@@ -34,7 +31,7 @@ export default function AuditPage() {
       <AuditFilters controller={controller} />
 
       <AsyncBoundary loading={controller.loading.value}>
-        <div className="audit-table-card" ref={cardRef}>
+        <div className="audit-table-card is-paged" ref={cardRef}>
           {rows.length === 0 ? (
             <p className="audit-empty">No hay eventos de auditoría que coincidan con los filtros.</p>
           ) : (

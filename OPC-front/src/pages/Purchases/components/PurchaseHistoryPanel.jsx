@@ -1,20 +1,25 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useController } from '@/lib/useController';
+import { usePageSize } from '@/lib/usePageSize';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { FilterBar, FilterField } from '@/components/FilterBar';
-import { TextField, SelectField } from '@/components/Field';
+import { DateRangeFilter } from '@/components/DateRangeFilter';
+import { SelectField } from '@/components/Field';
+import { Pager } from '@/components/Pager';
 import { formatCurrency, formatDateTime, formatPercentage } from '@/lib/format';
 import { PurchaseHistoryController } from '../controllers/PurchaseHistoryController';
 import { PURCHASE_ORDER_STATUS_OPTIONS, purchaseOrderStatusLabel } from '../constants';
 
-const COLUMNS = [
+const columnsFor = (controller) => [
   {
     key: 'orderNumber',
     header: 'Orden',
     render: (row) => <Link to={`/compras/${row.orderId}`}>{row.orderNumber}</Link>,
   },
   { key: 'orderDate', header: 'Fecha', render: (row) => formatDateTime(row.orderDate) },
+  { key: 'branch', header: 'Sucursal', render: (row) => controller.branchName(row.branchId) },
   { key: 'status', header: 'Estado', render: (row) => purchaseOrderStatusLabel(row.status) },
   { key: 'responsibleName', header: 'Responsable', render: (row) => row.responsibleName ?? '—' },
   { key: 'supplierName', header: 'Proveedor' },
@@ -34,6 +39,11 @@ const COLUMNS = [
 export function PurchaseHistoryPanel() {
   const controller = useController(PurchaseHistoryController);
   const filters = controller.filters.value;
+  const [cardRef, pageSize] = usePageSize();
+
+  useEffect(() => {
+    controller.setPageSize(pageSize);
+  }, [pageSize, controller]);
 
   const supplierOptions = controller.suppliers.value.map((supplier) => ({
     value: supplier.id,
@@ -75,22 +85,12 @@ export function PurchaseHistoryPanel() {
               placeholder="Todos"
             />
           </FilterField>
-          <FilterField>
-            <TextField
-              label="Desde"
-              type="date"
-              value={filters.from}
-              onChange={(value) => controller.setFilter('from', value)}
-            />
-          </FilterField>
-          <FilterField>
-            <TextField
-              label="Hasta"
-              type="date"
-              value={filters.to}
-              onChange={(value) => controller.setFilter('to', value)}
-            />
-          </FilterField>
+          <DateRangeFilter
+            from={filters.from}
+            to={filters.to}
+            onFromChange={(value) => controller.setFilter('from', value)}
+            onToChange={(value) => controller.setFilter('to', value)}
+          />
           <FilterBar.Actions>
             <button type="submit" disabled={controller.searching.value}>
               {controller.searching.value ? 'Buscando…' : 'Filtrar'}
@@ -101,14 +101,22 @@ export function PurchaseHistoryPanel() {
           </FilterBar.Actions>
         </FilterBar>
 
-        <div className="purchases-table-card">
+        <div className="purchases-table-card is-paged" ref={cardRef}>
           <DataTable
-            columns={COLUMNS}
-            rows={controller.rows.value}
+            columns={columnsFor(controller)}
+            rows={controller.pageRows.value}
             rowKey={(row, index) => `${row.orderId}-${row.productId}-${index}`}
             empty="No hay compras que coincidan con los filtros"
           />
         </div>
+
+        <Pager
+          page={controller.currentPage.value}
+          pageSize={controller.pageSize.value}
+          total={controller.rows.value.length}
+          onPrev={() => controller.setPage(controller.currentPage.value - 1)}
+          onNext={() => controller.setPage(controller.currentPage.value + 1)}
+        />
       </AsyncBoundary>
     </div>
   );

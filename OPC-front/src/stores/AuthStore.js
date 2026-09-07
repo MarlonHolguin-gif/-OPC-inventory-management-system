@@ -18,6 +18,10 @@ export class AuthStore {
   static refreshToken = signal(localStorage.getItem(REFRESH_TOKEN_KEY));
   static branches = signal(null);
   static name = signal(null);
+  // Petición /api/auth/me en curso: varios controladores piden el perfil a la
+  // vez al cargar una página (main.jsx + el controller de la vista); comparten
+  // esta promesa en lugar de disparar un GET cada uno.
+  static #profileInFlight = null;
 
   static claims = computed(() =>
     AuthStore.accessToken.value ? decodeJwtPayload(AuthStore.accessToken.value) : null,
@@ -50,13 +54,19 @@ export class AuthStore {
       AuthStore.#clearProfile();
       return;
     }
-    try {
-      const me = await AuthService.me();
-      AuthStore.branches.value = me.branches;
-      AuthStore.name.value = me.name;
-    } catch {
-      AuthStore.#clearProfile();
-    }
+    if (AuthStore.#profileInFlight) return AuthStore.#profileInFlight;
+    AuthStore.#profileInFlight = AuthService.me()
+      .then((me) => {
+        AuthStore.branches.value = me.branches;
+        AuthStore.name.value = me.name;
+      })
+      .catch(() => {
+        AuthStore.#clearProfile();
+      })
+      .finally(() => {
+        AuthStore.#profileInFlight = null;
+      });
+    return AuthStore.#profileInFlight;
   }
 
   static #clearProfile() {

@@ -15,20 +15,29 @@ export class SaleDetailController extends Controller {
   }
 
   sale = signal(null);
+  loading = signal(true);
+  notFound = signal(false);
 
   onMount() {
     return this.load();
   }
 
   async load() {
+    this.loading.value = true;
     try {
       const [sale] = await Promise.all([
         SaleService.get(this.saleId),
         BranchDirectoryStore.ensureLoaded(),
       ]);
       this.sale.value = sale;
-    } catch {
-      UiStore.fail('No se pudo cargar el comprobante de la venta.');
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        this.notFound.value = true;
+      } else {
+        UiStore.fail('No se pudo cargar el comprobante de la venta.');
+      }
+    } finally {
+      this.loading.value = false;
     }
   }
 

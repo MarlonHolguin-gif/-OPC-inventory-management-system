@@ -58,3 +58,31 @@ export function BellIcon(props) {
     </svg>
   );
 }
+
+// Menú / mostrar el riel oculto (hamburguesa).
+export function MenuIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+// Contraer el riel (doble chevron a la izquierda).
+export function CollapseNavIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M13 6l-6 6 6 6M19 6l-6 6 6 6" />
+    </svg>
+  );
+}
+
+// Chincheta — "fijar el menú" (que no se despliegue solo).
+export function PinIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 4h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
+      <path d="M12 15v5" />
+    </svg>
+  );
+}

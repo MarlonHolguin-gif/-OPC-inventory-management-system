@@ -4,8 +4,9 @@ import { usePageSize } from '@/lib/usePageSize';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { DataTable } from '@/components/DataTable';
 import { Modal } from '@/components/Modal';
-import { TextField, SelectField } from '@/components/Field';
+import { SelectField } from '@/components/Field';
 import { FilterBar, FilterField } from '@/components/FilterBar';
+import { DateRangeFilter } from '@/components/DateRangeFilter';
 import { Pager } from '@/components/Pager';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { formatDateTime } from '@/lib/format';
@@ -68,22 +69,12 @@ export default function MovementsPage() {
               placeholder="Todos"
             />
           </FilterField>
-          <FilterField>
-            <TextField
-              label="Desde"
-              type="date"
-              value={filters.from}
-              onChange={(value) => controller.setFilter('from', value)}
-            />
-          </FilterField>
-          <FilterField>
-            <TextField
-              label="Hasta"
-              type="date"
-              value={filters.to}
-              onChange={(value) => controller.setFilter('to', value)}
-            />
-          </FilterField>
+          <DateRangeFilter
+            from={filters.from}
+            to={filters.to}
+            onFromChange={(value) => controller.setFilter('from', value)}
+            onToChange={(value) => controller.setFilter('to', value)}
+          />
           <FilterBar.Actions>
             <button type="submit" disabled={controller.searching.value}>
               {controller.searching.value ? 'Buscando…' : 'Filtrar'}
@@ -101,7 +92,7 @@ export default function MovementsPage() {
           </button>
         </FilterBar>
 
-        <div className="movements-table-card" ref={cardRef}>
+        <div className="movements-table-card is-paged" ref={cardRef}>
           <DataTable
             columns={HISTORY_COLUMNS(controller)}
             rows={controller.pageRows.value}

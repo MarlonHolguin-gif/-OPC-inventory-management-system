@@ -1,8 +1,5 @@
+import { formatDateTime } from '@/lib/format';
 import { TRANSFER_TIMELINE_STEPS } from '../constants';
-
-function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString() : null;
-}
 
 /**
  * Línea de tiempo de estados de una transferencia. `currentStep` es el

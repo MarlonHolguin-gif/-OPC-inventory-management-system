@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useController } from '@/lib/useController';
+import { formatDateTime } from '@/lib/format';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { TextField, SelectField } from '@/components/Field';
@@ -25,10 +26,6 @@ const SHORTAGE_RESOLUTION_OPTIONS = Object.entries(SHORTAGE_RESOLUTION_LABELS).m
   label,
 }));
 
-function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString() : null;
-}
-
 const ITEM_COLUMNS = [
   { key: 'productSku', header: 'SKU' },
   { key: 'productName', header: 'Producto' },
@@ -50,7 +47,7 @@ function TransferDetailView({ transferId }) {
   const loadError = controller.loadError.value;
 
   return (
-    <main>
+    <main className="transfer-detail">
       <p>
         <Link to="/transferencias">← Volver a Transferencias</Link>
       </p>
@@ -260,8 +257,8 @@ function DeliveryTimesTable({ milestones }) {
           {milestones.map((row) => (
             <tr key={row.milestone}>
               <td>{row.milestone}</td>
-              <td>{formatDateTime(row.estimated) ?? '—'}</td>
-              <td>{formatDateTime(row.actual) ?? '—'}</td>
+              <td>{formatDateTime(row.estimated)}</td>
+              <td>{formatDateTime(row.actual)}</td>
               <td>{deliveryDeviationLabel(row.estimated, row.actual)}</td>
             </tr>
           ))}

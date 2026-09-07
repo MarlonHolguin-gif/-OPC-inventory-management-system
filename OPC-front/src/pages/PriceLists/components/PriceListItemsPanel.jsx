@@ -25,7 +25,11 @@ export function PriceListItemsPanel({ controller, products }) {
           rows={list.items}
           empty="Esta lista no tiene precios cargados."
           actions={(item) => (
-            <button type="button" onClick={() => controller.remove(item.productId)}>
+            <button
+              type="button"
+              className="button-danger"
+              onClick={() => controller.remove(item.productId)}
+            >
               Eliminar
             </button>
           )}

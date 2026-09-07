@@ -95,7 +95,11 @@ export default function BranchesPage() {
                   Editar
                 </button>
                 {branch.active ? (
-                  <button type="button" onClick={() => controller.deactivate(branch.id)}>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={() => controller.deactivate(branch.id)}
+                  >
                     Desactivar
                   </button>
                 ) : (

@@ -99,7 +99,11 @@ export default function PriceListsPage() {
                   Gestionar ítems
                 </button>
                 {priceList.active ? (
-                  <button type="button" onClick={() => controller.deactivate(priceList.id)}>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={() => controller.deactivate(priceList.id)}
+                  >
                     Desactivar
                   </button>
                 ) : (

@@ -93,7 +93,11 @@ export function PurchaseItemsTable({ controller }) {
             <td>{subtotals[index].toFixed(2)}</td>
             <td>
               {items.length > 1 && (
-                <button type="button" onClick={() => controller.removeItem(index)}>
+                <button
+                  type="button"
+                  className="button-danger"
+                  onClick={() => controller.removeItem(index)}
+                >
                   Quitar
                 </button>
               )}

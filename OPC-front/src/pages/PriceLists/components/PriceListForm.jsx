@@ -4,6 +4,16 @@ import { TextField } from '@/components/Field';
 export function PriceListForm({ form }) {
   const values = form.form.value;
 
+  // "Vigente hasta" nunca antes de "Vigente desde".
+  const setStartDate = (value) => {
+    form.setField('startDate', value);
+    if (value && values.endDate && values.endDate < value) form.setField('endDate', value);
+  };
+  const setEndDate = (value) => {
+    if (value && values.startDate && value < values.startDate) return;
+    form.setField('endDate', value);
+  };
+
   return (
     <FormPanel
       submitLabel={form.isEditing ? 'Guardar cambios' : 'Crear lista'}
@@ -27,13 +37,15 @@ export function PriceListForm({ form }) {
         label="Vigente desde"
         type="date"
         value={values.startDate}
-        onChange={(value) => form.setField('startDate', value)}
+        max={values.endDate || undefined}
+        onChange={setStartDate}
       />
       <TextField
         label="Vigente hasta"
         type="date"
         value={values.endDate}
-        onChange={(value) => form.setField('endDate', value)}
+        min={values.startDate || undefined}
+        onChange={setEndDate}
       />
     </FormPanel>
   );

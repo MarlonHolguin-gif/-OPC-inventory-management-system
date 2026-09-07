@@ -1,17 +1,66 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
+  position: relative;
+}
+
+/* --- Riel de navegación (modos: expandido / solo íconos / oculto, ver
+   NavStore) ---
+
+   La RANURA reserva el ancho en el flujo del layout. El RIEL vive dentro en
+   posición absoluta: al asomarse crece hacia la derecha sobre el contenido
+   sin cambiar el ancho de la ranura, así el contenido nunca se recoloca. */
+.app-rail-slot {
+  position: relative;
+  z-index: 30;
+  flex-shrink: 0;
+  width: 200px;
+  transition: width 0.16s ease;
+}
+.app-rail-slot[data-mode='icons'] {
+  width: 56px;
+}
+.app-rail-slot[data-mode='hidden'] {
+  width: 0;
 }
 
 .app-rail {
-  width: 200px;
-  flex-shrink: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
   background: var(--rail);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   align-items: stretch;
   padding: 16px 0;
+  overflow: hidden;
+  transition: width 0.18s ease, box-shadow 0.18s ease;
+}
+.app-rail-slot[data-mode='hidden'] .app-rail {
+  border-right-color: transparent;
+}
+
+/* Desplegado temporalmente al pasar el cursor: crece a 200px y flota sobre el
+   contenido (la ranura sigue en su ancho, el contenido no se mueve). */
+.app-rail[data-peeking='true'] {
+  width: 200px;
+  z-index: 60;
+  border-right-color: var(--border);
+  box-shadow: 4px 0 24px oklch(0% 0 0 / 0.18);
+}
+
+/* Franja sensible al cursor en el borde izquierdo cuando el riel está
+   contraído u oculto y no está fijo. */
+.rail-peek-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 16px;
+  z-index: 1;
 }
 
 .rail-logo {
@@ -70,6 +119,69 @@
   height: 1px;
   background: var(--border);
   margin: 8px 6px;
+}
+
+/* En modo "solo íconos" se ocultan los textos y se centra cada ítem —
+   salvo mientras el riel está desplegado por el cursor. */
+.app-rail[data-mode='icons']:not([data-peeking='true']) .rail-nav {
+  padding: 0 6px;
+}
+.app-rail[data-mode='icons']:not([data-peeking='true']) .rail-item {
+  justify-content: center;
+  padding: 10px 0;
+}
+.app-rail[data-mode='icons']:not([data-peeking='true']) .rail-item span,
+.app-rail[data-mode='icons']:not([data-peeking='true']) .rail-control-btn span {
+  display: none;
+}
+.app-rail[data-mode='icons']:not([data-peeking='true']) .rail-control-btn {
+  justify-content: center;
+}
+
+/* Pie del riel: controles de vista (contraer / ocultar / fijar). */
+.rail-controls {
+  margin-top: auto;
+  padding: 10px 8px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--border);
+}
+.rail-control-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font: 600 12.5px var(--font-body);
+  text-align: left;
+}
+.rail-control-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: transparent;
+}
+.rail-control-btn.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.rail-control-btn svg {
+  flex-shrink: 0;
+}
+.rail-control-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-nav-toggle {
+  flex-shrink: 0;
 }
 
 .app-content {
@@ -155,20 +267,26 @@
   border: none;
 }
 
-/* En pantallas angostas el riel se colapsa a solo íconos. */
+/* En pantallas angostas, si el usuario dejó el riel "expandido" y sin fijar,
+   se muestra como "solo íconos" para no comerse el ancho — su elección
+   explícita (íconos/oculto/fijo) siempre se respeta. */
 @media (max-width: 720px) {
-  .app-rail {
+  .app-rail-slot[data-mode='expanded'] {
     width: 56px;
   }
-  .rail-nav {
+  .app-rail[data-mode='expanded']:not([data-peeking='true']) .rail-nav {
     padding: 0 6px;
   }
-  .rail-item {
+  .app-rail[data-mode='expanded']:not([data-peeking='true']) .rail-item {
     justify-content: center;
     padding: 10px 0;
   }
-  .rail-item span {
+  .app-rail[data-mode='expanded']:not([data-peeking='true']) .rail-item span,
+  .app-rail[data-mode='expanded']:not([data-peeking='true']) .rail-control-btn span {
     display: none;
+  }
+  .app-rail[data-mode='expanded']:not([data-peeking='true']) .rail-control-btn {
+    justify-content: center;
   }
   .app-topbar {
     padding: 12px 16px;

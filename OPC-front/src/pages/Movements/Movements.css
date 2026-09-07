@@ -22,20 +22,19 @@
   flex-shrink: 0;
 }
 
-/* El historial se pagina (Pager estilo "1–50 de N" + flechas), sin scroll:
-   cada página muestra las filas de una sola línea que caben en la caja, y la
-   tabla ocupa exactamente el ancho disponible (table-layout: fixed). */
+/* El historial se pagina en vertical (Pager "1–50 de N" + flechas). En
+   horizontal, si hay más columnas de las que caben, la caja desplaza — no se
+   reprime la información con elipsis. */
 .movements-table-card {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
 }
 .movements-table-card table {
-  table-layout: fixed;
-  width: 100%;
+  min-width: 100%;
   margin: 0;
   border: 0;
   border-radius: 0;
@@ -45,10 +44,14 @@
 .movements-table-card td {
   padding: 9px 12px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .movements-table-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
   padding-top: 10px;
   padding-bottom: 10px;
 }

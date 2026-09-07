@@ -73,6 +73,27 @@
   box-sizing: border-box;
 }
 
+/* Barras de desplazamiento discretas en toda la app: el scroll interno de
+   listas y modales no debe llamar la atención. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 html,
 body,
 #root {
@@ -130,6 +151,22 @@ p {
 main {
   padding: 28px 32px;
   overflow-x: auto;
+}
+
+/* Páginas de módulo con alto "de ventana": el módulo fija su
+   `height: calc(100dvh - 64px)`. Cuando el contenido cabe se ve como antes
+   (sin scroll de página); cuando NO cabe — típicamente la barra de filtros
+   apilada en pantallas angostas — la página desplaza en vez de recortar la
+   tabla y dejar el paginador fuera de vista. */
+main[class$='-page']:not(.dashboard-page) {
+  overflow: auto;
+}
+/* La caja de la tabla no se aplasta por debajo de lo usable: si el resto del
+   contenido la empujaría a menos, la página desplaza.
+   `*=` y no `$=`: la clase puede llevar un modificador detrás (is-paged). */
+main[class$='-page']:not(.dashboard-page) [class*='-table-card'],
+main[class$='-page']:not(.dashboard-page) .transfers-history-body {
+  min-height: 280px;
 }
 
 /* Formularios: cada <form> es una tarjeta de superficie, como en el mockup */
@@ -217,6 +254,43 @@ button[type='submit']:hover {
   color: var(--bg);
 }
 button[type='submit']:disabled {
+  background: var(--border);
+  border-color: var(--border);
+  color: var(--text-dim);
+  opacity: 1;
+}
+
+/* Botones semánticos por acción, sin importar el `type`:
+   verde = alta / agregar, rojo = eliminar / desactivar / cancelar.
+   `--bg` como color de texto contrasta en ambos temas, igual que .button-link.primary. */
+button.button-add,
+.button-link.button-add {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+button.button-add:hover,
+.button-link.button-add:hover {
+  opacity: 0.9;
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+button.button-danger,
+.button-link.button-danger {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: var(--bg);
+  font-weight: 700;
+}
+button.button-danger:hover,
+.button-link.button-danger:hover {
+  opacity: 0.9;
+  color: var(--bg);
+  border-color: var(--bad);
+}
+button.button-danger:disabled {
   background: var(--border);
   border-color: var(--border);
   color: var(--text-dim);
@@ -378,6 +452,15 @@ hr {
 }
 .op-totals strong {
   color: var(--text);
+}
+
+/* Cajas de lista que aún desplazan por dentro (los módulos CRUD y el
+   histórico de transferencias; los históricos de Movimientos, Ventas,
+   Compras y Auditoría se paginan y no entran aquí): un respiro bajo la
+   última fila para que el corte del scroll no se note tanto. */
+[class*='-table-card']:not(.is-paged) tbody tr:last-child > td,
+.transfers-history-body tbody tr:last-child > td {
+  padding-bottom: 22px;
 }
 
 /* Contenedor con scroll horizontal propio para tablas anchas — evita que

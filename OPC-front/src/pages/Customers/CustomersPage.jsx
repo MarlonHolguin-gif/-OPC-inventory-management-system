@@ -91,7 +91,11 @@ export default function CustomersPage() {
                   Editar
                 </button>
                 {customer.active ? (
-                  <button type="button" onClick={() => controller.deactivate(customer.id)}>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={() => controller.deactivate(customer.id)}
+                  >
                     Desactivar
                   </button>
                 ) : (

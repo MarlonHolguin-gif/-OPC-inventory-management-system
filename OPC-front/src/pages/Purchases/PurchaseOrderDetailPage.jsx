@@ -37,9 +37,21 @@ function PurchaseOrderDetailView({ orderId }) {
   const controller = useController(PurchaseOrderDetailController, orderId);
   const order = controller.order.value;
 
+  if (controller.notFound.value) {
+    return (
+      <main className="purchase-order-detail">
+        <Link to="/compras" className="button-link purchase-order-back">
+          ← Volver a compras
+        </Link>
+        <h1>Orden de compra no encontrada</h1>
+        <p>No existe una orden de compra con el identificador {orderId}.</p>
+      </main>
+    );
+  }
+
   return (
-    <main>
-      <AsyncBoundary variant="screen" loading={order === null}>
+    <main className="purchase-order-detail">
+      <AsyncBoundary variant="screen" loading={controller.loading.value}>
         {order && <PurchaseOrderDetailBody controller={controller} order={order} />}
       </AsyncBoundary>
     </main>
@@ -59,6 +71,7 @@ function PurchaseOrderDetailBody({ controller, order }) {
       <p>
         Proveedor: {order.supplierName} — Estado: <strong>{purchaseOrderStatusLabel(order.status)}</strong>
       </p>
+      {controller.branchName.value && <p>Sucursal: {controller.branchName.value}</p>}
       {order.paymentTerms && <p>Plazo de pago: {order.paymentTerms}</p>}
 
       <div className="button-row">
@@ -68,7 +81,12 @@ function PurchaseOrderDetailBody({ controller, order }) {
           </button>
         )}
         {controller.canCancel.value && !controller.confirmingCancel.value && (
-          <button type="button" onClick={controller.askCancel} disabled={transitioning}>
+          <button
+            type="button"
+            className="button-danger"
+            onClick={controller.askCancel}
+            disabled={transitioning}
+          >
             Cancelar orden
           </button>
         )}
@@ -77,7 +95,12 @@ function PurchaseOrderDetailBody({ controller, order }) {
       {controller.confirmingCancel.value && (
         <div className="button-row">
           <span>¿Seguro que quieres cancelar esta orden de compra?</span>
-          <button type="button" onClick={controller.confirmCancel} disabled={transitioning}>
+          <button
+            type="button"
+            className="button-danger"
+            onClick={controller.confirmCancel}
+            disabled={transitioning}
+          >
             {transitioning ? 'Cancelando…' : 'Sí, cancelar la orden'}
           </button>
           <button type="button" onClick={controller.dismissCancel} disabled={transitioning}>

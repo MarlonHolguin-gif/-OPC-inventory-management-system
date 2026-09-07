@@ -71,6 +71,13 @@
   margin-bottom: 14px;
 }
 
+/* El formulario de recepción ocupa el ancho disponible, no el de un
+   formulario normal (640px) — así queda del mismo tamaño que la tabla de
+   ítems de arriba. */
+.purchase-order-detail form {
+  max-width: none;
+}
+
 /* Caja de la tabla: toma el alto restante y desplaza dentro (vertical y
    horizontal), con los nombres de columna fijos. */
 .purchases-table-card {
@@ -82,10 +89,15 @@
   background: var(--surface);
 }
 .purchases-table-card table {
+  min-width: 100%;
   margin: 0;
   border: 0;
   border-radius: 0;
   overflow: visible;
+}
+.purchases-table-card th,
+.purchases-table-card td {
+  white-space: nowrap;
 }
 .purchases-table-card thead th {
   position: sticky;
@@ -102,4 +114,11 @@
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
+}
+
+/* Histórico: se pagina en vertical (Pager "1–N de M" + flechas). En
+   horizontal la caja desplaza si hay más columnas de las que caben — no se
+   reprime la información (misma pauta que Inventario). */
+.purchases-panel .pager {
+  align-self: flex-end;
 }

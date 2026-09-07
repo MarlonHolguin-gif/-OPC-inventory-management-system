@@ -92,6 +92,70 @@ Justificación completa de estas decisiones: [`requirements/Justificacion_Stack_
 
 Los 4 diagramas obligatorios de la sección 7.1 de la prueba técnica ya están completos entre estos dos documentos.
 
+## Requerimientos
+
+Formalización pedida por la sección 6.1 de la prueba técnica. El análisis completo (interpretación punto por punto del enunciado, decisiones y revisión del DER) está en [`requirements/Analisis_Requerimientos.md`](requirements/Analisis_Requerimientos.md); esta sección traslada al README sus **secciones 3 a 6**.
+
+### Requerimientos funcionales
+
+<sub>Detalle e interpretación técnica de cada uno: [`Analisis_Requerimientos.md` §3](requirements/Analisis_Requerimientos.md#3-requerimientos-funcionales-consolidados).</sub>
+
+| Área | RF |
+|---|---|
+| **Inventario** | RF-01 listar stock de la sucursal propia · RF-02 consultar inventario de otra sucursal (solo lectura) · RF-03 registrar ingresos con trazabilidad · RF-04 registrar retiros con trazabilidad · RF-05 configurar `min_stock`/`max_stock` por producto y sucursal y calcular su estado de alerta · RF-06 múltiples unidades de medida por producto con factor de conversión y distinción compra/venta |
+| **Compras** | RF-07 crear y gestionar órdenes de compra con ítems, precios y descuentos · RF-08 registrar recepción de una orden actualizando inventario · RF-09 calcular costo promedio ponderado al recibir · RF-10 histórico de compras por proveedor y producto |
+| **Ventas** | RF-11 registrar ventas con validación de stock antes de confirmar · RF-12 aplicar listas de precios y descuentos por ítem · RF-13 registrar cliente o venta de mostrador sin cliente · RF-14 histórico de ventas por sucursal, producto y responsable |
+| **Transferencias** | RF-15 solicitar transferencia entre sucursales con cantidad y urgencia · RF-16 preparar/ajustar el envío en origen · RF-17 registrar despacho con transportista y fecha estimada · RF-18 confirmar recepción completa o parcial, con alerta ante faltantes · RF-19 consultar el historial de estados de cada transferencia |
+| **Logística** | RF-20 clasificar rutas de transferencia por prioridad · RF-21 reportar cumplimiento logístico (estimado vs. real) por sucursal y ruta |
+| **Dashboard** | RF-22 ventas del mes vs. meses anteriores · RF-23 rotación de inventario y productos de alta/baja demanda · RF-24 transferencias activas y su impacto · RF-25 productos próximos a agotarse · RF-26 comparativa entre sucursales (solo `GENERAL_ADMIN`) |
+| **Alertas inteligentes** | RF-27 notificar cuando `current_quantity` cruza `min_stock`/`max_stock` · RF-28 listar y marcar como leídas las notificaciones del usuario/sucursal |
+| **Auditoría** | RF-29 registrar automáticamente cada alta/edición/baja relevante (usuario, entidad, acción, valores antes/después, fecha) · RF-30 consultar el log filtrando por entidad, usuario o rango de fechas (solo `GENERAL_ADMIN`) |
+| **Seguridad y accesos** | RF-31 autenticación JWT; cada endpoint valida rol y, cuando aplique, pertenencia a sucursal · RF-32 un usuario puede tener acceso a una o varias sucursales (`ma_user_branch`); `GENERAL_ADMIN` las ve todas sin asignación explícita |
+
+### Requerimientos no funcionales
+
+| Categoría | Requerimiento |
+|---|---|
+| Rendimiento | Consultas de inventario y dashboard en <500 ms con datasets de prueba (miles de movimientos); índices sobre columnas de fecha y FKs de filtro. |
+| Seguridad | Contraseñas con hash BCrypt, JWT de acceso con expiración corta, autorización por rol **a nivel de endpoint** (no solo en el frontend), sin secretos en código (variables de entorno vía Docker Compose). |
+| Escalabilidad | La BD única compartida basta para el número de sucursales del alcance; el crecimiento a decenas de nodos de alto volumen queda documentado como limitación conocida. |
+| Usabilidad | Frontend responsivo (desktop + tablet), mensajes de error claros ante validaciones de negocio (ej. stock insuficiente), estados de carga visibles. |
+| Disponibilidad | El sistema corre en un único `docker compose up`; no se exige alta disponibilidad. |
+| Auditabilidad | Todo movimiento de inventario y toda acción relevante queda registrada con usuario, fecha y motivo (`tr_inventory_movements` + `sy_audit_log`). |
+| Mantenibilidad | Backend en capas (Controller/Service/Repository), DTOs para no exponer entidades JPA; frontend por capas (Controller + signals / services / stores). |
+
+### Restricciones
+
+- Stack fijo por decisión del candidato (Java 21 + Spring Boot · React + Vite · MySQL); no se evalúan alternativas dentro del proyecto.
+- Toda la solución levanta con un único `docker compose up`, sin configuración manual adicional.
+- El frontend **no contiene lógica de negocio** (validación de stock, cálculo de totales, reglas de transferencia); esas reglas viven solo en el backend.
+- No hay integración real con un ERP/POS externo: el PDF lo marca como actor **opcional** — la API REST es el punto de extensión, sin conector concreto.
+- Repositorio público, sin archivos de entorno ni dependencias versionadas (`.env`, `node_modules/`, `target/`).
+
+### Supuestos
+
+- Una sola organización con N sucursales, misma moneda y país (sin multi-moneda ni multi-tenant real).
+- "Tiempo real / near-real-time" se satisface con una BD compartida consultada por REST (sin WebSockets ni colas de eventos).
+- El catálogo de productos es compartido por toda la red (un mismo `sku` en todas las sucursales); lo que varía por sucursal es solo el saldo de `tr_inventory`.
+- `BRANCH_MANAGER` e `INVENTORY_OPERATOR` pueden tener acceso a una o varias sucursales (tabla N:M `ma_user_branch`); `GENERAL_ADMIN` no necesita filas ahí (acceso implícito por rol).
+- Sin dependencias externas (pagos, correo real, mapas/logística de terceros).
+
+## Historias de usuario
+
+De [`Analisis_Requerimientos.md` §8](requirements/Analisis_Requerimientos.md#8-historias-de-usuario). Las tres primeras son las de la sección 6.3 del enunciado; las otras tres corresponden a las dos funcionalidades adicionales elegidas (Alertas inteligentes y Auditoría).
+
+> **Como** operador de inventario, **quiero** registrar el ingreso de productos con su precio de compra, **para** mantener el costo promedio del inventario actualizado y generar órdenes de pago a proveedores.
+
+> **Como** gerente de sucursal, **quiero** ver en un dashboard la comparativa de ventas entre el mes actual y los tres meses anteriores, **para** identificar tendencias y tomar decisiones de compra anticipadas.
+
+> **Como** operador de inventario, **quiero** solicitar la transferencia de un producto desde otra sucursal con indicación de urgencia, **para** que la sucursal origen pueda priorizar el despacho según disponibilidad.
+
+> **Como** operador de inventario, **quiero** recibir una notificación cuando un producto cae por debajo de su stock mínimo, **para** poder generar una orden de compra antes de quedarme sin inventario.
+
+> **Como** administrador general, **quiero** recibir una alerta cuando un producto supera su stock máximo configurado, **para** identificar sobre-stock y evitar capital inmovilizado.
+
+> **Como** administrador general, **quiero** consultar el registro de auditoría de una entidad específica (ej. un producto), **para** saber quién la modificó, cuándo y qué cambió exactamente.
+
 ## Cómo levantar el proyecto
 
 **Prerrequisitos:** Docker Desktop en ejecución. No hace falta tener Java, Node ni MySQL instalados localmente — los tres servicios corren en contenedores.
@@ -134,6 +198,22 @@ Estado funcional actual, backend y frontend. El detalle técnico por tabla/entid
 Todos los módulos "Completo" tienen backend y frontend funcionales, verificados contra Docker/MySQL real y en navegador (no solo compilación). Único punto pendiente de diseño: la lista de precios es independiente de la sucursal (cualquier sucursal puede usar cualquier lista vigente) — ver la discusión en [`requirements/IA_EVIDENCIA.md`](requirements/IA_EVIDENCIA.md).
 
 **Interfaz:** tema claro/oscuro alternable (botón sol/luna, persistido por navegador) y diseño responsive — el riel de navegación se colapsa a solo íconos en pantallas angostas y las tablas anchas hacen scroll dentro de su propio contenedor en vez de romper la página. Las altas y ediciones (proveedor, cliente, producto, orden de compra, venta, transferencia…) abren en ventana modal. El frontend está organizado por capas (ver el árbol de `src/` más arriba): cada módulo tiene un *controller* de clase con el estado en signals (`@preact/signals-react`), una capa de *services* con las llamadas al backend y una *page* que solo pinta el DOM.
+
+## Seguridad
+
+Checklist de la revisión básica de seguridad (sección 6.2 / reglas técnicas del enunciado).
+
+| Punto | Estado | Cómo se cumple |
+|---|---|---|
+| Contraseñas nunca en respuestas de la API | ✅ | `password_hash` solo vive en la entidad `User`; el único DTO de salida (`UserResponse`) lo excluye explícitamente y ningún controller devuelve la entidad JPA directamente. Los refresh tokens se guardan hasheados (`token_hash`), nunca el valor en claro. |
+| Contraseñas con hash | ✅ | BCrypt (`BCryptPasswordEncoder`). La contraseña de los usuarios de demo solo existe como hash BCrypt dentro de la migración `V4`, no en texto plano en el código. |
+| Autorización por rol en el backend | ✅ | `@EnableMethodSecurity` + `SecurityFilterChain` con `anyRequest().authenticated()`; solo `/actuator/health`, `/api/auth/{login,refresh,logout}` y `/error` son públicos. Las restricciones por rol y por pertenencia a sucursal se validan en el service (`BranchAccessService`), no solo en el frontend. |
+| JWT de acceso con expiración corta | ✅ | Access token de 15 min (`jwt.expiration=900000`) + refresh token persistido y rotado de 7 días, revocable en `logout` (`sy_refresh_tokens`). |
+| CORS restringido al dominio del frontend | ✅ | `CorsConfigurationSource` con `setAllowedOrigins(<lista>)` desde `${cors.allowed-origins}` — **orígenes explícitos, nunca `*`**; por defecto `http://localhost:3000,http://localhost:5173`. Sin `allowCredentials` (innecesario con auth por header `Authorization: Bearer`). En un despliegue real se pasa el dominio público por variable de entorno. |
+| Sin secretos hardcodeados | ⚠️ Consciente | En Docker (la ruta de evaluación) **todos** los secretos vienen del `.env` (`JWT_SECRET`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `CORS_ALLOWED_ORIGINS`). `application.properties` conserva *fallbacks* (`jwt.secret`, `spring.datasource.password`) **solo** para poder arrancar el backend desde el IDE sin `.env`; no se usan cuando el contenedor recibe las variables. Es una decisión deliberada documentada — para endurecerlo se puede quitar el default de `jwt.secret` y dejar que la app falle al arrancar sin él. |
+| `.env` real fuera del repo | ✅ | `.env` está en `.gitignore` (raíz); solo se versiona `.env.example` con valores de plantilla. |
+
+Sin pendientes críticos. El único punto abierto (fallbacks de `application.properties`) es intencional y no aplica en el despliegue por Docker.
 
 ## Datos de demostración
 

@@ -345,7 +345,7 @@ Para trazabilidad con `requirements/Prototipo_DB.pdf` y con las versiones previa
 | `product_id` | BIGINT FK → `ma_products` | |
 | `unit_id` | BIGINT FK → `ma_units`, NULL = unidad base | Unidad de compra de la línea (`V13`). `quantity` y `unit_price` están en esta unidad; al recibir, se convierten a unidad base con el factor de `ma_product_units` |
 | `quantity`, `unit_price`, `discount`, `subtotal` | DECIMAL(15,4) | `discount` = monto ya calculado a partir de `discount_pct` |
-| `discount_pct` | DECIMAL(7,4) | Porcentaje de descuento de la línea (0-100); agregado en `V7`. Mismo enfoque que `tr_price_list_items.discount_pct` |
+| `discount_pct` | DECIMAL(7,4) | Porcentaje de descuento de la línea (0-100); agregado en `V7`. Mismo enfoque que `ma_price_list_items.discount_pct` |
 
 **`tr_purchase_receipts`**
 

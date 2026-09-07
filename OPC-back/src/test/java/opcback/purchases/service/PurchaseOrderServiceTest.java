@@ -158,6 +158,7 @@ class PurchaseOrderServiceTest {
         historyOrder.setStatus(PurchaseOrderStatus.SENT);
         historyOrder.setSupplier(supplier);
         historyOrder.setUserId(7L);
+        historyOrder.setBranchId(3L);
 
         Unit baseUnit = new Unit();
         baseUnit.setAbbreviation("UN");
@@ -191,6 +192,7 @@ class PurchaseOrderServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).responsibleName()).isEqualTo("Ana Torres");
         assertThat(result.get(0).status()).isEqualTo(PurchaseOrderStatus.SENT);
+        assertThat(result.get(0).branchId()).isEqualTo(3L);
     }
 
     @Test

@@ -5,10 +5,12 @@ import opcback.products.entity.Product;
 import opcback.products.entity.Unit;
 import opcback.products.repository.UnitRepository;
 import opcback.products.service.ProductUnitService;
+import opcback.purchases.dto.PurchaseHistoryItemResponse;
 import opcback.purchases.dto.PurchaseOrderCreateRequest;
 import opcback.purchases.dto.PurchaseOrderItemRequest;
 import opcback.purchases.dto.PurchaseOrderResponse;
 import opcback.purchases.entity.PurchaseOrder;
+import opcback.purchases.entity.PurchaseOrderItem;
 import opcback.purchases.entity.PurchaseOrderStatus;
 import opcback.purchases.entity.Supplier;
 import opcback.purchases.repository.PurchaseOrderItemRepository;
@@ -27,13 +29,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -137,6 +143,54 @@ class PurchaseOrderServiceTest {
         assertThatThrownBy(() -> purchaseOrderService.cancel(ORDER_ID, authentication))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("FULLY_RECEIVED");
+    }
+
+    @Test
+    void historicoFiltraPorEstadoYResuelveElNombreDelResponsable() {
+        Supplier supplier = new Supplier();
+        supplier.setId(1L);
+        supplier.setName("Proveedor de prueba");
+
+        PurchaseOrder historyOrder = new PurchaseOrder();
+        historyOrder.setId(200L);
+        historyOrder.setOrderNumber("OC-2026-000009");
+        historyOrder.setOrderDate(LocalDateTime.now());
+        historyOrder.setStatus(PurchaseOrderStatus.SENT);
+        historyOrder.setSupplier(supplier);
+        historyOrder.setUserId(7L);
+
+        Unit baseUnit = new Unit();
+        baseUnit.setAbbreviation("UN");
+        Product product = new Product();
+        product.setId(10L);
+        product.setSku("X-001");
+        product.setName("Producto X");
+        product.setBaseUnit(baseUnit);
+
+        PurchaseOrderItem item = new PurchaseOrderItem();
+        item.setPurchaseOrder(historyOrder);
+        item.setProduct(product);
+        item.setQuantity(new BigDecimal("3"));
+        item.setUnitPrice(new BigDecimal("1000"));
+        item.setDiscountPercentage(BigDecimal.ZERO);
+        item.setDiscount(BigDecimal.ZERO);
+        item.setSubtotal(new BigDecimal("3000"));
+
+        when(purchaseOrderItemRepository.findHistory(
+                isNull(), isNull(), eq(PurchaseOrderStatus.SENT), isNull(), isNull()))
+                .thenReturn(List.of(item));
+
+        User responsible = new User();
+        responsible.setId(7L);
+        responsible.setName("Ana Torres");
+        when(userRepository.findAllById(Set.of(7L))).thenReturn(List.of(responsible));
+
+        List<PurchaseHistoryItemResponse> result =
+                purchaseOrderService.history(null, null, PurchaseOrderStatus.SENT, null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).responsibleName()).isEqualTo("Ana Torres");
+        assertThat(result.get(0).status()).isEqualTo(PurchaseOrderStatus.SENT);
     }
 
     @Test

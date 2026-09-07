@@ -10,14 +10,12 @@ import opcback.products.entity.Product;
 import opcback.products.repository.ProductRepository;
 import opcback.products.service.ProductUnitService;
 import opcback.purchases.dto.PurchaseReceiptCreateRequest;
-import opcback.purchases.dto.PurchaseReceiptItemRequest;
 import opcback.purchases.dto.PurchaseReceiptResponse;
 import opcback.purchases.entity.PurchaseOrder;
 import opcback.purchases.entity.PurchaseOrderItem;
 import opcback.purchases.entity.PurchaseOrderStatus;
 import opcback.purchases.entity.PurchaseReceipt;
 import opcback.purchases.entity.Supplier;
-import opcback.purchases.repository.PurchaseOrderItemRepository;
 import opcback.purchases.repository.PurchaseOrderRepository;
 import opcback.purchases.repository.PurchaseReceiptItemRepository;
 import opcback.purchases.repository.PurchaseReceiptRepository;
@@ -35,6 +33,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -59,8 +58,6 @@ class PurchaseReceiptServiceTest {
 
     @Mock
     private PurchaseOrderRepository purchaseOrderRepository;
-    @Mock
-    private PurchaseOrderItemRepository purchaseOrderItemRepository;
     @Mock
     private PurchaseReceiptRepository purchaseReceiptRepository;
     @Mock
@@ -95,7 +92,7 @@ class PurchaseReceiptServiceTest {
                 inventoryMovementRepository, notificationService);
 
         purchaseReceiptService = new PurchaseReceiptService(
-                purchaseOrderRepository, purchaseOrderItemRepository, purchaseReceiptRepository,
+                purchaseOrderRepository, purchaseReceiptRepository,
                 purchaseReceiptItemRepository, userRepository, branchAccessService, inventoryMovementService,
                 productUnitService, notificationService);
 
@@ -103,7 +100,8 @@ class PurchaseReceiptServiceTest {
 
         User user = new User();
         user.setId(4L);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        // lenient: los tests que fallan antes de resolver el responsable no lo usan.
+        lenient().when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
         Product product = new Product();
         product.setId(PRODUCT_ID);
@@ -131,8 +129,8 @@ class PurchaseReceiptServiceTest {
         order.getItems().add(orderItem);
 
         when(purchaseOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
-        when(purchaseOrderItemRepository.findById(ORDER_ITEM_ID)).thenReturn(Optional.of(orderItem));
-        when(purchaseReceiptItemRepository.sumReceivedByPurchaseOrderItemId(ORDER_ITEM_ID)).thenReturn(BigDecimal.ZERO);
+        lenient().when(purchaseReceiptItemRepository.sumReceivedByPurchaseOrderItemId(ORDER_ITEM_ID))
+                .thenReturn(BigDecimal.ZERO);
 
         // Inventario existente antes de la recepción: 50 unidades a costo 100.
         inventory = new Inventory();
@@ -166,11 +164,10 @@ class PurchaseReceiptServiceTest {
     @Test
     void recepcionCompletaRecalculaElCostoPromedioPonderadoConElPrecioDeLaOrden() {
         stubHappyPath();
-        // 50 unidades a 100 + 10 unidades recibidas a 200 (precio de la orden)
+        // La orden pide 10 unidades: la recepción es total, se reciben las 10.
+        // 50 a 100 + 10 recibidas a 200 (precio de la orden)
         // -> (50*100 + 10*200) / (50+10) = 7000 / 60 = 116.6666667
-        PurchaseReceiptCreateRequest request = new PurchaseReceiptCreateRequest(
-                "recepción completa",
-                java.util.List.of(new PurchaseReceiptItemRequest(ORDER_ITEM_ID, new BigDecimal("10"))));
+        PurchaseReceiptCreateRequest request = new PurchaseReceiptCreateRequest("recepción completa");
 
         PurchaseReceiptResponse response = purchaseReceiptService.register(ORDER_ID, request, authentication);
 
@@ -188,7 +185,7 @@ class PurchaseReceiptServiceTest {
         caja.setAbbreviation("CJ");
         orderItem.setUnit(caja);
         orderItem.setUnitPrice(new BigDecimal("1000")); // $1000 por caja
-        orderItem.setQuantity(new BigDecimal("4"));      // orden: 4 cajas
+        orderItem.setQuantity(new BigDecimal("2"));      // orden: 2 cajas
 
         when(productUnitService.purchaseFactor(PRODUCT_ID, cajaUnitId)).thenReturn(new BigDecimal("5")); // 1 caja = 5 unidades
         when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
@@ -202,10 +199,9 @@ class PurchaseReceiptServiceTest {
         when(inventoryRepository.save(any(Inventory.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // recibo 2 cajas -> 10 unidades base a costo 1000/5 = 200 c/u
+        // recepción total = 2 cajas -> 10 unidades base a costo 1000/5 = 200 c/u
         // inventario previo 50 @ 100 -> (50*100 + 10*200) / 60 = 116.6666667
-        PurchaseReceiptCreateRequest request = new PurchaseReceiptCreateRequest(
-                null, java.util.List.of(new PurchaseReceiptItemRequest(ORDER_ITEM_ID, new BigDecimal("2"))));
+        PurchaseReceiptCreateRequest request = new PurchaseReceiptCreateRequest(null);
 
         purchaseReceiptService.register(ORDER_ID, request, authentication);
 
@@ -214,17 +210,13 @@ class PurchaseReceiptServiceTest {
     }
 
     @Test
-    void recepcionParcialQueExcedeLoPendienteSeRechaza() {
-        when(purchaseReceiptItemRepository.sumReceivedByPurchaseOrderItemId(ORDER_ITEM_ID))
-                .thenReturn(new BigDecimal("6"));
-
-        PurchaseReceiptCreateRequest request = new PurchaseReceiptCreateRequest(
-                "exceso",
-                java.util.List.of(new PurchaseReceiptItemRequest(ORDER_ITEM_ID, new BigDecimal("5"))));
+    void unaOrdenYaRecibidaPorCompletoNoAdmiteOtraRecepcion() {
+        order.setStatus(PurchaseOrderStatus.FULLY_RECEIVED);
 
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                        () -> purchaseReceiptService.register(ORDER_ID, request, authentication))
+                        () -> purchaseReceiptService.register(
+                                ORDER_ID, new PurchaseReceiptCreateRequest(null), authentication))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("excede lo pendiente por recibir");
+                .hasMessageContaining("no admite más recepciones");
     }
 }

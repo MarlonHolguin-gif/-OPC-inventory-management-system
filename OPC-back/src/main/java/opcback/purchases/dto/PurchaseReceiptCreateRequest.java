@@ -1,12 +1,10 @@
 package opcback.purchases.dto;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
-
-import java.util.List;
-
+/**
+ * Recepción de una orden de compra. La recepción es siempre total: se recibe
+ * todo lo pendiente de la orden o no se recibe nada (se cancela la orden).
+ */
 public record PurchaseReceiptCreateRequest(
-        String notes,
-        @NotEmpty(message = "La recepción debe tener al menos un ítem") List<@Valid PurchaseReceiptItemRequest> items
+        String notes
 ) {
 }

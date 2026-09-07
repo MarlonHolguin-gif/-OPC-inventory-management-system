@@ -12,6 +12,7 @@ public record ProductResponse(
         Long categoryId,
         String categoryName,
         Long baseUnitId,
+        String baseUnitName,
         String baseUnitAbbreviation,
         BigDecimal referencePrice,
         boolean active
@@ -25,6 +26,7 @@ public record ProductResponse(
                 product.getCategory().getId(),
                 product.getCategory().getName(),
                 product.getBaseUnit().getId(),
+                product.getBaseUnit().getName(),
                 product.getBaseUnit().getAbbreviation(),
                 product.getReferencePrice(),
                 product.isActive());

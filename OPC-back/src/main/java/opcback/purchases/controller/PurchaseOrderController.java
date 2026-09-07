@@ -7,6 +7,7 @@ import opcback.purchases.dto.PurchaseOrderCreateRequest;
 import opcback.purchases.dto.PurchaseOrderResponse;
 import opcback.purchases.dto.PurchaseReceiptCreateRequest;
 import opcback.purchases.dto.PurchaseReceiptResponse;
+import opcback.purchases.entity.PurchaseOrderStatus;
 import opcback.purchases.service.PurchaseOrderService;
 import opcback.purchases.service.PurchaseReceiptService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -48,9 +49,10 @@ public class PurchaseOrderController {
     public List<PurchaseHistoryItemResponse> history(
             @RequestParam(required = false) Long supplierId,
             @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) PurchaseOrderStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return purchaseOrderService.history(supplierId, productId, from, to);
+        return purchaseOrderService.history(supplierId, productId, status, from, to);
     }
 
     @GetMapping("/{id}")

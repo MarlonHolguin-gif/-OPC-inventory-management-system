@@ -1,6 +1,7 @@
 package opcback.purchases.service;
 
 import lombok.RequiredArgsConstructor;
+import opcback.auth.entity.User;
 import opcback.auth.repository.UserRepository;
 import opcback.exception.ResourceNotFoundException;
 import opcback.products.entity.Product;
@@ -31,6 +32,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -56,9 +59,18 @@ public class PurchaseOrderService {
         return toResponse(findOrderOrThrow(id));
     }
 
-    public List<PurchaseHistoryItemResponse> history(Long supplierId, Long productId, LocalDateTime from, LocalDateTime to) {
-        return purchaseOrderItemRepository.findHistory(supplierId, productId, from, to).stream()
-                .map(PurchaseHistoryItemResponse::from)
+    public List<PurchaseHistoryItemResponse> history(
+            Long supplierId, Long productId, PurchaseOrderStatus status, LocalDateTime from, LocalDateTime to) {
+        List<PurchaseOrderItem> items = purchaseOrderItemRepository.findHistory(supplierId, productId, status, from, to);
+        // Nombre del responsable resuelto en bloque: /api/users es solo para
+        // administradores, así que el frontend no puede resolverlo por su cuenta.
+        Map<Long, String> responsibleNames = userRepository.findAllById(
+                        items.stream().map(item -> item.getPurchaseOrder().getUserId()).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
+        return items.stream()
+                .map(item -> PurchaseHistoryItemResponse.from(
+                        item, responsibleNames.get(item.getPurchaseOrder().getUserId())))
                 .toList();
     }
 

@@ -85,13 +85,30 @@ export class DashboardController extends Controller {
     this.loadRotation();
   };
 
+  hasRotationDateFilter = computed(
+    () => Boolean(this.rotationFrom.value) || Boolean(this.rotationTo.value),
+  );
+
   setRotationFrom = (value) => {
     this.rotationFrom.value = value;
+    // "Hasta" nunca puede quedar antes de "Desde".
+    if (value && this.rotationTo.value && this.rotationTo.value < value) {
+      this.rotationTo.value = value;
+    }
     this.loadRotation();
   };
 
   setRotationTo = (value) => {
+    // Ignora una fecha "Hasta" anterior a "Desde".
+    if (value && this.rotationFrom.value && value < this.rotationFrom.value) return;
     this.rotationTo.value = value;
+    this.loadRotation();
+  };
+
+  clearRotationDates = () => {
+    if (!this.hasRotationDateFilter.value) return;
+    this.rotationFrom.value = '';
+    this.rotationTo.value = '';
     this.loadRotation();
   };
 

@@ -1,8 +1,66 @@
 /* --- Estilos del módulo Movimientos --- */
 
-/* Nota de alcance del historial (todas las sucursales / solo las asignadas). */
-.movement-history-scope {
-  margin: 0 0 14px;
-  font-size: 13px;
+/* La página llena la ventana (alto menos la barra superior) y no genera
+   scroll propio: el historial desplaza dentro de su caja. */
+.movements-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .movements-page {
+    height: calc(100vh - 64px);
+  }
+}
+
+/* La barra de filtros (con el botón "Registrar movimiento" incluido) queda
+   fija arriba; solo scrollea la caja del historial. */
+.movements-page .filter-bar {
+  flex-shrink: 0;
+}
+
+/* El historial se pagina (Pager estilo "1–50 de N" + flechas), sin scroll:
+   cada página muestra las filas de una sola línea que caben en la caja, y la
+   tabla ocupa exactamente el ancho disponible (table-layout: fixed). */
+.movements-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.movements-table-card table {
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.movements-table-card th,
+.movements-table-card td {
+  padding: 9px 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.movements-table-card thead th {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.movements-table-card > p {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-dim);
+}
+
+.movements-page .pager {
+  align-self: flex-end;
 }

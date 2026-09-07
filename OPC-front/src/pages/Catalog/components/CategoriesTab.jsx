@@ -1,8 +1,8 @@
 import { DataTable } from '@/components/DataTable';
-import { CrudToolbar } from '@/components/CrudToolbar';
 import { FormPanel } from '@/components/FormPanel';
 import { Modal } from '@/components/Modal';
-import { TextField } from '@/components/Field';
+import { FilterBar, FilterField } from '@/components/FilterBar';
+import { TextField, SelectField } from '@/components/Field';
 
 const COLUMNS = [
   { key: 'name', header: 'Nombre' },
@@ -10,38 +10,74 @@ const COLUMNS = [
   { key: 'active', header: 'Estado', render: (row) => (row.active ? 'Activa' : 'Inactiva') },
 ];
 
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Activa' },
+  { value: 'inactive', label: 'Inactiva' },
+];
+
 export function CategoriesTab({ controller }) {
   const form = controller.categoryForm;
   const values = form.form.value;
+  const filter = controller.categoryFilter;
+  const draft = filter.draft.value;
 
   return (
-    <section>
-      <DataTable
-        columns={COLUMNS}
-        rows={controller.categories.value}
-        empty="No hay categorías."
-        actions={(category) => (
-          <>
-            <button type="button" onClick={() => form.startEdit(category)}>
-              Editar
-            </button>
-            {category.active ? (
-              <button type="button" onClick={() => form.deactivate(category.id)}>
-                Desactivar
-              </button>
-            ) : (
-              <button type="button" onClick={() => form.reactivate(category.id)}>
-                Reactivar
-              </button>
-            )}
-            <button type="button" onClick={() => form.remove(category)}>
-              Eliminar
-            </button>
-          </>
-        )}
-      />
+    <div className="catalog-panel">
+      <FilterBar onSubmit={filter.apply}>
+        <FilterField>
+          <TextField
+            label="Nombre"
+            value={draft.name}
+            onChange={(value) => filter.set('name', value)}
+            placeholder="Filtra los resultados"
+          />
+        </FilterField>
+        <FilterField>
+          <SelectField
+            label="Estado"
+            value={draft.status}
+            onChange={(value) => filter.set('status', value)}
+            options={STATUS_OPTIONS}
+            placeholder="Todos"
+          />
+        </FilterField>
+        <FilterBar.Actions>
+          <button type="submit">Filtrar</button>
+          <button type="button" onClick={filter.clear}>
+            Limpiar filtros
+          </button>
+        </FilterBar.Actions>
+        <button type="button" className="button-link primary filter-bar-cta" onClick={form.openCreate}>
+          + Nueva categoría
+        </button>
+      </FilterBar>
 
-      <CrudToolbar label="Nueva categoría" onCreate={form.openCreate} />
+      <div className="catalog-table-card">
+        <DataTable
+          columns={COLUMNS}
+          rows={controller.filteredCategories.value}
+          empty="No hay categorías que coincidan con los filtros"
+          actions={(category) => (
+            <>
+              <button type="button" onClick={() => form.startEdit(category)}>
+                Editar
+              </button>
+              {category.active ? (
+                <button type="button" onClick={() => form.deactivate(category.id)}>
+                  Desactivar
+                </button>
+              ) : (
+                <button type="button" onClick={() => form.reactivate(category.id)}>
+                  Reactivar
+                </button>
+              )}
+              <button type="button" onClick={() => form.remove(category)}>
+                Eliminar
+              </button>
+            </>
+          )}
+        />
+      </div>
 
       {form.visible.value && (
         <Modal title={form.isEditing ? 'Editar categoría' : 'Nueva categoría'} onClose={form.close}>
@@ -66,6 +102,6 @@ export function CategoriesTab({ controller }) {
           </FormPanel>
         </Modal>
       )}
-    </section>
+    </div>
   );
 }

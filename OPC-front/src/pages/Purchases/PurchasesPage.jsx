@@ -9,9 +9,7 @@ export default function PurchasesPage() {
   const [activeTab, setActiveTab] = useState('orders');
 
   return (
-    <main>
-      <h1>Compras</h1>
-
+    <main className="purchases-page">
       <Tabs items={PURCHASES_TABS} active={activeTab} onSelect={setActiveTab} />
 
       {activeTab === 'orders' && <PurchaseOrdersPanel />}

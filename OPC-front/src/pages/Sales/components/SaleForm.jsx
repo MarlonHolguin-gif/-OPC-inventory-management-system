@@ -12,36 +12,49 @@ export function SaleForm({ controller }) {
   return (
     <AsyncBoundary loading={controller.loading.value}>
       <form className="op-form sale-form" onSubmit={(event) => controller.submit(event)} noValidate>
-        <SelectField
-          label="Sucursal"
-          value={controller.branchId.value}
-          onChange={controller.setBranchId}
-          options={branchOptions}
-          placeholder={null}
-        />
-        <SelectField
-          label="Lista de precios"
-          value={controller.priceListId.value}
-          onChange={controller.setPriceListId}
-          options={priceListOptions}
-          placeholder={priceListOptions.length === 0 ? '— no hay listas vigentes —' : null}
-        />
-        <SelectField
-          label="Cliente"
-          value={controller.customerId.value}
-          onChange={controller.setCustomerId}
-          options={customerOptions}
-          placeholder="— Venta de mostrador (sin cliente) —"
-        />
-
-        <h3>Ítems</h3>
-        <div className="table-scroll">
-          <SaleItemsTable controller={controller} />
+        <div className="op-form-head">
+          <div>
+            <SelectField
+              label="Sucursal"
+              value={controller.branchId.value}
+              onChange={controller.setBranchId}
+              options={branchOptions}
+              placeholder={null}
+            />
+          </div>
+          <div>
+            <SelectField
+              label="Lista de precios"
+              value={controller.priceListId.value}
+              onChange={controller.setPriceListId}
+              options={priceListOptions}
+              placeholder={priceListOptions.length === 0 ? '— no hay listas vigentes —' : null}
+            />
+          </div>
+          <div>
+            <SelectField
+              label="Cliente"
+              value={controller.customerId.value}
+              onChange={controller.setCustomerId}
+              options={customerOptions}
+              placeholder="— Venta de mostrador (sin cliente) —"
+            />
+          </div>
         </div>
 
-        <button type="button" onClick={controller.addItem} disabled={!controller.canAddItem.value}>
-          + Agregar ítem
-        </button>
+        <div className="op-items">
+          <div className="table-scroll">
+            <SaleItemsTable controller={controller} />
+          </div>
+          <button
+            type="button"
+            className="op-add-item"
+            onClick={controller.addItem}
+            disabled={!controller.canAddItem.value}
+          >
+            + Agregar ítem
+          </button>
+        </div>
 
         <div className="op-totals">
           <span>Subtotal: {totals.subtotal.toFixed(2)}</span>

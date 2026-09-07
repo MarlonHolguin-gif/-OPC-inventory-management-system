@@ -1,6 +1,7 @@
 import { useController } from '@/lib/useController';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { SelectField } from '@/components/Field';
+import { TopbarPortal } from '@/layout/TopbarSlot';
 import { DashboardController } from './DashboardController';
 import { SalesTrendCard } from './components/SalesTrendCard';
 import { RotationCard } from './components/RotationCard';
@@ -15,18 +16,19 @@ export default function DashboardPage() {
   const branchOptions = controller.availableBranches.value.map((b) => ({ value: b.id, label: b.name }));
 
   return (
-    <main>
-      <h1>Panel</h1>
-
+    <main className="dashboard-page">
       <AsyncBoundary variant="screen" loading={controller.loading.value}>
-        <SelectField
-          label="Sucursal"
-          value={controller.branchId.value}
-          onChange={controller.setBranchId}
-          options={branchOptions}
-          placeholder={null}
-          style={{ maxWidth: 320, marginBottom: 22 }}
-        />
+        <TopbarPortal>
+          <div className="dashboard-branch-picker">
+            <SelectField
+              label="Sucursal"
+              value={controller.branchId.value}
+              onChange={controller.setBranchId}
+              options={branchOptions}
+              placeholder={null}
+            />
+          </div>
+        </TopbarPortal>
 
         <div className="dashboard-kpi-grid">
           <SalesTrendCard salesTrend={controller.salesTrend.value} />

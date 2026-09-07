@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
-import { CrudToolbar } from '@/components/CrudToolbar';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
 import { TextField, SelectField } from '@/components/Field';
@@ -39,11 +38,7 @@ export default function SalesPage() {
   const customerOptions = controller.customers.value.map((c) => ({ value: c.id, label: c.name }));
 
   return (
-    <main>
-      <h1>Ventas</h1>
-
-      <CrudToolbar label="Registrar venta" onCreate={form.open} />
-
+    <main className="sales-page">
       <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <FilterBar onSubmit={(event) => controller.search(event)}>
           <FilterField>
@@ -96,14 +91,21 @@ export default function SalesPage() {
               Limpiar filtros
             </button>
           </FilterBar.Actions>
+          <button
+            type="button"
+            className="button-link primary filter-bar-cta"
+            onClick={form.open}
+          >
+            + Registrar venta
+          </button>
         </FilterBar>
 
-        <div className="table-scroll">
+        <div className="sales-table-card">
           <DataTable
             columns={COLUMNS_FOR(controller)}
             rows={controller.filteredResults.value}
             rowKey={(row, index) => `${row.saleId}-${row.productId}-${index}`}
-            empty="No hay ventas que coincidan con los filtros."
+            empty="No hay ventas que coincidan con los filtros"
           />
         </div>
       </AsyncBoundary>

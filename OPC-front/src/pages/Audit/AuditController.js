@@ -3,7 +3,6 @@ import { Controller } from '@/lib/Controller';
 import { UiStore } from '@/stores/UiStore';
 import { AuditService } from './services/AuditService';
 
-const PAGE_SIZE = 20;
 const EMPTY_FILTERS = { entityId: '', userId: '', from: '', to: '' };
 
 /**
@@ -18,6 +17,7 @@ export class AuditController extends Controller {
   loading = signal(true);
   searching = signal(false);
   expandedId = signal(null);
+  pageSize = signal(12); // lo ajusta la página según el alto disponible
 
   userNames = computed(() =>
     Object.fromEntries(this.users.value.map((user) => [user.id, user.name])),
@@ -48,7 +48,7 @@ export class AuditController extends Controller {
 
   applyFilters = (event) => {
     event?.preventDefault();
-    return this.fetch(0);
+    return this.fetch(0, { markSearching: true });
   };
 
   goToPage = (pageNumber) => this.fetch(pageNumber);
@@ -57,9 +57,16 @@ export class AuditController extends Controller {
     this.expandedId.value = this.expandedId.value === id ? null : id;
   };
 
+  setPageSize = (size) => {
+    if (size !== this.pageSize.value) {
+      this.pageSize.value = size;
+      this.fetch(this.pageInfo.value.number);
+    }
+  };
+
   #buildParams(pageNumber) {
     const f = this.filters.value;
-    const params = { page: pageNumber, size: PAGE_SIZE };
+    const params = { page: pageNumber, size: this.pageSize.value };
     if (f.entityId) params.entityId = f.entityId;
     if (f.userId) params.userId = f.userId;
     if (f.from) params.from = `${f.from}T00:00:00`;
@@ -67,8 +74,10 @@ export class AuditController extends Controller {
     return params;
   }
 
-  async fetch(pageNumber) {
-    this.searching.value = true;
+  async fetch(pageNumber, { markSearching = false } = {}) {
+    // Solo el envío del formulario de filtros pinta "Consultando…" en su
+    // botón; la navegación por páginas no debe tocar ese botón.
+    if (markSearching) this.searching.value = true;
     UiStore.clear();
     try {
       const page = await AuditService.search(this.#buildParams(pageNumber));
@@ -84,7 +93,7 @@ export class AuditController extends Controller {
     } catch {
       UiStore.fail('No se pudo consultar el registro de auditoría.');
     } finally {
-      this.searching.value = false;
+      if (markSearching) this.searching.value = false;
     }
   }
 }

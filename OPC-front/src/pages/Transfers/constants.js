@@ -10,6 +10,29 @@ export const TRANSFER_STATUS_LABELS = {
   CANCELLED: 'Cancelada',
 };
 
+// Dos pestañas: las transferencias en curso (con un sub-filtro por estado) y
+// el histórico de recibidas + el cumplimiento logístico en una sola tabla.
+export const TRANSFER_TABS = [
+  { id: 'transfers', label: 'Transferencias' },
+  { id: 'history', label: 'Histórico' },
+];
+
+// Sub-filtro de estado dentro de la pestaña "Transferencias".
+export const TRANSFER_ACTIVE_STATUSES = [
+  { id: 'REQUESTED', label: 'Solicitada' },
+  { id: 'IN_PREPARATION', label: 'En preparación' },
+  { id: 'IN_TRANSIT', label: 'En tránsito' },
+];
+
+// Estados que van al histórico, en el orden en que se muestran.
+export const TRANSFER_HISTORY_STATUSES = ['FULLY_RECEIVED', 'PARTIALLY_RECEIVED'];
+
+// Opciones del filtro "Estado" del histórico.
+export const TRANSFER_HISTORY_STATUS_OPTIONS = [
+  { value: 'FULLY_RECEIVED', label: 'Recibida completa' },
+  { value: 'PARTIALLY_RECEIVED', label: 'Recibida parcial' },
+];
+
 export const TRANSFER_URGENCY_LABELS = {
   LOW: 'Baja',
   MEDIUM: 'Media',

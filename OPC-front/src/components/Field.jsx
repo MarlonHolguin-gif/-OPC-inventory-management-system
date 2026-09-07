@@ -1,22 +1,31 @@
 import { useId } from 'react';
+import { blockNonIntegerKey, toIntegerString } from '@/lib/numberInput';
 
 /**
  * Campos de formulario controlados. Cada uno pinta su `<label>` + control y
  * llama `onChange(nextValue)` con el valor ya desempaquetado del evento.
+ *
+ * `type="number"` es siempre entero no negativo (todo el sistema lo es):
+ * bloquea el punto decimal y sanea lo que se pegue.
  */
 
 export function TextField({ id, label, value, onChange, type = 'text', ...rest }) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
+  const integer = type === 'number';
   return (
     <>
       <label htmlFor={fieldId}>{label}</label>
       <input
         id={fieldId}
         type={type}
+        inputMode={integer ? 'numeric' : undefined}
         value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
         {...rest}
+        onKeyDown={integer ? blockNonIntegerKey : rest.onKeyDown}
+        onChange={(event) =>
+          onChange(integer ? toIntegerString(event.target.value) : event.target.value)
+        }
       />
     </>
   );

@@ -1,0 +1,63 @@
+/* --- Estilos del módulo Catálogo --- */
+
+/* La página llena la ventana (alto menos la barra superior) y no genera
+   scroll propio: cada pestaña desplaza dentro de su caja. */
+.catalog-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .catalog-page {
+    height: calc(100vh - 64px);
+  }
+}
+.catalog-page .tabs {
+  flex-shrink: 0;
+}
+
+/* Contenido de una pestaña: barra de filtros fija arriba + tabla que
+   desplaza dentro de su caja. */
+.catalog-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.catalog-panel .filter-bar {
+  flex-shrink: 0;
+}
+.catalog-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.catalog-table-card table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.catalog-table-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+.catalog-table-card > p {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}

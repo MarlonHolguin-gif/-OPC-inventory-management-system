@@ -1,5 +1,6 @@
-import { signal } from '@preact/signals-react';
+import { signal, computed } from '@preact/signals-react';
 import { Controller } from '@/lib/Controller';
+import { ListFilter } from '@/lib/ListFilter';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
 import { GENERAL_ADMIN } from '@/constants/roles';
@@ -11,9 +12,30 @@ export class UsersController extends Controller {
   users = signal([]);
   branchesByUser = signal({}); // { userId: [branchId, ...] }
   loading = signal(true);
+  // Filtros en cliente con botón "Filtrar" (no filtra solo).
+  filter = new ListFilter({ name: '', role: '', branchId: '', status: '' });
 
   form = new UserFormController(this);
   branchesPanel = new UserBranchesController(this);
+
+  filteredUsers = computed(() => {
+    const { name, role, branchId, status } = this.filter.applied.value;
+    const query = name.trim().toLowerCase();
+    return this.users.value
+      .filter((user) => !role || user.roleCode === role)
+      .filter((user) => !status || (status === 'active') === Boolean(user.active))
+      .filter((user) => {
+        if (!branchId) return true;
+        if (user.roleCode === GENERAL_ADMIN) return true;
+        return (this.branchesByUser.value[user.id] ?? []).map(String).includes(String(branchId));
+      })
+      .filter(
+        (user) =>
+          !query ||
+          user.name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query),
+      );
+  });
 
   async onMount() {
     await BranchDirectoryStore.ensureLoaded();

@@ -1,7 +1,16 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardCard } from './DashboardCard';
 import { ChartTooltip } from './ChartTooltip';
-import { SERIES_1, SERIES_2, SERIES_3, GRID, TEXT_DIM, axisTickStyle, formatNumber } from '../constants';
+import {
+  SERIES_1,
+  SERIES_2,
+  SERIES_3,
+  GRID,
+  TEXT_DIM,
+  axisTickStyle,
+  formatNumber,
+  CHART_HEIGHT,
+} from '../constants';
 
 export function BranchComparisonCard({ comparison }) {
   return (
@@ -9,7 +18,7 @@ export function BranchComparisonCard({ comparison }) {
       <div className="dashboard-comparison-charts">
         <div>
           <h3>Ventas del mes por sucursal</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <BarChart data={comparison ?? []}>
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis dataKey="branchName" tick={axisTickStyle} axisLine={{ stroke: GRID }} tickLine={false} />
@@ -33,7 +42,7 @@ export function BranchComparisonCard({ comparison }) {
         </div>
         <div>
           <h3>Alertas de stock y transferencias activas</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <BarChart data={comparison ?? []}>
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis dataKey="branchName" tick={axisTickStyle} axisLine={{ stroke: GRID }} tickLine={false} />

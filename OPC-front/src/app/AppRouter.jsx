@@ -11,7 +11,6 @@ import PurchasesPage from '@/pages/Purchases/PurchasesPage';
 import PurchaseOrderDetailPage from '@/pages/Purchases/PurchaseOrderDetailPage';
 import TransfersPage from '@/pages/Transfers/TransfersPage';
 import TransferDetailPage from '@/pages/Transfers/TransferDetailPage';
-import ComplianceReportPage from '@/pages/Transfers/ComplianceReportPage';
 import UsersPage from '@/pages/Users/UsersPage';
 import BranchesPage from '@/pages/Branches/BranchesPage';
 import SuppliersPage from '@/pages/Suppliers/SuppliersPage';
@@ -55,7 +54,6 @@ export default function AppRouter() {
             <Route path={PATHS.priceLists} element={<PriceListsPage />} />
             <Route path={PATHS.catalog} element={<CatalogPage />} />
             <Route path={PATHS.customers} element={<CustomersPage />} />
-            <Route path={PATHS.logisticsCompliance} element={<ComplianceReportPage />} />
             <Route path={PATHS.audit} element={<AuditPage />} />
           </Route>
         </Route>

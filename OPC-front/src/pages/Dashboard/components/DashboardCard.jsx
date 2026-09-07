@@ -1,5 +1,5 @@
 /**
- * Sección del panel. `loading` (dato aún null) muestra "Cargando…".
+ * Sección del panel. Mientras `loading` (dato aún null) no pinta nada.
  *  - normal: es su propia tarjeta (.panel-card).
  *  - `bare`: tarjeta propia dentro de la grilla de 4 KPIs de arriba — mismo
  *    marco que las demás, pero con los ajustes de la grilla (.dashboard-kpi).
@@ -13,7 +13,7 @@ export function DashboardCard({ title, loading = false, wide = false, bare = fal
   return (
     <section className={className}>
       <h2>{title}</h2>
-      {loading ? <p>Cargando…</p> : children}
+      {loading ? null : children}
     </section>
   );
 }

@@ -1,5 +1,71 @@
 /* Vista de consulta de auditoría (Auditoría). */
 
+/* La página llena la ventana y no genera scroll propio: se navega por
+   páginas con pestañas numeradas; la caja de la tabla solo desplaza cuando
+   se abre el detalle (diff) de una fila. */
+.audit-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .audit-page {
+    height: calc(100vh - 64px);
+  }
+}
+.audit-page .filter-bar,
+.audit-intro,
+.audit-footer {
+  flex-shrink: 0;
+}
+.audit-intro {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.audit-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.audit-table-card .audit-table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.audit-table-card .audit-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.audit-empty {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.audit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .audit-table td button {
   padding: 5px 12px;
 }
@@ -51,13 +117,3 @@
   color: var(--text-dim);
 }
 
-.audit-pager {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font: 12.5px var(--font-mono);
-  color: var(--text-dim);
-}
-.audit-pager button {
-  margin: 0;
-}

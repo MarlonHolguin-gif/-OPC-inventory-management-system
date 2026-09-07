@@ -14,6 +14,11 @@ export const GRID = 'var(--border)';
 
 export const axisTickStyle = { fill: TEXT_DIM, fontSize: 12 };
 
+// Alto de las dos gráficas de la "Comparativa entre sucursales" (las demás
+// llenan su caja con .kpi-chart-fill). Compacto para que la rejilla de KPIs
+// se quede con la mayor parte del alto del Panel.
+export const CHART_HEIGHT = 150;
+
 export function formatNumber(value) {
   return Number(value).toLocaleString('es-CO', { maximumFractionDigits: 0 });
 }
@@ -24,10 +29,6 @@ export function monthLabel(month) {
     month: 'short',
     year: '2-digit',
   });
-}
-
-export function horizontalBarHeight(count) {
-  return Math.max(160, count * 38 + 40);
 }
 
 // Etiquetas de los estados "activos" de una transferencia (los que puede

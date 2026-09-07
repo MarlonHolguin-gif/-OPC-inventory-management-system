@@ -74,9 +74,7 @@ export default function InventoryPage() {
   ];
 
   return (
-    <main>
-      <h1>Inventario</h1>
-
+    <main className="inventory-page">
       <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <div className="inventory-toolbar">
           <SearchBar
@@ -97,20 +95,22 @@ export default function InventoryPage() {
           </label>
         </div>
 
-        <DataTable
-          columns={columns}
-          rows={controller.filtered.value}
-          empty="No hay productos."
-          actions={
-            canEdit
-              ? (product) => (
-                  <button type="button" onClick={() => threshold.startEdit(product)}>
-                    Editar umbrales
-                  </button>
-                )
-              : undefined
-          }
-        />
+        <div className="inventory-table-card">
+          <DataTable
+            columns={columns}
+            rows={controller.filtered.value}
+            empty="No hay productos."
+            actions={
+              canEdit
+                ? (product) => (
+                    <button type="button" onClick={() => threshold.startEdit(product)}>
+                      Editar umbrales
+                    </button>
+                  )
+                : undefined
+            }
+          />
+        </div>
       </AsyncBoundary>
 
       {threshold.visible.value && (

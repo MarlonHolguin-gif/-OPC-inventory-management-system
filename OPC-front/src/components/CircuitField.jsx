@@ -3,7 +3,7 @@ import './CircuitField.css';
 /**
  * Fondo de marca: nodos conectados por trazas en ángulo recto —lenguaje de
  * placa de circuito— en el verde de acento y a baja opacidad, para acompañar
- * sin distraer. Lo comparten el acceso y la pantalla de carga (LoadingScreen).
+ * sin distraer. Es el fondo de la pantalla de acceso.
  * Es estático salvo dos «chispas» que recorren un par de trazas y los nodos
  * que laten; ambas cosas se detienen con `prefers-reduced-motion` (ver
  * CircuitField.css). Decorativo: `aria-hidden`.

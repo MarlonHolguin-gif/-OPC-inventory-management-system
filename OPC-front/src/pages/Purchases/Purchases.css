@@ -1,18 +1,105 @@
-/* Separación entre los grupos del listado de órdenes (recibidas, pendientes
-   por recibir, pendientes por enviar, canceladas). */
-.purchase-order-group {
-  margin-top: 28px;
+/* --- Estilos del módulo Compras --- */
+
+/* La página llena la ventana (alto menos la barra superior) y no genera
+   scroll propio: la tabla desplaza dentro de su caja. */
+.purchases-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .purchases-page {
+    height: calc(100vh - 64px);
+  }
+}
+.purchases-page .tabs {
+  flex-shrink: 0;
 }
 
-.purchase-order-group:first-of-type {
-  margin-top: 16px;
+/* Contenido de una pestaña: columna flex que ocupa el alto restante. */
+.purchases-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* La barra de filtros / acciones queda fija arriba. */
+.purchases-panel .filter-bar,
+.purchase-orders-toolbar {
+  flex-shrink: 0;
 }
 
-.purchase-order-group h2 {
-  margin-bottom: 10px;
+/* Barra de "Órdenes de compra": filtro por estado a la izquierda, botón de
+   alta a la derecha; ambos estáticos. */
+.purchase-orders-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
-
-.purchase-order-group-count {
+.purchase-orders-toolbar .status-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.purchase-orders-toolbar .status-toggle button {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 7px 12px;
+  font: 600 12.5px var(--font-body);
+  background: var(--surface);
   color: var(--text-dim);
-  font-weight: 400;
+}
+.purchase-orders-toolbar .status-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.purchase-orders-toolbar .status-toggle button.is-active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Detalle de una orden: enlace para volver al listado. */
+.purchase-order-back {
+  display: inline-flex;
+  margin-bottom: 14px;
+}
+
+/* Caja de la tabla: toma el alto restante y desplaza dentro (vertical y
+   horizontal), con los nombres de columna fijos. */
+.purchases-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.purchases-table-card table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.purchases-table-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+.purchases-table-card > p {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
 }

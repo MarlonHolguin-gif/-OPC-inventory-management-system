@@ -3,12 +3,13 @@ import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
-import { SelectField } from '@/components/Field';
-import { PATHS } from '@/app/routes';
+import { Tabs } from '@/components/Tabs';
 import { TransfersController } from './TransfersController';
 import { TransferForm } from './components/TransferForm';
+import { TransferHistoryTab } from './components/TransferHistoryTab';
 import {
-  ROUTE_PRIORITY_FILTER_OPTIONS,
+  TRANSFER_ACTIVE_STATUSES,
+  TRANSFER_TABS,
   routePriorityBadgeClass,
   routePriorityLabel,
   urgencyBadgeClass,
@@ -16,7 +17,7 @@ import {
 } from './constants';
 import './Transfers.css';
 
-function sectionColumns(controller) {
+function activeColumns(controller) {
   return [
     {
       key: 'transferNumber',
@@ -46,46 +47,19 @@ function sectionColumns(controller) {
 }
 
 function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function TransfersPage() {
   const controller = useController(TransfersController);
-  const sections = controller.sections.value;
+  const tab = controller.activeTab.value;
+  const status = controller.activeStatus.value;
   const lastUpdated = controller.lastUpdated.value;
+  const loaded = controller.transfers.value !== null;
 
   return (
-    <main>
-      <div className="panel-header">
-        <h1>Transferencias entre sucursales</h1>
-        <div className="panel-refresh">
-          {lastUpdated && <span>Actualizado {formatTime(lastUpdated)}</span>}
-          <button type="button" onClick={() => controller.tick()} disabled={controller.refreshing.value}>
-            {controller.refreshing.value ? 'Actualizando…' : 'Actualizar ahora'}
-          </button>
-        </div>
-      </div>
-
-      <div className="button-row">
-        <button type="button" className="button-link primary" onClick={controller.form.open}>
-          + Solicitar transferencia
-        </button>
-        {controller.isAdmin.value && (
-          <Link to={PATHS.logisticsCompliance} className="button-link">
-            Ver cumplimiento logístico
-          </Link>
-        )}
-      </div>
-
-      <div className="transfers-filter">
-        <SelectField
-          label="Filtrar por prioridad de ruta"
-          value={controller.routePriorityFilter.value}
-          onChange={controller.setRoutePriorityFilter}
-          options={ROUTE_PRIORITY_FILTER_OPTIONS}
-          placeholder={null}
-        />
-      </div>
+    <main className="transfers-page">
+      <Tabs items={TRANSFER_TABS} active={tab} onSelect={controller.setTab} />
 
       {controller.form.visible.value && (
         <Modal title="Solicitar transferencia" onClose={controller.form.close} size="wide">
@@ -93,18 +67,45 @@ export default function TransfersPage() {
         </Modal>
       )}
 
-      <AsyncBoundary variant="screen" loading={controller.transfers.value === null}>
-        {sections.length === 0 && <p>No hay transferencias registradas todavía.</p>}
-
-        {sections.map((section) => (
-          <div className="status-section" key={section.status}>
-            <h2>
-              {section.label} <span className="count">{section.items.length}</span>
-            </h2>
-            <DataTable columns={sectionColumns(controller)} rows={section.items} />
+      {tab === 'history' ? (
+        <TransferHistoryTab />
+      ) : (
+        <>
+          <div className="transfers-toolbar">
+            <button type="button" className="button-link primary" onClick={controller.form.open}>
+              + Solicitar transferencia
+            </button>
+            <div className="status-toggle" role="group" aria-label="Filtrar transferencias por estado">
+              {TRANSFER_ACTIVE_STATUSES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={option.id === status ? 'is-active' : ''}
+                  onClick={() => controller.setActiveStatus(option.id)}
+                >
+                  {option.label} {loaded ? `(${controller.countForStatus(option.id)})` : ''}
+                </button>
+              ))}
+            </div>
+            <span className="transfers-refresh">
+              {lastUpdated && <span>Actualizado {formatTime(lastUpdated)}</span>}
+              <button type="button" onClick={() => controller.tick()} disabled={controller.refreshing.value}>
+                {controller.refreshing.value ? 'Actualizando…' : 'Actualizar ahora'}
+              </button>
+            </span>
           </div>
-        ))}
-      </AsyncBoundary>
+
+          <AsyncBoundary loading={!loaded}>
+            <div className="transfers-table-card">
+              <DataTable
+                columns={activeColumns(controller)}
+                rows={controller.rowsForStatus(status)}
+                empty="No hay transferencias en este estado"
+              />
+            </div>
+          </AsyncBoundary>
+        </>
+      )}
     </main>
   );
 }

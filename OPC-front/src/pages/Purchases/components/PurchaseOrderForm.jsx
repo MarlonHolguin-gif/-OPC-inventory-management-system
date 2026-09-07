@@ -15,35 +15,48 @@ export function PurchaseOrderForm({ controller }) {
   return (
     <AsyncBoundary loading={controller.loading.value}>
       <form className="op-form" onSubmit={(event) => controller.submit(event)} noValidate>
-        <SelectField
-          label="Proveedor"
-          value={controller.supplierId.value}
-          onChange={controller.setSupplierId}
-          options={supplierOptions}
-          placeholder={null}
-        />
-        <SelectField
-          label="Sucursal"
-          value={controller.branchId.value}
-          onChange={controller.setBranchId}
-          options={branchOptions}
-          placeholder={null}
-        />
-        <TextField
-          label="Plazo de pago"
-          value={controller.paymentTerms.value}
-          onChange={controller.setPaymentTerms}
-          placeholder="ej. 30 días"
-        />
-
-        <h3>Ítems</h3>
-        <div className="table-scroll">
-          <PurchaseItemsTable controller={controller} />
+        <div className="op-form-head">
+          <div>
+            <SelectField
+              label="Proveedor"
+              value={controller.supplierId.value}
+              onChange={controller.setSupplierId}
+              options={supplierOptions}
+              placeholder={null}
+            />
+          </div>
+          <div>
+            <SelectField
+              label="Sucursal"
+              value={controller.branchId.value}
+              onChange={controller.setBranchId}
+              options={branchOptions}
+              placeholder={null}
+            />
+          </div>
+          <div>
+            <TextField
+              label="Plazo de pago"
+              value={controller.paymentTerms.value}
+              onChange={controller.setPaymentTerms}
+              placeholder="ej. 30 días"
+            />
+          </div>
         </div>
 
-        <button type="button" onClick={controller.addItem} disabled={!controller.canAddItem.value}>
-          + Agregar ítem
-        </button>
+        <div className="op-items">
+          <div className="table-scroll">
+            <PurchaseItemsTable controller={controller} />
+          </div>
+          <button
+            type="button"
+            className="op-add-item"
+            onClick={controller.addItem}
+            disabled={!controller.canAddItem.value}
+          >
+            + Agregar ítem
+          </button>
+        </div>
 
         <div className="op-totals">
           <span>Subtotal: {totals.subtotal.toFixed(2)}</span>

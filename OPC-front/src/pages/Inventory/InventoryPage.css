@@ -1,9 +1,74 @@
+/* La página de Inventario llena la ventana (alto menos la barra superior) y
+   no genera scroll propio: la tabla desplaza dentro de su caja. */
+.inventory-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .inventory-page {
+    height: calc(100vh - 64px);
+  }
+}
+
 .inventory-toolbar {
   display: flex;
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  flex-shrink: 0;
+  margin: 0;
+}
+/* Buscador a la izquierda, ocupando el ancho disponible. */
+.inventory-toolbar input[type='search'] {
+  flex: 1;
+  min-width: 220px;
+  max-width: 460px;
+}
+/* Selector de sucursal pegado a la derecha. */
+.inventory-toolbar label {
+  margin: 0 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.inventory-toolbar select {
+  width: auto;
+}
+
+/* Caja de la tabla: toma el alto restante y desplaza dentro (vertical y
+   horizontal), con los nombres de columna fijos. */
+.inventory-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.inventory-table-card table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.inventory-table-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+/* Mensaje de "sin productos" dentro de la caja. */
+.inventory-table-card > p {
+  margin: 0;
+  padding: 16px;
+  color: var(--text-dim);
 }
 
 .alert-badge {

@@ -1,30 +1,35 @@
+import { IntegerInput } from '@/components/IntegerInput';
+
 /**
  * Tabla editable de ítems de una orden de compra: producto, unidad de compra,
  * cantidad, precio por unidad, porcentaje de descuento y subtotal en vivo.
+ *
+ * Columnas de ancho fijo (colgroup + `table-layout: fixed`): ningún campo se
+ * agranda al elegir una unidad de nombre largo; si no caben, el contenedor
+ * `.table-scroll` desplaza horizontalmente.
  */
-// Equivalente en unidad base bajo la casilla de cantidad — bloque propio para
-// no ensanchar ni empujar el input.
-const UNIT_HINT_STYLE = {
-  marginTop: 2,
-  fontSize: 11,
-  fontFamily: 'var(--font-mono)',
-  color: 'var(--text-dim)',
-  whiteSpace: 'nowrap',
-};
-
 export function PurchaseItemsTable({ controller }) {
   const items = controller.items.value;
   const subtotals = controller.lineSubtotals.value;
 
   return (
-    <table>
+    <table className="op-items-table">
+      <colgroup>
+        <col style={{ width: '23%' }} />
+        <col style={{ width: '17%' }} />
+        <col style={{ width: '13%' }} />
+        <col style={{ width: '15%' }} />
+        <col style={{ width: '12%' }} />
+        <col style={{ width: '12%' }} />
+        <col style={{ width: '8%' }} />
+      </colgroup>
       <thead>
         <tr>
           <th>Producto</th>
           <th>Unidad de compra</th>
           <th>Cantidad</th>
-          <th>Precio (por unidad de compra)</th>
-          <th>Descuento (%)</th>
+          <th>Precio (por unidad)</th>
+          <th>Descuento %</th>
           <th>Subtotal</th>
           <th aria-label="Acciones" />
         </tr>
@@ -59,30 +64,26 @@ export function PurchaseItemsTable({ controller }) {
               </select>
             </td>
             <td>
-              <input
-                type="number"
-                step="1"
+              <IntegerInput
                 min="1"
                 value={item.quantity}
                 onChange={(event) => controller.updateItem(index, 'quantity', event.target.value)}
               />
               {controller.baseEquivalentFor(item) ? (
-                <div style={UNIT_HINT_STYLE}>= {controller.baseEquivalentFor(item)} en unidad base</div>
+                <div className="op-items-unit-hint">
+                  = {controller.baseEquivalentFor(item)} en unidad base
+                </div>
               ) : null}
             </td>
             <td>
-              <input
-                type="number"
-                step="1"
+              <IntegerInput
                 min="0"
                 value={item.unitPrice}
                 onChange={(event) => controller.updateItem(index, 'unitPrice', event.target.value)}
               />
             </td>
             <td>
-              <input
-                type="number"
-                step="1"
+              <IntegerInput
                 min="0"
                 max="100"
                 value={item.discountPercentage}

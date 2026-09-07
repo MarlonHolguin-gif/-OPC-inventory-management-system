@@ -3,7 +3,7 @@ import { Controller } from '@/lib/Controller';
 import { UiStore } from '@/stores/UiStore';
 import { PurchaseService } from '../services/PurchaseService';
 
-const EMPTY_FILTERS = { supplierId: '', productId: '', from: '', to: '' };
+const EMPTY_FILTERS = { supplierId: '', productId: '', status: '', from: '', to: '' };
 
 /**
  * Histórico de compras: una fila por producto comprado, filtrable por
@@ -51,6 +51,7 @@ export class PurchaseHistoryController extends Controller {
       const params = {};
       if (currentFilters.supplierId) params.supplierId = currentFilters.supplierId;
       if (currentFilters.productId) params.productId = currentFilters.productId;
+      if (currentFilters.status) params.status = currentFilters.status;
       if (currentFilters.from) params.from = `${currentFilters.from}T00:00:00`;
       if (currentFilters.to) params.to = `${currentFilters.to}T23:59:59`;
       this.rows.value = await PurchaseService.history(params);

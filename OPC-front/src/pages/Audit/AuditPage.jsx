@@ -1,6 +1,8 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect } from 'react';
 import { useController } from '@/lib/useController';
+import { usePageSize } from '@/lib/usePageSize';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
+import { Pager } from '@/components/Pager';
 import { AuditController } from './AuditController';
 import { AuditFilters } from './components/AuditFilters';
 import { AuditDiff } from './components/AuditDiff';
@@ -16,19 +18,26 @@ export default function AuditPage() {
   const rows = controller.rows.value;
   const page = controller.pageInfo.value;
   const expandedId = controller.expandedId.value;
+  const [cardRef, pageSize] = usePageSize();
+
+  useEffect(() => {
+    if (!controller.loading.value) controller.setPageSize(pageSize);
+  }, [pageSize, controller]);
 
   return (
-    <main>
-      <h1>Auditoría de productos</h1>
-      <p>Registro de cada alta, modificación y baja del catálogo de productos: quién lo hizo, cuándo y qué cambió.</p>
+    <main className="audit-page">
+      <p className="audit-intro">
+        Registro de cada alta, modificación y baja del catálogo de productos: quién lo hizo, cuándo y
+        qué cambió.
+      </p>
 
       <AuditFilters controller={controller} />
 
-      <AsyncBoundary variant="screen" loading={controller.loading.value}>
-        {rows.length === 0 ? (
-          <p>No hay eventos de auditoría que coincidan con los filtros.</p>
-        ) : (
-          <>
+      <AsyncBoundary loading={controller.loading.value}>
+        <div className="audit-table-card" ref={cardRef}>
+          {rows.length === 0 ? (
+            <p className="audit-empty">No hay eventos de auditoría que coincidan con los filtros.</p>
+          ) : (
             <table className="audit-table">
               <thead>
                 <tr>
@@ -75,27 +84,19 @@ export default function AuditPage() {
                 })}
               </tbody>
             </table>
+          )}
+        </div>
 
-            <div className="audit-pager">
-              <button
-                type="button"
-                onClick={() => controller.goToPage(page.number - 1)}
-                disabled={page.first || controller.searching.value}
-              >
-                ← Anterior
-              </button>
-              <span>
-                Página {page.number + 1} de {page.totalPages} · {page.totalElements} eventos
-              </span>
-              <button
-                type="button"
-                onClick={() => controller.goToPage(page.number + 1)}
-                disabled={page.last || controller.searching.value}
-              >
-                Siguiente →
-              </button>
-            </div>
-          </>
+        {rows.length > 0 && (
+          <div className="audit-footer">
+            <Pager
+              page={page.number}
+              pageSize={controller.pageSize.value}
+              total={page.totalElements}
+              onPrev={() => controller.goToPage(page.number - 1)}
+              onNext={() => controller.goToPage(page.number + 1)}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </main>

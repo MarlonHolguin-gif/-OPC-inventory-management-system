@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
@@ -6,6 +6,7 @@ import { TextField } from '@/components/Field';
 import { formatCurrency, formatPercentage } from '@/lib/format';
 import { PurchaseOrderDetailController, pendingQuantity } from './controllers/PurchaseOrderDetailController';
 import { purchaseOrderStatusLabel } from './constants';
+import './Purchases.css';
 
 const ITEM_COLUMNS = [
   { key: 'productSku', header: 'SKU' },
@@ -24,8 +25,6 @@ const ITEM_COLUMNS = [
     align: 'right',
     render: (item) => formatPercentage(item.discountPercentage),
   },
-  { key: 'receivedQuantity', header: 'Recibido', align: 'right' },
-  { key: 'pending', header: 'Pendiente', align: 'right', render: (item) => pendingQuantity(item) },
 ];
 
 export default function PurchaseOrderDetailPage() {
@@ -53,6 +52,9 @@ function PurchaseOrderDetailBody({ controller, order }) {
 
   return (
     <>
+      <Link to="/compras" className="button-link purchase-order-back">
+        ← Volver a compras
+      </Link>
       <h1>Orden {order.orderNumber}</h1>
       <p>
         Proveedor: {order.supplierName} — Estado: <strong>{purchaseOrderStatusLabel(order.status)}</strong>
@@ -92,13 +94,16 @@ function PurchaseOrderDetailBody({ controller, order }) {
 
       {controller.canReceive.value ? (
         <form onSubmit={(event) => controller.submit(event)} noValidate>
-          <h2>Registrar recepción de mercancía</h2>
+          <h2>Recepción de mercancía</h2>
+          <p>
+            La recepción es total: se recibe toda la mercancía pendiente y la orden pasa a{' '}
+            <strong>recibida completa</strong>. Si no llegó completa, cancela la orden.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Producto</th>
-                <th>Pendiente</th>
-                <th>Cantidad a recibir ahora</th>
+                <th>Cantidad a recibir</th>
               </tr>
             </thead>
             <tbody>
@@ -108,16 +113,6 @@ function PurchaseOrderDetailBody({ controller, order }) {
                     {item.productSku} — {item.productName} <small>({item.unitAbbreviation})</small>
                   </td>
                   <td>{pendingQuantity(item)}</td>
-                  <td>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      max={pendingQuantity(item)}
-                      value={controller.receiveQuantities.value[item.id] ?? '0'}
-                      onChange={(event) => controller.setReceiveQuantity(item.id, event.target.value)}
-                    />
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -126,7 +121,7 @@ function PurchaseOrderDetailBody({ controller, order }) {
           <TextField label="Notas" value={controller.notes.value} onChange={controller.setNotes} />
 
           <button type="submit" disabled={submitting}>
-            {submitting ? 'Registrando…' : 'Confirmar recepción'}
+            {submitting ? 'Registrando…' : 'Confirmar recepción completa'}
           </button>
         </form>
       ) : (

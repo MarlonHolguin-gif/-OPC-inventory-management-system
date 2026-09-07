@@ -1,10 +1,12 @@
+import { useEffect } from 'react';
 import { useController } from '@/lib/useController';
+import { usePageSize } from '@/lib/usePageSize';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { DataTable } from '@/components/DataTable';
-import { CrudToolbar } from '@/components/CrudToolbar';
 import { Modal } from '@/components/Modal';
 import { TextField, SelectField } from '@/components/Field';
 import { FilterBar, FilterField } from '@/components/FilterBar';
+import { Pager } from '@/components/Pager';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { formatDateTime } from '@/lib/format';
 import { MovementsController } from './MovementsController';
@@ -26,16 +28,17 @@ export default function MovementsPage() {
   const controller = useController(MovementsController);
   const form = controller.form;
   const filters = controller.filters.value;
+  const [cardRef, pageSize] = usePageSize();
+
+  useEffect(() => {
+    controller.setPageSize(pageSize);
+  }, [pageSize, controller]);
 
   const branchOptions = BranchDirectoryStore.all.value.map((b) => ({ value: b.id, label: b.name }));
   const productOptions = controller.products.value.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }));
 
   return (
-    <main>
-      <h1>Movimientos de inventario</h1>
-
-      <CrudToolbar label="Registrar movimiento" onCreate={form.open} />
-
+    <main className="movements-page">
       <AsyncBoundary variant="screen" loading={controller.loading.value}>
         <FilterBar onSubmit={(event) => controller.search(event)}>
           <FilterField>
@@ -89,21 +92,30 @@ export default function MovementsPage() {
               Limpiar filtros
             </button>
           </FilterBar.Actions>
+          <button
+            type="button"
+            className="button-link primary filter-bar-cta"
+            onClick={form.open}
+          >
+            + Registrar movimiento
+          </button>
         </FilterBar>
 
-        <p className="movement-history-scope">
-          {controller.isAdmin.value
-            ? 'Movimientos de todas las sucursales.'
-            : 'Movimientos de tus sucursales asignadas.'}
-        </p>
-
-        <div className="table-scroll">
+        <div className="movements-table-card" ref={cardRef}>
           <DataTable
             columns={HISTORY_COLUMNS(controller)}
-            rows={controller.history.value}
-            empty="No hay movimientos que coincidan con los filtros."
+            rows={controller.pageRows.value}
+            empty="No hay movimientos que coincidan con los filtros"
           />
         </div>
+
+        <Pager
+          page={controller.currentPage.value}
+          pageSize={controller.pageSize.value}
+          total={controller.history.value.length}
+          onPrev={() => controller.setPage(controller.currentPage.value - 1)}
+          onNext={() => controller.setPage(controller.currentPage.value + 1)}
+        />
       </AsyncBoundary>
 
       {form.visible.value && (

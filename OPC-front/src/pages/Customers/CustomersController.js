@@ -1,7 +1,11 @@
-import { signal, computed } from '@preact/signals-react';
+import { computed } from '@preact/signals-react';
 import { CrudListController } from '@/lib/CrudListController';
+import { ListFilter } from '@/lib/ListFilter';
 import { CustomerService } from './services/CustomerService';
 import { CustomerFormController } from './controllers/CustomerFormController';
+
+const documentText = (customer) =>
+  `${customer.documentType ?? ''} ${customer.documentNumber ?? ''}`.trim().toLowerCase();
 
 export class CustomersController extends CrudListController {
   service = CustomerService;
@@ -11,16 +15,17 @@ export class CustomersController extends CrudListController {
     reactivate: 'No se pudo reactivar el cliente.',
   };
 
-  search = signal('');
+  // Filtros en cliente con botón "Filtrar".
+  filter = new ListFilter({ name: '', document: '', status: '' });
   form = new CustomerFormController(this);
 
   filtered = computed(() => {
-    const term = this.search.value.trim().toLowerCase();
-    if (!term) return this.items.value;
-    return this.items.value.filter((customer) => customer.name.toLowerCase().includes(term));
+    const { name, document, status } = this.filter.applied.value;
+    const nameQuery = name.trim().toLowerCase();
+    const documentQuery = document.trim().toLowerCase();
+    return this.items.value
+      .filter((customer) => !nameQuery || (customer.name ?? '').toLowerCase().includes(nameQuery))
+      .filter((customer) => !documentQuery || documentText(customer).includes(documentQuery))
+      .filter((customer) => !status || (status === 'active') === Boolean(customer.active));
   });
-
-  setSearch = (value) => {
-    this.search.value = value;
-  };
 }

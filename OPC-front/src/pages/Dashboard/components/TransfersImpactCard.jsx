@@ -8,24 +8,29 @@ import {
   TEXT_DIM,
   axisTickStyle,
   formatNumber,
-  horizontalBarHeight,
   transferStatusLabel,
 } from '../constants';
 
 export function TransfersImpactCard({ transfersImpact }) {
+  const isEmpty =
+    transfersImpact &&
+    !transfersImpact.activeTransfersAsOrigin &&
+    !transfersImpact.activeTransfersAsDestination &&
+    transfersImpact.byProduct.length === 0;
+
   return (
     <DashboardCard title="Transferencias activas y su impacto" loading={!transfersImpact} bare>
-      {transfersImpact && (
+      {isEmpty && <p className="kpi-empty">No hay información que mostrar</p>}
+
+      {transfersImpact && !isEmpty && (
         <>
-          <div className="stat-row">
-            <div className="stat-tile">
-              <span className="stat-label">Como sucursal origen</span>
-              <span className="stat-value">{transfersImpact.activeTransfersAsOrigin}</span>
-            </div>
-            <div className="stat-tile">
-              <span className="stat-label">Como sucursal destino</span>
-              <span className="stat-value">{transfersImpact.activeTransfersAsDestination}</span>
-            </div>
+          <div className="stat-inline">
+            <span>
+              Como sucursal origen <strong>{transfersImpact.activeTransfersAsOrigin}</strong>
+            </span>
+            <span>
+              Como sucursal destino <strong>{transfersImpact.activeTransfersAsDestination}</strong>
+            </span>
           </div>
 
           {transfersImpact.statusBreakdown.length > 0 && (
@@ -40,44 +45,46 @@ export function TransfersImpactCard({ transfersImpact }) {
           )}
 
           {transfersImpact.byProduct.length === 0 ? (
-            <p>No hay transferencias activas que involucren esta sucursal.</p>
+            <p>Sin impacto por producto para mostrar.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={horizontalBarHeight(transfersImpact.byProduct.length)}>
-              <BarChart data={transfersImpact.byProduct} layout="vertical" margin={{ left: 8 }}>
-                <CartesianGrid stroke={GRID} horizontal={false} />
-                <XAxis
-                  type="number"
-                  tick={axisTickStyle}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={formatNumber}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="productSku"
-                  tick={axisTickStyle}
-                  axisLine={false}
-                  tickLine={false}
-                  width={78}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
-                <Legend wrapperStyle={{ fontSize: 12.5, color: TEXT_DIM }} />
-                <Bar
-                  dataKey="projectedOutbound"
-                  name="Sale (origen)"
-                  fill={SERIES_1}
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={16}
-                />
-                <Bar
-                  dataKey="projectedInbound"
-                  name="Entra (destino)"
-                  fill={SERIES_2}
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={16}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="kpi-chart-fill">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={transfersImpact.byProduct} layout="vertical" margin={{ left: 8 }}>
+                  <CartesianGrid stroke={GRID} horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={axisTickStyle}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={formatNumber}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="productSku"
+                    tick={axisTickStyle}
+                    axisLine={false}
+                    tickLine={false}
+                    width={78}
+                  />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
+                  <Legend wrapperStyle={{ fontSize: 12.5, color: TEXT_DIM }} />
+                  <Bar
+                    dataKey="projectedOutbound"
+                    name="Sale (origen)"
+                    fill={SERIES_1}
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={16}
+                  />
+                  <Bar
+                    dataKey="projectedInbound"
+                    name="Entra (destino)"
+                    fill={SERIES_2}
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={16}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </>
       )}

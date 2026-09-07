@@ -1,81 +1,154 @@
 /* --- Estilos del módulo Panel (Dashboard) --- */
 
-/* Los 4 KPIs de arriba: cada uno es su propia caja (.panel-card), del mismo
-   tamaño, repartidas en una rejilla fija de 2x2. Rejilla fija (no auto-fit,
-   que dejaba a veces 3+1 con el cuarto suelto); minmax(0,1fr) evita que el
-   SVG de Recharts desborde su celda; align-items:stretch iguala la altura de
-   las dos cajas de cada fila. */
+/* El Panel llena la ventana (alto de .app-content menos la barra superior) y
+   reparte ese alto entre la rejilla de KPIs y la comparativa, sin scroll de
+   página. Solo hace scroll si de verdad no cabe (p. ej. admin en una pantalla
+   muy baja). */
+.dashboard-page {
+  /* Alto de la ventana menos la barra superior (~64 px). */
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+@supports not (height: 100dvh) {
+  .dashboard-page {
+    height: calc(100vh - 64px);
+  }
+}
+
+/* Selector de sucursal: vive en el hueco de la barra superior (.topbar-slot),
+   al lado del saludo, y solo mientras el Panel está montado. Etiqueta y
+   desplegable en línea, sin margen propio. */
+.dashboard-branch-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dashboard-branch-picker label {
+  margin: 0;
+  white-space: nowrap;
+}
+.dashboard-branch-picker select {
+  width: auto;
+  min-width: 200px;
+  padding: 6px 9px;
+  font-size: 13px;
+}
+
+/* Los 4 KPIs: rejilla 2x2 que se estira para llenar el alto disponible del
+   Panel. Las dos filas se reparten la altura por igual (grid-auto-rows: 1fr).
+   minmax(0,1fr) evita que el SVG de Recharts desborde su celda. */
 .dashboard-kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
-  align-items: stretch;
-  margin-bottom: 28px;
+  grid-auto-rows: 1fr;
+  gap: 14px;
+  flex: 1;
+  min-height: 380px;
 }
 @media (max-width: 900px) {
   .dashboard-kpi-grid {
     grid-template-columns: 1fr;
+    grid-auto-rows: minmax(240px, 1fr);
+    flex: 1 0 auto;
   }
 }
 .dashboard-kpi {
-  /* El ResponsiveContainer de Recharts fija un width en px sobre su SVG
-     hijo; sin min-width:0 el ítem se desborda de su columna. */
+  /* Sin min-width:0 el SVG de Recharts desborda la columna. */
   min-width: 0;
-  /* El espaciado entre cajas lo da el `gap` de la grilla, no el margen que
-     .panel-card trae por defecto (si no, la separación vertical se duplica). */
+  /* El aire entre cajas lo da el `gap` de la grilla, no el margen de
+     .panel-card. */
   margin-bottom: 0;
-  /* Columna flex: así un hijo con `flex:1` (la gráfica que se estira) puede
-     llenar la altura que la grilla le dio al card por `align-items:stretch`. */
+  /* La altura la fija la fila de la rejilla. Columna flex: el contenido que no
+     es gráfica (título, controles, cifras) ocupa lo justo y la gráfica se
+     estira para llenar el resto — así la caja nunca necesita scroll (salvo la
+     tabla de "stock bajo", que scrollea dentro con su cabecera fija). */
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
-.dashboard-kpi h2 {
-  margin-bottom: 12px;
+/* Cajas compactas: poco relleno y poco aire entre el título y su gráfica. */
+.dashboard-kpi,
+.dashboard-section-wide {
+  padding: 14px;
+}
+.dashboard-kpi h2,
+.dashboard-section-wide h2 {
+  margin-bottom: 6px;
+}
+.dashboard-kpi h2,
+.dashboard-kpi .rotation-controls,
+.dashboard-kpi .stat-inline,
+.dashboard-kpi .transfer-status-breakdown,
+.dashboard-kpi .rotation-caption {
+  flex-shrink: 0;
 }
 
-/* Contenedor de gráfica que ocupa toda la altura restante del card, con un
-   mínimo para que no se aplaste cuando el card es el más bajo de su fila. */
-.dashboard-chart-fill {
+/* Envoltura de gráfica que llena la altura sobrante de la caja. */
+.kpi-chart-fill {
   flex: 1;
-  min-height: 220px;
+  min-height: 0;
 }
-/* Separador sutil entre KPIs contiguos en la misma fila. */
-.dashboard-section-wide {
-  grid-column: 1 / -1;
+
+/* Mensaje de "sin datos": centrado en el espacio libre de la caja. */
+.kpi-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+/* "Productos próximos a agotarse": la tabla desplaza dentro de la caja con
+   los títulos de columna fijos, para que al hacer scroll se vea de qué trata. */
+.kpi-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+.dashboard-kpi .kpi-table-scroll table {
+  overflow: visible;
+  margin: 0;
+}
+.dashboard-kpi .kpi-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+/* Comparativa entre sucursales (solo admin): bajo la rejilla, alto natural
+   compacto; la rejilla de KPIs se queda con el resto del alto del Panel. */
+.dashboard-page > .dashboard-section-wide {
+  flex-shrink: 0;
+  margin-bottom: 0;
 }
 .dashboard-comparison-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
 }
 .dashboard-comparison-charts h3 {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
-/* Fila de cifras clave (ej. transferencias como origen/destino). */
-.stat-row {
+/* Cifras clave en línea (transferencias como origen / destino): etiqueta y
+   número juntos, sin caja, para ocupar poco. */
+.stat-inline {
   display: flex;
-  gap: 14px;
-  margin-bottom: 18px;
-}
-.stat-tile {
-  flex: 1;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.stat-label {
-  font: 600 11px var(--font-body);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-bottom: 10px;
+  font: 12.5px var(--font-body);
   color: var(--text-dim);
 }
-.stat-value {
-  font: 700 22px var(--font-heading);
+.stat-inline strong {
+  margin-left: 4px;
+  font: 700 14px var(--font-mono);
   color: var(--text);
 }
 
@@ -84,8 +157,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 8px 10px;
+  margin-bottom: 8px;
+}
+/* Botón para descartar el rango de fechas de la rotación. Siempre ocupa su
+   sitio (visibility) para que al mostrarse/ocultarse no mueva los campos. */
+.rotation-clear {
+  margin: 0;
+  padding: 5px 10px;
+  font: 600 12px var(--font-body);
+}
+.rotation-clear.is-hidden {
+  visibility: hidden;
 }
 .rotation-toggle {
   display: inline-flex;
@@ -125,19 +208,19 @@
   font: 12.5px var(--font-body);
 }
 .rotation-caption {
-  margin: 8px 0 0;
-  font-size: 12px;
+  margin: 6px 0 0;
+  font-size: 11.5px;
   color: var(--text-dim);
 }
 
 /* Desglose por estado de las transferencias activas (card de impacto). */
 .transfer-status-breakdown {
   list-style: none;
-  margin: 0 0 18px;
+  margin: 0 0 10px;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .transfer-status-breakdown li {
   display: flex;
@@ -146,8 +229,8 @@
   background: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 3px 12px;
-  font: 12.5px var(--font-body);
+  padding: 2px 10px;
+  font: 12px var(--font-body);
   color: var(--text-dim);
 }
 .transfer-status-breakdown li strong {

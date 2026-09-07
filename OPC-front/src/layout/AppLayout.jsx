@@ -1,4 +1,4 @@
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { AuthStore } from '@/stores/AuthStore';
 import { ThemeStore } from '@/stores/ThemeStore';
@@ -10,6 +10,7 @@ import { LogoutIcon } from '@/components/icons/NavIcons';
 import NotificationBell from '@/components/NotificationBell/NotificationBell';
 import { GlobalAlert } from '@/components/Alert';
 import { BrandMark } from '@/components/BrandMark';
+import { TopbarSlotContext } from './topbarSlotContext';
 import './AppLayout.css';
 
 function RailItem({ to, label, icon: Icon }) {
@@ -23,6 +24,9 @@ function RailItem({ to, label, icon: Icon }) {
 
 export default function AppLayout() {
   const { pathname } = useLocation();
+  // Nodo del hueco de la barra superior; se resuelve tras el primer render
+  // (ref callback -> estado) para que el contexto lo entregue a las páginas.
+  const [topbarSlot, setTopbarSlot] = useState(null);
 
   // Los mensajes de UiStore son globales; al cambiar de módulo se descartan
   // (antes cada página tenía su propio estado de error local).
@@ -63,9 +67,12 @@ export default function AppLayout() {
 
       <div className="app-content">
         <header className="app-topbar" title={`${email ?? ''} — ${roleName(role)}`}>
-          <span className="topbar-greeting">
-            Buen día, <strong>{name ?? email ?? ''}</strong>
-          </span>
+          <div className="topbar-start">
+            <span className="topbar-greeting">
+              Buen día, <strong>{name ?? email ?? ''}</strong>
+            </span>
+            <div className="topbar-slot" ref={setTopbarSlot} />
+          </div>
 
           <div className="topbar-actions">
             <NotificationBell />
@@ -90,7 +97,9 @@ export default function AppLayout() {
         </header>
 
         <GlobalAlert />
-        <Outlet />
+        <TopbarSlotContext.Provider value={topbarSlot}>
+          <Outlet />
+        </TopbarSlotContext.Provider>
       </div>
     </div>
   );

@@ -350,12 +350,29 @@ hr {
 .op-form {
   max-width: none;
 }
+/* Menos aire vertical entre campos: dentro del modal el alto es limitado y
+   conviene aprovecharlo, no espaciar tanto. */
+.op-form label {
+  margin: 8px 0 4px;
+}
+/* Encabezado de contexto (sucursal, lista de precios, proveedor…): en rejilla
+   para usar el ancho del modal en lugar de una columna larga. Cada campo va
+   en su propio contenedor para que etiqueta y control queden juntos. */
+.op-form-head {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 4px 16px;
+  margin-bottom: 8px;
+}
+.op-form-head > div > label:first-of-type {
+  margin-top: 0;
+}
 /* Fila de totales al pie de esos formularios. */
 .op-totals {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  margin: 8px 0 16px;
+  margin: 6px 0 10px;
   font: 13.5px var(--font-mono);
   color: var(--text-dim);
 }
@@ -371,6 +388,74 @@ hr {
 }
 .table-scroll > table {
   margin-bottom: 0;
+}
+
+/* Sección de ítems de una operación: la tabla crece con las filas y desplaza
+   (vertical) al pasar de cierta altura, con los títulos de columna fijos
+   (sticky); el botón "Agregar ítem" queda pegado bajo la última fila. */
+.op-items {
+  margin: 0 0 4px;
+}
+.op-items .table-scroll {
+  max-height: 42vh;
+  overflow: auto;
+  margin: 0;
+}
+.op-add-item {
+  margin: 6px 0 0;
+}
+
+/* Columnas de ancho proporcional fijo (colgroup + `table-layout: fixed`):
+   todo cabe en el ancho del modal, ningún campo se agranda al elegir una
+   unidad de nombre largo. El scroll horizontal solo aparece si el contenido
+   de una celda (p. ej. un subtotal enorme) no cabe. */
+.op-items-table {
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: visible;
+  border-radius: 0;
+}
+.op-items-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+.op-items-table th,
+.op-items-table td {
+  padding: 7px 9px;
+  overflow-wrap: break-word;
+}
+.op-items-table input,
+.op-items-table select {
+  width: 100%;
+  padding: 6px 7px;
+  font-size: 13px;
+}
+.op-items-table input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.op-items-table input[type='number']::-webkit-inner-spin-button,
+.op-items-table input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.op-items-table td button {
+  margin: 0;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+/* Equivalente en unidad base bajo la casilla de cantidad: puede repartirse en
+   dos líneas antes que ensanchar la columna. */
+.op-items-unit-hint {
+  margin-top: 2px;
+  font: 11px var(--font-mono);
+  line-height: 1.3;
+  color: var(--text-dim);
 }
 
 /* Botón circular de ícono genérico — lo comparten el de alternar tema

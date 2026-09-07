@@ -38,6 +38,13 @@
   margin: 0;
 }
 
+/* Botón de alta ("+ Registrar…") dentro de la barra de filtros, empujado al
+   extremo derecho de la fila. */
+.filter-bar-cta {
+  margin-left: auto;
+  align-self: flex-end;
+}
+
 @media (max-width: 560px) {
   .filter-field,
   .filter-field input,

@@ -3,7 +3,6 @@ import { Controller } from '@/lib/Controller';
 import { AuthStore } from '@/stores/AuthStore';
 import { BranchDirectoryStore } from '@/stores/BranchDirectoryStore';
 import { UiStore } from '@/stores/UiStore';
-import { GENERAL_ADMIN } from '@/constants/roles';
 import { MovementService } from './services/MovementService';
 import { MovementFormController } from './controllers/MovementFormController';
 
@@ -21,10 +20,28 @@ export class MovementsController extends Controller {
   filters = signal({ ...EMPTY_FILTERS });
   loading = signal(true);
   searching = signal(false);
+  page = signal(0);
+  pageSize = signal(10); // lo ajusta la página según el alto disponible
 
   form = new MovementFormController(this);
 
-  isAdmin = computed(() => AuthStore.role.value === GENERAL_ADMIN);
+  pageCount = computed(() => Math.max(1, Math.ceil(this.history.value.length / this.pageSize.value)));
+
+  currentPage = computed(() => Math.min(this.page.value, this.pageCount.value - 1));
+
+  pageRows = computed(() => {
+    const size = this.pageSize.value;
+    const start = this.currentPage.value * size;
+    return this.history.value.slice(start, start + size);
+  });
+
+  setPage = (page) => {
+    this.page.value = page;
+  };
+
+  setPageSize = (size) => {
+    this.pageSize.value = size;
+  };
 
   availableBranches = computed(() => {
     const own = AuthStore.branches.value;
@@ -42,6 +59,7 @@ export class MovementsController extends Controller {
       ]);
       this.products.value = products;
       this.history.value = history;
+      this.page.value = 0;
     } catch {
       UiStore.fail('No se pudo cargar el historial de movimientos.');
     } finally {
@@ -74,6 +92,7 @@ export class MovementsController extends Controller {
       if (f.from) params.from = `${f.from}T00:00:00`;
       if (f.to) params.to = `${f.to}T23:59:59`;
       this.history.value = await MovementService.history(params);
+      this.page.value = 0;
     } catch {
       UiStore.fail('No se pudo consultar el historial de movimientos.');
     } finally {

@@ -1,5 +1,6 @@
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { SelectField } from '@/components/Field';
+import { IntegerInput } from '@/components/IntegerInput';
 import { MOVEMENT_TYPES } from '../constants';
 
 export function MovementForm({ controller }) {
@@ -37,10 +38,8 @@ export function MovementForm({ controller }) {
         />
 
         <label htmlFor="movementQuantity">Cantidad</label>
-        <input
+        <IntegerInput
           id="movementQuantity"
-          type="number"
-          step="1"
           min="1"
           value={controller.quantity.value}
           onChange={(event) => controller.setQuantity(event.target.value)}

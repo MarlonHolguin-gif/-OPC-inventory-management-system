@@ -1,5 +1,6 @@
 import { DataTable } from '@/components/DataTable';
 import { SelectField } from '@/components/Field';
+import { IntegerInput } from '@/components/IntegerInput';
 
 const ITEM_COLUMNS = [
   { key: 'productSku', header: 'SKU' },
@@ -17,17 +18,19 @@ export function PriceListItemsPanel({ controller, products }) {
   }));
 
   return (
-    <>
-      <DataTable
-        columns={ITEM_COLUMNS}
-        rows={list.items}
-        empty="Esta lista no tiene precios cargados."
-        actions={(item) => (
-          <button type="button" onClick={() => controller.remove(item.productId)}>
-            Eliminar
-          </button>
-        )}
-      />
+    <div className="price-list-items">
+      <div className="price-list-items-scroll">
+        <DataTable
+          columns={ITEM_COLUMNS}
+          rows={list.items}
+          empty="Esta lista no tiene precios cargados."
+          actions={(item) => (
+            <button type="button" onClick={() => controller.remove(item.productId)}>
+              Eliminar
+            </button>
+          )}
+        />
+      </div>
 
       <form onSubmit={(event) => controller.upsert(event)} noValidate>
         <h3>Agregar / actualizar precio</h3>
@@ -38,16 +41,14 @@ export function PriceListItemsPanel({ controller, products }) {
           options={productOptions}
         />
         <label htmlFor="priceListItemPrice">Precio</label>
-        <input
+        <IntegerInput
           id="priceListItemPrice"
-          type="number"
-          step="0.01"
           min="0"
           value={itemForm.price}
           onChange={(event) => controller.setItemField('price', event.target.value)}
         />
         <button type="submit">Guardar precio</button>
       </form>
-    </>
+    </div>
   );
 }

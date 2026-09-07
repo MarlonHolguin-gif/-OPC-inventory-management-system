@@ -1,5 +1,151 @@
 /* --- Estilos del módulo Transferencias --- */
 
+/* La página llena la ventana (alto menos la barra superior) y no genera
+   scroll propio: cada pestaña desplaza dentro de su caja. */
+.transfers-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .transfers-page {
+    height: calc(100vh - 64px);
+  }
+}
+.transfers-page .tabs,
+.transfers-toolbar {
+  flex-shrink: 0;
+}
+
+/* Barra estática de la pestaña "Transferencias": solicitar + sub-filtro de
+   estado + refresco. */
+.transfers-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.transfers-toolbar .status-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.transfers-toolbar .status-toggle button {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 7px 12px;
+  font: 600 12.5px var(--font-body);
+  background: var(--surface);
+  color: var(--text-dim);
+}
+.transfers-toolbar .status-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.transfers-toolbar .status-toggle button.is-active {
+  background: var(--accent);
+  color: var(--bg);
+}
+.transfers-refresh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font: 12.5px var(--font-mono);
+  color: var(--text-dim);
+}
+.transfers-refresh button {
+  margin: 0;
+  padding: 5px 12px;
+}
+
+/* Caja de la tabla de una pestaña de estado: toma el alto restante y
+   desplaza dentro (vertical y horizontal), con los nombres de columna fijos. */
+.transfers-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.transfers-table-card table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.transfers-table-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+.transfers-table-card > p {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+/* Pestaña "Histórico": barra de filtros (fechas + prioridad de ruta) fija
+   arriba; debajo, una sola tabla (recibidas + cumplimiento) con scroll y
+   cabecera de columnas fija. */
+.transfers-history {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.transfers-history .filter-bar {
+  flex-shrink: 0;
+}
+/* Botón que abre el modal de cumplimiento: separado del resto de acciones. */
+.compliance-open-btn {
+  align-self: flex-end;
+  margin-left: 24px;
+}
+.transfers-history-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.transfers-history-body table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.transfers-history-body thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+.transfers-history-body > p {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
 /* Línea de tiempo de estados de una transferencia (detalle) — horizontal en
    pantallas anchas, vertical en angostas. */
 .transfer-timeline {
@@ -148,73 +294,8 @@
   margin-bottom: 10px;
 }
 
-/* Filtro por prioridad de ruta del listado de transferencias. */
-.transfers-filter {
-  max-width: 320px;
-  margin-bottom: 18px;
-}
-
-/* Panel de transferencias activas: secciones por estado + indicador de
-   refresco. */
-.panel-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.panel-refresh {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font: 12.5px var(--font-mono);
-  color: var(--text-dim);
-}
-.panel-refresh button {
-  margin: 0;
-  padding: 5px 12px;
-}
-.status-section {
-  margin-bottom: 26px;
-}
-.status-section h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.status-section .count {
-  font: 600 12px var(--font-mono);
-  color: var(--text-dim);
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 9px;
-}
-
-/* Reporte de cumplimiento logístico: gráfica + tabla en una sola tarjeta. */
-.compliance-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 22px;
-  margin-bottom: 22px;
-}
-.compliance-panel .compliance-chart-wrap {
-  border: none;
-  background: none;
-  padding: 0;
-  margin-bottom: 0;
-  overflow-x: auto;
-}
-.compliance-panel table {
-  border: none;
-  border-radius: 0;
-  border-top: 1px solid var(--border);
-  margin: 20px 0 0;
-}
-
-/* Gráfica de barras agrupadas hecha a mano (sin librería, skill dataviz). */
+/* Cumplimiento logístico (modal del histórico): gráfica de barras agrupadas
+   hecha a mano + tabla. Sin librería de gráficas (skill dataviz). */
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
@@ -237,7 +318,6 @@
   flex-shrink: 0;
 }
 .compliance-chart-wrap {
-  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 20px 22px;
@@ -248,10 +328,7 @@
   display: block;
   max-width: 100%;
 }
-.chart-gridline {
-  stroke: var(--border);
-  stroke-width: 1;
-}
+.chart-gridline,
 .chart-baseline {
   stroke: var(--border);
   stroke-width: 1;
@@ -278,3 +355,4 @@
   stroke: var(--text);
   stroke-width: 1.5;
 }
+

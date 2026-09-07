@@ -1,0 +1,53 @@
+/* --- Estilos del módulo Clientes --- */
+
+/* La página llena la ventana (alto menos la barra superior) y no genera
+   scroll propio: la tabla desplaza dentro de su caja. */
+.customers-page {
+  height: calc(100dvh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+@supports not (height: 100dvh) {
+  .customers-page {
+    height: calc(100vh - 64px);
+  }
+}
+.customers-page .filter-bar {
+  flex-shrink: 0;
+}
+
+/* Caja de la tabla: toma el alto restante y desplaza dentro (vertical y
+   horizontal), con los nombres de columna fijos. */
+.customers-table-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.customers-table-card table {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.customers-table-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--border);
+}
+.customers-table-card > p {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}

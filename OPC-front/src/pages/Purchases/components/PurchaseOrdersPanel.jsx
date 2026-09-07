@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
-import { CrudToolbar } from '@/components/CrudToolbar';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { Modal } from '@/components/Modal';
 import { formatCurrency, formatDateTime } from '@/lib/format';
 import { PurchaseOrdersController } from '../PurchaseOrdersController';
-import { PURCHASE_ORDER_GROUPS, purchaseOrderStatusLabel } from '../constants';
+import { PURCHASE_ORDER_VIEWS, purchaseOrderStatusLabel } from '../constants';
 import { PurchaseOrderForm } from './PurchaseOrderForm';
 
 const COLUMNS = [
@@ -24,39 +23,43 @@ const COLUMNS = [
 export function PurchaseOrdersPanel() {
   const controller = useController(PurchaseOrdersController);
   const form = controller.form;
-  const orders = controller.orders.value;
+  const activeView = controller.statusView.value;
 
   return (
-    <>
-      <CrudToolbar label="Nueva orden de compra" onCreate={form.openCreate} />
+    <div className="purchases-panel">
+      <div className="purchase-orders-toolbar">
+        <button type="button" className="button-link primary" onClick={form.openCreate}>
+          + Nueva orden de compra
+        </button>
+        <div className="status-toggle" role="group" aria-label="Filtrar órdenes por estado">
+          {PURCHASE_ORDER_VIEWS.map((view) => (
+            <button
+              key={view.id}
+              type="button"
+              className={view.id === activeView ? 'is-active' : ''}
+              onClick={() => controller.setStatusView(view.id)}
+            >
+              {view.label} ({controller.countFor(view.id)})
+            </button>
+          ))}
+        </div>
+      </div>
 
       <AsyncBoundary variant="screen" loading={controller.loading.value}>
-        {PURCHASE_ORDER_GROUPS.map((group) => {
-          const rows = orders.filter((order) => group.statuses.includes(order.status));
-          return (
-            <section key={group.id} className="purchase-order-group">
-              <h2>
-                {group.title} <span className="purchase-order-group-count">({rows.length})</span>
-              </h2>
-              <div className="table-scroll">
-                <DataTable
-                  columns={COLUMNS}
-                  rows={rows}
-                  empty={group.empty}
-                  actions={
-                    group.id === 'pendingSend'
-                      ? (order) => (
-                          <button type="button" onClick={() => form.openEdit(order)}>
-                            Editar
-                          </button>
-                        )
-                      : undefined
-                  }
-                />
-              </div>
-            </section>
-          );
-        })}
+        <div className="purchases-table-card">
+          <DataTable
+            columns={COLUMNS}
+            rows={controller.filteredOrders.value}
+            empty="No hay órdenes de compra en esta vista"
+            actions={(order) =>
+              order.status === 'DRAFT' ? (
+                <button type="button" onClick={() => form.openEdit(order)}>
+                  Editar
+                </button>
+              ) : null
+            }
+          />
+        </div>
       </AsyncBoundary>
 
       {form.visible.value && (
@@ -68,6 +71,6 @@ export function PurchaseOrdersPanel() {
           <PurchaseOrderForm controller={form} />
         </Modal>
       )}
-    </>
+    </div>
   );
 }

@@ -97,12 +97,12 @@ export class SaleFormController extends Controller {
   unitOptionsFor(item) {
     const product = this.products.value.find((candidate) => String(candidate.id) === String(item.productId));
     if (!product) return [];
-    const base = { value: '', label: `${product.baseUnitAbbreviation} (unidad base)` };
+    const base = { value: '', label: `${product.baseUnitName} (unidad base)` };
     const alternatives = (this.unitsByProductId.value[product.id] ?? [])
       .filter((unit) => unit.isSaleUnit)
       .map((unit) => ({
         value: String(unit.unitId),
-        label: `${unit.unitAbbreviation} (× ${Number(unit.conversionFactor)})`,
+        label: `${unit.unitName} (× ${Number(unit.conversionFactor)})`,
       }));
     return [base, ...alternatives];
   }

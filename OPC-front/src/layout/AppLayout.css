@@ -95,6 +95,22 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Lado izquierdo de la barra: saludo + hueco que rellena la página activa
+   (el selector de sucursal del Panel se portalea aquí). */
+.topbar-start {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  min-width: 0;
+}
+.topbar-slot {
+  display: flex;
+  align-items: center;
+}
+.topbar-slot:empty {
+  display: none;
+}
+
 .topbar-greeting {
   font: 14px var(--font-body);
   color: var(--text-dim);

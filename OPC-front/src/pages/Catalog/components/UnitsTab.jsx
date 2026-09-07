@@ -1,8 +1,8 @@
 import { DataTable } from '@/components/DataTable';
-import { CrudToolbar } from '@/components/CrudToolbar';
 import { FormPanel } from '@/components/FormPanel';
 import { Modal } from '@/components/Modal';
-import { TextField } from '@/components/Field';
+import { FilterBar, FilterField } from '@/components/FilterBar';
+import { TextField, SelectField } from '@/components/Field';
 
 const COLUMNS = [
   { key: 'name', header: 'Nombre' },
@@ -10,38 +10,74 @@ const COLUMNS = [
   { key: 'active', header: 'Estado', render: (unit) => (unit.active ? 'Activa' : 'Inactiva') },
 ];
 
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Activa' },
+  { value: 'inactive', label: 'Inactiva' },
+];
+
 export function UnitsTab({ controller }) {
   const form = controller.unitForm;
   const values = form.form.value;
+  const filter = controller.unitFilter;
+  const draft = filter.draft.value;
 
   return (
-    <section>
-      <DataTable
-        columns={COLUMNS}
-        rows={controller.units.value}
-        empty="No hay unidades de medida."
-        actions={(unit) => (
-          <>
-            <button type="button" onClick={() => form.startEdit(unit)}>
-              Editar
-            </button>
-            {unit.active ? (
-              <button type="button" onClick={() => form.deactivate(unit.id)}>
-                Desactivar
-              </button>
-            ) : (
-              <button type="button" onClick={() => form.reactivate(unit.id)}>
-                Reactivar
-              </button>
-            )}
-            <button type="button" onClick={() => form.remove(unit)}>
-              Eliminar
-            </button>
-          </>
-        )}
-      />
+    <div className="catalog-panel">
+      <FilterBar onSubmit={filter.apply}>
+        <FilterField>
+          <TextField
+            label="Nombre"
+            value={draft.name}
+            onChange={(value) => filter.set('name', value)}
+            placeholder="Filtra los resultados"
+          />
+        </FilterField>
+        <FilterField>
+          <SelectField
+            label="Estado"
+            value={draft.status}
+            onChange={(value) => filter.set('status', value)}
+            options={STATUS_OPTIONS}
+            placeholder="Todos"
+          />
+        </FilterField>
+        <FilterBar.Actions>
+          <button type="submit">Filtrar</button>
+          <button type="button" onClick={filter.clear}>
+            Limpiar filtros
+          </button>
+        </FilterBar.Actions>
+        <button type="button" className="button-link primary filter-bar-cta" onClick={form.openCreate}>
+          + Nueva unidad de medida
+        </button>
+      </FilterBar>
 
-      <CrudToolbar label="Nueva unidad de medida" onCreate={form.openCreate} />
+      <div className="catalog-table-card">
+        <DataTable
+          columns={COLUMNS}
+          rows={controller.filteredUnits.value}
+          empty="No hay unidades de medida que coincidan con los filtros"
+          actions={(unit) => (
+            <>
+              <button type="button" onClick={() => form.startEdit(unit)}>
+                Editar
+              </button>
+              {unit.active ? (
+                <button type="button" onClick={() => form.deactivate(unit.id)}>
+                  Desactivar
+                </button>
+              ) : (
+                <button type="button" onClick={() => form.reactivate(unit.id)}>
+                  Reactivar
+                </button>
+              )}
+              <button type="button" onClick={() => form.remove(unit)}>
+                Eliminar
+              </button>
+            </>
+          )}
+        />
+      </div>
 
       {form.visible.value && (
         <Modal
@@ -70,6 +106,6 @@ export function UnitsTab({ controller }) {
           </FormPanel>
         </Modal>
       )}
-    </section>
+    </div>
   );
 }

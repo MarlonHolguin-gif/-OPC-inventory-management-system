@@ -17,7 +17,6 @@ export class PurchaseOrderDetailController extends Controller {
   }
 
   order = signal(null);
-  receiveQuantities = signal({});
   notes = signal('');
   submitting = signal(false);
   transitioning = signal(false);
@@ -28,13 +27,13 @@ export class PurchaseOrderDetailController extends Controller {
   // Enviar al proveedor solo tiene sentido desde borrador.
   canSend = computed(() => this.order.value?.status === 'DRAFT');
 
-  // Cancelar mientras no esté completamente recibida ni ya cancelada.
-  canCancel = computed(() => {
-    const status = this.order.value?.status;
-    return status !== undefined && !CLOSED_STATUSES.includes(status);
-  });
+  // Cancelar solo una orden en borrador. Una vez enviada al proveedor el
+  // único camino es la recepción (total); no hay botón de cancelar junto a
+  // la recepción.
+  canCancel = computed(() => this.order.value?.status === 'DRAFT');
 
-  // La recepción de mercancía solo se habilita una vez enviada la orden.
+  // La recepción de mercancía solo se habilita una vez enviada la orden. La
+  // recepción es siempre total (se recibe todo lo pendiente) o se cancela.
   canReceive = computed(() => {
     const status = this.order.value?.status;
     return status === 'SENT' || status === 'PARTIALLY_RECEIVED';
@@ -50,24 +49,11 @@ export class PurchaseOrderDetailController extends Controller {
 
   async load() {
     try {
-      const order = await PurchaseService.get(this.orderId);
-      this.order.value = order;
-      // Precarga cada input con la cantidad pendiente por ítem — el usuario
-      // puede bajarla para una recepción parcial.
-      this.receiveQuantities.value = Object.fromEntries(
-        order.items.map((item) => [
-          item.id,
-          pendingQuantity(item) > 0 ? String(pendingQuantity(item)) : '0',
-        ]),
-      );
+      this.order.value = await PurchaseService.get(this.orderId);
     } catch {
       UiStore.fail('No se pudo cargar la orden de compra.');
     }
   }
-
-  setReceiveQuantity = (itemId, value) => {
-    this.receiveQuantities.value = { ...this.receiveQuantities.value, [itemId]: value };
-  };
 
   setNotes = (value) => {
     this.notes.value = value;
@@ -114,27 +100,17 @@ export class PurchaseOrderDetailController extends Controller {
     event.preventDefault();
     UiStore.clear();
 
-    const items = this.order.value.items
-      .map((item) => ({
-        purchaseOrderItemId: item.id,
-        receivedQuantity: Number(this.receiveQuantities.value[item.id]),
-      }))
-      .filter((item) => item.receivedQuantity > 0);
-
-    if (items.length === 0) {
-      UiStore.fail('Indica al menos una cantidad a recibir mayor que cero.');
+    if (this.pendingItems.value.length === 0) {
+      UiStore.fail('Esta orden no tiene mercancía pendiente por recibir.');
       return;
     }
 
     this.submitting.value = true;
     try {
-      await PurchaseService.registerReceipt(this.orderId, {
-        notes: this.notes.value || null,
-        items,
-      });
+      await PurchaseService.registerReceipt(this.orderId, { notes: this.notes.value || null });
       this.notes.value = '';
       await this.load();
-      UiStore.notify('Recepción registrada correctamente.');
+      UiStore.notify('Orden recibida por completo.');
     } catch (error) {
       UiStore.fail(backendError(error, 'No se pudo registrar la recepción.'));
     } finally {

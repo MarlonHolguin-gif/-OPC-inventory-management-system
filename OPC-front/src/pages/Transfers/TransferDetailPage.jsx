@@ -3,6 +3,7 @@ import { useController } from '@/lib/useController';
 import { DataTable } from '@/components/DataTable';
 import { AsyncBoundary } from '@/components/AsyncBoundary';
 import { TextField, SelectField } from '@/components/Field';
+import { IntegerInput } from '@/components/IntegerInput';
 import { TransferDetailController } from './controllers/TransferDetailController';
 import { TransferTimeline } from './components/TransferTimeline';
 import {
@@ -121,10 +122,7 @@ function TransferDetailBody({ controller, transfer }) {
                   </td>
                   <td>{item.requestedQuantity}</td>
                   <td>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
+                    <IntegerInput
                       max={item.requestedQuantity}
                       value={controller.prepareQuantities.value[item.id] ?? '0'}
                       onChange={(event) => controller.setPrepareQuantity(item.id, event.target.value)}
@@ -196,10 +194,7 @@ function TransferDetailBody({ controller, transfer }) {
                     </td>
                     <td>{item.shippedQuantity ?? 0}</td>
                     <td>
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
+                      <IntegerInput
                         max={item.shippedQuantity ?? 0}
                         value={controller.receiveQuantities.value[item.id] ?? '0'}
                         onChange={(event) => controller.setReceiveQuantity(item.id, event.target.value)}
